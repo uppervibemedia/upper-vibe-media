@@ -546,31 +546,30 @@ export function createCosmicSky(scene) {
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
     } else if (def.id === "ice") {
-      // Upper Vibe Beach planet: ocean-blue body with sandy land masses and glowing coast bands
-      for (let b = 0; b < 11; b++) {
-        const by = cy - R + (b / 10) * R * 2;
-        const bw = R * (0.045 + rng() * 0.085);
-        const alpha = 0.10 + rng() * 0.14;
-        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
-        const sandBand = b % 2 === 0;
-        bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, sandBand ? `rgba(245,205,125,${alpha})` : `rgba(75,220,245,${alpha})`);
-        bandG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = bandG;
-        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
-      }
-      for (let p = 0; p < 10; p++) {
+      // Upper Vibe Beach planet: water-and-sand world with island continents, not gas bands
+      for (let p = 0; p < 12; p++) {
         const px2 = cx + (rng() - 0.5) * R * 1.45;
         const py2 = cy + (rng() - 0.5) * R * 1.45;
-        const pr = R * (0.08 + rng() * 0.22);
+        const pr = R * (0.10 + rng() * 0.26);
         const landG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-        landG.addColorStop(0, `rgba(250,220,150,${0.16 + rng()*0.12})`);
-        landG.addColorStop(0.55, `rgba(190,130,70,${0.10 + rng()*0.10})`);
+        landG.addColorStop(0, `rgba(252,225,160,${0.32 + rng()*0.18})`);
+        landG.addColorStop(0.48, `rgba(192,132,68,${0.20 + rng()*0.12})`);
+        landG.addColorStop(0.68, `rgba(245,226,170,${0.12 + rng()*0.10})`);
+        landG.addColorStop(0.84, `rgba(105,224,240,${0.10 + rng()*0.08})`);
         landG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = landG;
         pctx.beginPath();
         pctx.arc(px2, py2, pr, 0, Math.PI * 2);
         pctx.fill();
+      }
+      for (let w = 0; w < 10; w++) {
+        const wy = cy - R + (w / 9) * R * 2;
+        const waveG = pctx.createLinearGradient(cx - R, wy, cx + R, wy + R * 0.08);
+        waveG.addColorStop(0, "rgba(255,255,255,0)");
+        waveG.addColorStop(0.5, w % 2 === 0 ? "rgba(160,242,255,0.13)" : "rgba(255,235,180,0.10)");
+        waveG.addColorStop(1, "rgba(255,255,255,0)");
+        pctx.fillStyle = waveG;
+        pctx.fillRect(cx - R, wy - R * 0.025, R * 2, R * 0.05);
       }
     } else if (def.id === "teal") {
       // Teal: smooth horizontal bands

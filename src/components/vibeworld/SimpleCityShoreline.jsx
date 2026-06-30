@@ -86,46 +86,61 @@ function addSimplePalm(group, x, z, scale = 1) {
 
 function makeBeachWorldTexture() {
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 256;
+  canvas.width = 768;
+  canvas.height = 384;
   const ctx = canvas.getContext("2d");
-  const ocean = ctx.createLinearGradient(0, 0, 512, 256);
-  ocean.addColorStop(0, "#063B57");
-  ocean.addColorStop(0.35, "#0B7FA0");
-  ocean.addColorStop(0.68, "#1597AD");
-  ocean.addColorStop(1, "#052C45");
+  const ocean = ctx.createLinearGradient(0, 0, 768, 384);
+  ocean.addColorStop(0, "#052A46");
+  ocean.addColorStop(0.28, "#086987");
+  ocean.addColorStop(0.58, "#0A91AC");
+  ocean.addColorStop(1, "#07314D");
   ctx.fillStyle = ocean;
-  ctx.fillRect(0, 0, 512, 256);
+  ctx.fillRect(0, 0, 768, 384);
 
-  const land = [
-    [70, 70, 92, 22], [190, 138, 120, 30], [345, 92, 104, 25],
-    [440, 175, 96, 26], [110, 204, 76, 18], [270, 38, 84, 16],
+  const continents = [
+    [108, 112, 150, 54, -0.18], [300, 220, 190, 70, 0.16], [520, 120, 170, 58, -0.28],
+    [650, 270, 145, 52, 0.22], [180, 310, 120, 42, 0.1], [410, 58, 130, 38, -0.1],
   ];
-  land.forEach(([x, y, w, h], i) => {
-    const g = ctx.createRadialGradient(x, y, 0, x, y, w);
-    g.addColorStop(0, i % 2 === 0 ? "rgba(246,210,138,0.95)" : "rgba(210,180,140,0.92)");
-    g.addColorStop(0.65, "rgba(191,141,72,0.82)");
-    g.addColorStop(1, "rgba(191,141,72,0)");
+  continents.forEach(([x, y, w, h, rot], i) => {
     ctx.save();
     ctx.translate(x, y);
+    ctx.rotate(rot);
     ctx.scale(1, h / w);
-    ctx.rotate((i - 2) * 0.22);
-    ctx.fillStyle = g;
+    const coast = ctx.createRadialGradient(0, 0, w * 0.36, 0, 0, w * 1.08);
+    coast.addColorStop(0, i % 2 === 0 ? "rgba(247,214,151,1)" : "rgba(222,177,111,1)");
+    coast.addColorStop(0.56, "rgba(196,137,70,0.96)");
+    coast.addColorStop(0.72, "rgba(242,222,166,0.58)");
+    coast.addColorStop(0.84, "rgba(102,219,235,0.38)");
+    coast.addColorStop(1, "rgba(102,219,235,0)");
+    ctx.fillStyle = coast;
     ctx.beginPath();
     ctx.arc(0, 0, w, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   });
 
-  for (let i = 0; i < 16; i++) {
-    const y = 16 + i * 14;
-    const wave = ctx.createLinearGradient(0, y - 4, 0, y + 4);
+  for (let i = 0; i < 34; i++) {
+    const x = (i * 97) % 768;
+    const y = 28 + ((i * 53) % 328);
+    const len = 42 + (i % 5) * 22;
+    const wave = ctx.createLinearGradient(x - len, y, x + len, y + 6);
     wave.addColorStop(0, "rgba(255,255,255,0)");
-    wave.addColorStop(0.5, i % 3 === 0 ? "rgba(162,235,244,0.18)" : "rgba(255,240,198,0.12)");
+    wave.addColorStop(0.5, i % 3 === 0 ? "rgba(199,246,255,0.24)" : "rgba(255,240,198,0.17)");
     wave.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((i % 7 - 3) * 0.08);
     ctx.fillStyle = wave;
-    ctx.fillRect(0, y - 4, 512, 8);
+    ctx.fillRect(-len, -2, len * 2, 4);
+    ctx.restore();
   }
+
+  const glow = ctx.createRadialGradient(230, 110, 0, 230, 110, 360);
+  glow.addColorStop(0, "rgba(255,255,255,0.16)");
+  glow.addColorStop(0.35, "rgba(154,233,255,0.08)");
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, 768, 384);
 
   const texture = new CanvasTexture(canvas);
   texture.minFilter = LinearFilter;
@@ -160,16 +175,16 @@ function addCityBeachPlanet(group) {
   ocean.castShadow = true;
   planetGroup.add(ocean);
 
-  [-1.55, -0.86, -0.18, 0.58, 1.3].forEach((y, idx) => {
+  [-1.05, 0.72].forEach((y, idx) => {
     const radius = Math.sqrt(Math.max(0.7, 3.75 * 3.75 - y * y));
-    const band = new Mesh(
-      new THREE.TorusGeometry(radius, 0.14 + idx * 0.012, 12, 128),
-      standardMat(idx % 2 === 0 ? "#D2B48C" : "#F0C878", { roughness: 0.72, metalness: 0.02 })
+    const current = new Mesh(
+      new THREE.TorusGeometry(radius, 0.045, 8, 128),
+      new MeshBasicMaterial({ color: new Color(idx === 0 ? "#7FE7F2" : "#F5D79A"), transparent: true, opacity: 0.28, depthWrite: false })
     );
-    band.rotation.x = Math.PI / 2;
-    band.rotation.z = idx % 2 === 0 ? 0.08 : -0.05;
-    band.position.y = y;
-    planetGroup.add(band);
+    current.rotation.x = Math.PI / 2;
+    current.rotation.z = idx === 0 ? 0.18 : -0.12;
+    current.position.y = y;
+    planetGroup.add(current);
   });
 
   const destinationRing = new Mesh(
