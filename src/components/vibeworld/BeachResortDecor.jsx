@@ -8,7 +8,7 @@ function standard(color) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.76, metalness: 0.04 });
 }
 
-function makeLabel(text, colorHex, scale = [5.6, 1.08]) {
+function makeLabel(text, colorHex, scale = [4.8, 0.94]) {
   const c = document.createElement("canvas");
   c.width = 512; c.height = 96;
   const ctx = c.getContext("2d");
@@ -69,8 +69,8 @@ export function createBeachResortDecor(scene) {
   addUmbrella(group, 8, -7, "#FF7DB5"); addUmbrella(group, 16, -6, "#00DDF5");
   addChair(group, 7, -5.2, "#F6C45D", 0.25); addChair(group, 11, -5.5, "#7DD3FC", -0.2);
   addChair(group, 15, -4.8, "#F9A8D4", 0.1); addChair(group, 19, -5.6, "#B58CFF", -0.35);
-  const loungeLabel = makeLabel("RESORT LOUNGE", "#FFD08A", [6.2, 1.18]);
-  loungeLabel.position.set(13, 2.65, -10); group.add(loungeLabel);
+  const loungeLabel = makeLabel("RESORT LOUNGE", "#FFD08A", [5.2, 1.0]);
+  loungeLabel.position.set(13, 2.28, -9); group.add(loungeLabel);
 
   const cabana = new THREE.Mesh(new THREE.BoxGeometry(4.3, 1.75, 2.4), standard("#F0D7A0"));
   cabana.position.set(20, 0.9, -14); group.add(cabana);
@@ -81,11 +81,11 @@ export function createBeachResortDecor(scene) {
   [-2, 2, 6, -6].forEach((x, i) => addChair(group, x, 10 + (i % 2) * 2, i % 2 ? "#7DD3FC" : "#FF7DB5", i * 0.4));
   const fire = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 36), basic("#FFB347", { transparent: true, opacity: 0.58 }));
   fire.rotation.x = -Math.PI / 2; fire.position.set(0, 0.06, 12); fire.renderOrder = 5; group.add(fire);
-  const hangoutLabel = makeLabel("BEACH HANGOUT", "#FFB347", [6.2, 1.18]);
-  hangoutLabel.position.set(0, 2.55, 8); group.add(hangoutLabel);
+  const hangoutLabel = makeLabel("BEACH HANGOUT", "#FFB347", [5.2, 1.0]);
+  hangoutLabel.position.set(0, 2.25, 8.4); group.add(hangoutLabel);
 
-  const arrivalLabel = makeLabel("ARRIVAL / TELEPORT", "#EDB84A", [7.4, 1.18]);
-  arrivalLabel.position.set(32, 2.75, -13); group.add(arrivalLabel);
+  const arrivalLabel = makeLabel("ARRIVAL / TELEPORT", "#EDB84A", [5.8, 1.0]);
+  arrivalLabel.position.set(31, 2.35, -12.5); group.add(arrivalLabel);
 
   [[13, 1.5, -8], [0, 1.1, 12], [32, 1.4, -8], [-24, 1.1, 18]].forEach(([x, y, z]) => {
     const light = new THREE.PointLight(new THREE.Color("#FFD08A"), 0.82, 10);

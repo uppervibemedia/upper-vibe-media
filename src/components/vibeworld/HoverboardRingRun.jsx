@@ -234,8 +234,8 @@ export function createHoverboardZone(scene) {
   scene.add(archBar);
   scene.userData.hbArchBarMat = archBar.material;
 
-  const titleLabel = makeLabel("NEON  SURF  BEACH", "#00E5FF", [5.5, 1.0]);
-  titleLabel.position.set(SX, 5.5, SZ);
+  const titleLabel = makeLabel("LAUNCH  PAD", "#00E5FF", [4.2, 0.85]);
+  titleLabel.position.set(SX, 3.8, SZ - 2.4);
   scene.add(titleLabel);
 
   // ── SURF VIBE COINS ──────────────────────────────────────────────────────

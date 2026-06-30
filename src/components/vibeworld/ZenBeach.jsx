@@ -37,7 +37,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   const group = new Group();
   group.name = "neonSign_" + text.replace(/\s+/g, "");
 
-  const backGeo = new PlaneGeometry(6, 1.7);
+  const backGeo = new PlaneGeometry(4.8, 1.25);
   const backMat = new MeshBasicMaterial({
     color: new Color(colorHex),
     transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide,
@@ -46,7 +46,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   back.name = "neonBack";
   group.add(back);
 
-  const borderGeo = new PlaneGeometry(6.1, 1.8);
+  const borderGeo = new PlaneGeometry(4.9, 1.35);
   const borderMat = new MeshBasicMaterial({
     color: new Color(colorHex),
     transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide,
@@ -60,7 +60,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   const ctx = canvas.getContext("2d");
   ctx.shadowColor = colorHex;
   ctx.shadowBlur = 10;
-  ctx.font = "bold 20px 'Syne', 'Inter', sans-serif";
+  ctx.font = "bold 18px 'Syne', 'Inter', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#FFFFFF";
@@ -75,7 +75,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
     map: tex, transparent: true, depthWrite: false, depthTest: false,
   });
   const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(5, 1.3, 1);
+  sprite.scale.set(4.2, 0.95, 1);
   sprite.renderOrder = 2;
   group.add(sprite);
 
@@ -216,7 +216,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
 
 
   // Neon sign
-  createNeonSign(scene, ZEN_X, 2.45, ZEN_Z - 2.2, "ZEN  BEACH", "#00D4F0");
+  createNeonSign(scene, ZEN_X, 2.15, ZEN_Z - 2.8, "ZEN  BEACH", "#00D4F0");
 
   // ── WHOLE-BEACH SUNSET GLOW SPRITES ─────────────────────────────
   // iOS/PWA can render large transparent glow sprites as dark mounds at the water horizon,

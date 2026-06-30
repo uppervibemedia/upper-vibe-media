@@ -47,12 +47,19 @@ export function createBeachEdgeDesign(scene) {
     water.rotation.x = -Math.PI / 2; water.position.set(x, 0.001, z); group.add(water);
   });
 
-  const edgeGlow = new THREE.Mesh(new THREE.RingGeometry(59, 60, 96), basic("#56DFFF", { transparent: true, opacity: 0.18 }));
+  const edgeGlow = new THREE.Mesh(new THREE.RingGeometry(58.5, 60, 128), basic("#56DFFF", { transparent: true, opacity: 0.16 }));
   edgeGlow.rotation.x = -Math.PI / 2;
-  edgeGlow.scale.z = 0.72;
+  edgeGlow.scale.y = 0.72;
   edgeGlow.position.set(0, 0.04, 9);
   edgeGlow.renderOrder = 7;
   group.add(edgeGlow);
+
+  const foamEdge = new THREE.Mesh(new THREE.RingGeometry(55, 56, 128), basic("#FFFFFF", { transparent: true, opacity: 0.14 }));
+  foamEdge.rotation.x = -Math.PI / 2;
+  foamEdge.scale.y = 0.72;
+  foamEdge.position.set(0, 0.05, 9);
+  foamEdge.renderOrder = 8;
+  group.add(foamEdge);
 
   [-55, -38, -20, 0, 22, 42, 58].forEach((x, i) => addDune(group, x, -29 + (i % 2), 5.2, 1.4));
   [-54, -58, -50, 50, 58, 54, -48, 48].forEach((x, i) => addRock(group, x, -22 + (i % 4) * 13, 1.6, 0.8, 1.15, i % 2 ? "#A28B72" : "#7D6E61"));

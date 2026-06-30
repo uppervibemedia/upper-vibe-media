@@ -19,7 +19,7 @@ function makeLabel(text, colorHex) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
-  sprite.scale.set(5.6, 1.15, 1); sprite.renderOrder = 20; sprite.userData.isNeonSign = true;
+  sprite.scale.set(4.6, 0.92, 1); sprite.renderOrder = 20; sprite.userData.isNeonSign = true;
   return sprite;
 }
 
@@ -54,7 +54,7 @@ export function createBeachSurfZone(scene) {
   pier.rotation.x = -Math.PI / 2; pier.position.set(31, 0.035, 34.5); pier.renderOrder = 3; group.add(pier);
 
   const sign = makeLabel("SURF ZONE", "#00E5FF");
-  sign.position.set(34, 2.45, 31.8); group.add(sign);
+  sign.position.set(34, 2.12, 32.8); group.add(sign);
 
   const light = new THREE.PointLight(new THREE.Color("#6FE7FF"), 1.15, 18);
   light.position.set(28, 2, 39); group.add(light);

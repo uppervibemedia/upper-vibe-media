@@ -26,7 +26,7 @@ function makeLabel(text, colorHex) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
-  sprite.scale.set(6.8, 1.25, 1);
+  sprite.scale.set(5.2, 1.0, 1);
   sprite.renderOrder = 20;
   sprite.userData.isNeonSign = true;
   return sprite;
@@ -72,7 +72,7 @@ export function createBeachRollerCoaster(scene) {
   group.add(cart);
 
   const sign = makeLabel("VIBE COASTER", "#00DDF5");
-  sign.position.set(-7.5, 3.1, -7.5);
+  sign.position.set(-7.2, 2.45, -4.8);
   group.add(sign);
 
   const light = new THREE.PointLight(new THREE.Color("#00DDF5"), 1.35, 18);

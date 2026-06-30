@@ -42,7 +42,7 @@ function makeLabel(text, colorHex) {
   tex.minFilter = LinearFilter;
   tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
-  sprite.scale.set(8, 1.5, 1);
+  sprite.scale.set(5.8, 1.1, 1);
   sprite.renderOrder = 999;
   return sprite;
 }
@@ -67,7 +67,7 @@ export function createTransportPad(scene, { x, z, label, color = "#00E5FF", name
   scene.add(glow);
 
   const sign = makeLabel(label, color);
-  sign.position.set(x, 2.35, z);
+  sign.position.set(x, 2.15, z - 1.2);
   sign.userData = { isNeonSign: true };
   scene.add(sign);
 
@@ -90,8 +90,12 @@ export function createBeachWorld(scene) {
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   const islandShape = new THREE.Shape();
-  islandShape.absellipse(0, 9, 64, 46, 0, Math.PI * 2, false, 0);
-  const sand = new Mesh(new THREE.ShapeGeometry(islandShape, isMob ? 36 : 72), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
+  islandShape.moveTo(-8, -34);
+  islandShape.bezierCurveTo(28, -36, 62, -25, 66, 0);
+  islandShape.bezierCurveTo(70, 25, 46, 49, 8, 54);
+  islandShape.bezierCurveTo(-32, 58, -66, 40, -68, 10);
+  islandShape.bezierCurveTo(-70, -16, -46, -32, -8, -34);
+  const sand = new Mesh(new THREE.ShapeGeometry(islandShape, isMob ? 40 : 84), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
   sand.rotation.x = -Math.PI / 2;
   sand.position.set(0, 0, 0);
   sand.receiveShadow = true;
