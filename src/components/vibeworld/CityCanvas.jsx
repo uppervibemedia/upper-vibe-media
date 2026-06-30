@@ -372,7 +372,7 @@ export function buildPark(scene) {
   const shopGroup = createUpperVibeShop(scene, [22, 0, 12.25]);
   if (shopGroup) shopGroup.rotation.y = Math.PI; // face toward player spawn
   scene.userData.shopGroup = shopGroup;
-  createTransportPad(scene, { ...CITY_BEACH_PAD, label: "Enter Upper Vibe Beach World", color: "#00E5FF", name: "enterBeachPad" });
+  createTransportPad(scene, { ...CITY_BEACH_PAD, label: "Enter Upper Vibe Beach", color: "#00E5FF", name: "enterBeachPad" });
 
   // ═════════════════════════════════════════════════════════════
   // 8.7. NEON VIBE WHEEL — far right (Vibe Shop temporarily disabled)
@@ -440,7 +440,7 @@ export function buildPark(scene) {
 
   scene.add(edgeBuildings);
 
-  // Lightweight city shoreline only. Full Zen Beach / Neon Surf gameplay stays in Upper Vibe Beach World.
+  // Lightweight city shoreline only. Full Zen Beach / Neon Surf gameplay stays in Upper Vibe Beach.
   createSimpleCityShoreline(scene);
 
   // ═════════════════════════════════════════════════════════════
@@ -553,6 +553,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   onJukeboxProxRef.current = onJukeboxProximity;
   const onTransportProxRef = useRef(onTransportProximity);
   onTransportProxRef.current = onTransportProximity;
+  const onPlanetTransportRef = useRef(props.onPlanetTransport);
+  onPlanetTransportRef.current = props.onPlanetTransport;
   const worldModeRef = useRef(worldMode);
   worldModeRef.current = worldMode;
   const djTrackRef = useRef(djTrack);
@@ -1979,15 +1981,62 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     };
   }, []);
 
-  // ─── REMOTE AVATAR CLICK DETECTION (raycasting) ────────────────
+  // ─── WORLD CLICK DETECTION (portal + remote avatars) ────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const findBeachPortalHit = (e) => {
+      const scene = sceneRef.current;
+      const camera = cameraRef.current;
+      const planet = scene?.userData?.cityBeachPlanet;
+      if (!scene || !camera || !planet || worldModeRef.current !== "city") return null;
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+      raycaster.far = 90;
+      const hits = raycaster.intersectObject(planet, true);
+      return hits.find((hit) => {
+        let obj = hit.object;
+        while (obj) {
+          if (obj.userData?.isBeachPortal) return true;
+          obj = obj.parent;
+        }
+        return false;
+      }) || null;
+    };
+
+    const setBeachPortalHover = (hovered) => {
+      const planet = sceneRef.current?.userData?.cityBeachPlanet;
+      if (!planet) return;
+      planet.userData._portalHover = hovered;
+      canvas.style.cursor = hovered ? "pointer" : "";
+    };
+
+    const triggerBeachPortal = () => {
+      const planet = sceneRef.current?.userData?.cityBeachPlanet;
+      if (planet) {
+        planet.userData._portalPulseUntil = performance.now() * 0.001 + 0.35;
+        planet.userData._portalHover = true;
+      }
+      try { navigator?.vibrate?.(18); } catch {}
+      try { onTransportProxRef.current?.(null); } catch {}
+      window.setTimeout(() => onPlanetTransportRef.current?.("beach"), 180);
+    };
 
     const handleClick = (e, fromTouch = false) => {
       // Only process clicks directly on the canvas (ignore HUD buttons)
       // fromTouch=true bypasses target check since touch events use canvas directly
       if (!fromTouch && e.target !== canvas) return;
+
+      const portalHit = findBeachPortalHit(e);
+      if (portalHit) {
+        triggerBeachPortal();
+        return;
+      }
 
       const scene = sceneRef.current;
       const camera = cameraRef.current;
@@ -2038,11 +2087,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       }
     };
 
-    // Desktop: click on canvas
-    canvas.addEventListener("click", handleClick);
+    const handlePortalHover = (e) => {
+      if (mouseRef.current.down || e.target !== canvas) return;
+      setBeachPortalHover(!!findBeachPortalHit(e));
+    };
 
-    // iOS Safari tap detection — listen on window (not canvas) so CameraLookZone pointer-events:none
-    // doesn't interfere. Short tap (< 200ms, < 15px drift) → raycast for avatar hit.
+    const handlePortalLeave = () => setBeachPortalHover(false);
+
+    // Desktop: click on canvas and hover portal state
+    canvas.addEventListener("click", handleClick);
+    canvas.addEventListener("mousemove", handlePortalHover);
+    canvas.addEventListener("mouseleave", handlePortalLeave);
+
+    // iOS Safari/PWA tap detection — listen on window (not canvas) so CameraLookZone pointer-events:none
+    // doesn't interfere. Short tap (< 300ms, < 15px drift) → raycast for portal/avatar hit.
     let _tapStart = null;
     const onWindowTouchStart = (e) => {
       if (e.touches.length !== 1) return;
@@ -2064,6 +2122,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
     return () => {
       canvas.removeEventListener("click", handleClick);
+      canvas.removeEventListener("mousemove", handlePortalHover);
+      canvas.removeEventListener("mouseleave", handlePortalLeave);
       window.removeEventListener("touchstart", onWindowTouchStart);
       window.removeEventListener("touchend", onWindowTouchEnd);
     };

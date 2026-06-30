@@ -143,15 +143,16 @@ function addCityBeachPlanet(group) {
   planetGroup.position.set(12, 8.2, 31.5);
 
   const halo = new Mesh(
-    new THREE.SphereGeometry(3.45, 28, 20),
-    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.BackSide })
+    new THREE.SphereGeometry(3.65, 28, 20),
+    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.2, depthWrite: false, side: THREE.BackSide })
   );
   halo.name = "cityBeachPlanetHalo";
+  halo.userData = { isBeachPortal: true };
   planetGroup.add(halo);
 
   const aura = new Mesh(
-    new THREE.SphereGeometry(2.95, 28, 20),
-    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.07, depthWrite: false })
+    new THREE.SphereGeometry(3.1, 28, 20),
+    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.09, depthWrite: false })
   );
   aura.name = "cityBeachPlanetAura";
   planetGroup.add(aura);
@@ -161,6 +162,7 @@ function addCityBeachPlanet(group) {
     new MeshBasicMaterial({ map: createBeachPlanetTexture() })
   );
   ocean.name = "cityBeachPlanetOcean";
+  ocean.userData = { isBeachPortal: true };
   planetGroup.add(ocean);
 
   [-0.86, -0.38, 0.08, 0.56].forEach((y, idx) => {
@@ -177,12 +179,22 @@ function addCityBeachPlanet(group) {
 
   const destinationRing = new Mesh(
     new THREE.TorusGeometry(2.65, 0.035, 8, 96),
-    new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.46, depthWrite: false })
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.52, depthWrite: false })
   );
   destinationRing.name = "cityBeachPlanetDestinationRing";
+  destinationRing.userData = { isBeachPortal: true };
   destinationRing.rotation.x = Math.PI / 2.35;
   destinationRing.rotation.z = -0.18;
   planetGroup.add(destinationRing);
+
+  const portalLabel = makeShorelineLabel("Enter Upper Vibe Beach");
+  portalLabel.name = "cityBeachPlanetPortalLabel";
+  portalLabel.position.set(0, 3.15, 0);
+  portalLabel.scale.set(5.6, 1.35, 1);
+  portalLabel.visible = false;
+  planetGroup.add(portalLabel);
+
+  planetGroup.userData = { isBeachPortal: true, baseScale: 1 };
 
   group.add(planetGroup);
   return planetGroup;
@@ -292,8 +304,15 @@ export function animateSimpleCityShoreline(scene, t) {
     const halo = planet.getObjectByName("cityBeachPlanetHalo");
     const aura = planet.getObjectByName("cityBeachPlanetAura");
     const ring = planet.getObjectByName("cityBeachPlanetDestinationRing");
-    if (halo?.material) halo.material.opacity = 0.11 + tide * 0.05;
-    if (aura?.material) aura.material.opacity = 0.04 + tide * 0.04;
+    const label = planet.getObjectByName("cityBeachPlanetPortalLabel");
+    const pulseActive = planet.userData._portalPulseUntil && t < planet.userData._portalPulseUntil;
+    const interactive = !!planet.userData._portalHover || pulseActive;
+    const pulse = pulseActive ? Math.sin((planet.userData._portalPulseUntil - t) * 28) * 0.035 : 0;
+    const targetScale = interactive ? 1.08 + pulse : 1;
+    planet.scale.setScalar(planet.scale.x + (targetScale - planet.scale.x) * 0.2);
+    if (halo?.material) halo.material.opacity = (interactive ? 0.22 : 0.14) + tide * 0.06;
+    if (aura?.material) aura.material.opacity = (interactive ? 0.1 : 0.05) + tide * 0.04;
+    if (label) label.visible = interactive;
     if (ring) ring.rotation.z = -0.18 + Math.sin(t * 0.35) * 0.08;
   }
 }
