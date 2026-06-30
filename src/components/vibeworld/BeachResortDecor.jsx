@@ -123,7 +123,7 @@ export function createBeachResortDecor(scene) {
 
   addSmallVilla(group, -8, -14, -0.18);
   addSmallVilla(group, -24, 4, 0.35);
-  addOpenAirStructure(group, -49, 13, "SURF ZONE", "#68D7E8", 0.2);
+  addOpenAirStructure(group, -49, 13, "ZEN CABANA", "#B58CFF", 0.2);
   addOpenAirStructure(group, 40, 13, "BEACH BAR", "#FFD08A", -0.28);
 
   addUmbrella(group, -5, 15, "#D9C27C"); addUmbrella(group, 7, 15, "#80DCEB"); addPalm(group, -9, 18, 0.85); addPalm(group, 11, 18, 0.78);
