@@ -766,7 +766,7 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyB = {
     ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
     duration: 28, cycle: 76, baseStart: now0 + 43,
-    startCX: 54, endCX: -54, cy: 11, cz: 64,
+    startCX: 34, endCX: -74, cy: 11, cz: 64,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
 }
