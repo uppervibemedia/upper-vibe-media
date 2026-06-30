@@ -8,32 +8,6 @@ function standard(color) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.9, metalness: 0.02 });
 }
 
-function waterfallMaterial() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d");
-  const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  bg.addColorStop(0, "rgba(230,255,255,0.72)");
-  bg.addColorStop(0.35, "rgba(86,232,255,0.58)");
-  bg.addColorStop(1, "rgba(190,255,255,0.32)");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (let i = 0; i < 16; i++) {
-    const x = 8 + i * 8 + (i % 3) * 2;
-    const grad = ctx.createLinearGradient(x, 0, x + 8, 0);
-    grad.addColorStop(0, "rgba(255,255,255,0)");
-    grad.addColorStop(0.45, "rgba(255,255,255,0.55)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(x, 0, 7, canvas.height);
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearFilter;
-  return new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.72, depthWrite: false, side: THREE.DoubleSide });
-}
-
 function addRock(group, x, z, sx, sy, sz, color = "#8D7863") {
   const rock = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), standard(color));
   rock.position.set(x, sy * 0.42, z);
@@ -86,60 +60,43 @@ function addWaterfall(group, x, width, height, opts = {}) {
   const poolZ = opts.poolZ ?? -23.5;
   const baseY = height / 2 + 0.7;
 
-  const fallsMat = waterfallMaterial();
+  const fallsMat = basic("#55E8FF", { transparent: true, opacity: 0.66 });
   const falls = new THREE.Mesh(new THREE.PlaneGeometry(width, height), fallsMat);
   falls.position.set(x, baseY, z);
   falls.rotation.y = rotY;
   falls.renderOrder = 11;
   group.add(falls);
-  group.userData.waterfallStreams.push({ sheet: falls, baseY, mat: fallsMat, phase: width * 0.13 });
 
-  const lip = new THREE.Mesh(new THREE.PlaneGeometry(width * 0.92, 0.22), basic("#E9FFFF", { transparent: true, opacity: 0.42 }));
-  lip.position.set(x, baseY + height * 0.48, z + 0.055);
-  lip.rotation.y = rotY;
-  lip.renderOrder = 14;
-  group.add(lip);
-
-  for (let i = 0; i < 7; i++) {
-    const streamMat = basic(i % 2 ? "#E7FFFF" : "#8BF6FF", { transparent: true, opacity: 0.24 + i * 0.035 });
-    const ribbonW = width * (0.07 + (i % 3) * 0.018);
-    const stream = new THREE.Mesh(new THREE.PlaneGeometry(ribbonW, height * (0.72 + (i % 2) * 0.12)), streamMat);
-    const baseX = x + (i - 3) * width * 0.13;
-    stream.position.set(baseX, baseY + 0.06 - (i % 2) * 0.08, z + 0.065);
+  for (let i = 0; i < 4; i++) {
+    const streamMat = basic(i % 2 ? "#CFFFFF" : "#8BF6FF", { transparent: true, opacity: 0.34 + i * 0.05 });
+    const stream = new THREE.Mesh(new THREE.PlaneGeometry(width * (0.14 + i * 0.025), height * 0.92), streamMat);
+    stream.position.set(x + (i - 1.5) * width * 0.18, baseY + 0.08, z + 0.035);
     stream.rotation.y = rotY;
-    stream.renderOrder = 15;
+    stream.renderOrder = 12;
     group.add(stream);
-    group.userData.waterfallStreams.push({ stream, baseX, baseY: stream.position.y, mat: streamMat, phase: i * 0.41 + width, sway: width * 0.025 });
+    group.userData.waterfallStreams.push({ stream, baseY: stream.position.y, mat: streamMat, phase: i * 0.37 });
   }
 
-  const shine = new THREE.Mesh(new THREE.PlaneGeometry(width * 0.42, height * 0.82), basic("#FFFFFF", { transparent: true, opacity: 0.18 }));
-  shine.position.set(x - width * 0.14, baseY + 0.08, z + 0.085);
+  const shine = new THREE.Mesh(new THREE.PlaneGeometry(width * 0.48, height * 0.92), basic("#FFFFFF", { transparent: true, opacity: 0.24 }));
+  shine.position.set(x - width * 0.13, baseY + 0.14, z + 0.04);
   shine.rotation.y = rotY;
-  shine.renderOrder = 16;
+  shine.renderOrder = 13;
   group.add(shine);
 
-  const pool = new THREE.Mesh(new THREE.CircleGeometry(width * 1.72, 32), basic("#20C7EE", { transparent: true, opacity: 0.42 }));
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(width * 1.55, 28), basic("#20C7EE", { transparent: true, opacity: 0.48 }));
   pool.rotation.x = -Math.PI / 2;
-  pool.scale.z = 0.48;
+  pool.scale.z = 0.45;
   pool.position.set(poolX, 0.07, poolZ);
   pool.renderOrder = 9;
   group.add(pool);
 
-  const foam = new THREE.Mesh(new THREE.RingGeometry(width * 1.02, width * 1.54, 34), basic("#FFFFFF", { transparent: true, opacity: 0.36 }));
+  const foam = new THREE.Mesh(new THREE.RingGeometry(width * 1.08, width * 1.48, 28), basic("#FFFFFF", { transparent: true, opacity: 0.38 }));
   foam.rotation.x = -Math.PI / 2;
-  foam.scale.z = 0.48;
-  foam.position.set(poolX, 0.095, poolZ);
+  foam.scale.z = 0.45;
+  foam.position.set(poolX, 0.09, poolZ);
   foam.renderOrder = 10;
   group.add(foam);
   group.userData.waterfallStreams.push({ foam, baseScaleX: foam.scale.x, baseScaleZ: foam.scale.z, mat: foam.material, phase: width * 0.21, foamOnly: true });
-
-  const softFoam = new THREE.Mesh(new THREE.RingGeometry(width * 0.58, width * 1.1, 30), basic("#DFFFFF", { transparent: true, opacity: 0.2 }));
-  softFoam.rotation.x = -Math.PI / 2;
-  softFoam.scale.z = 0.38;
-  softFoam.position.set(poolX, 0.11, poolZ - 0.08);
-  softFoam.renderOrder = 10;
-  group.add(softFoam);
-  group.userData.waterfallStreams.push({ foam: softFoam, baseScaleX: softFoam.scale.x, baseScaleZ: softFoam.scale.z, mat: softFoam.material, phase: width * 0.43, foamOnly: true });
 }
 
 function addCliffWall(group) {

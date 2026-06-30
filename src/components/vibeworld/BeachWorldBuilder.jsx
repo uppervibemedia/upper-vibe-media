@@ -144,7 +144,7 @@ export function createBeachWorld(scene) {
   scene.userData.shoreGlow = shoreGlow;
 
   buildVibeAcademyZone(scene);
-  createZenBeach(scene, -36, 18);
+  createZenBeach(scene, 0, 0);
   createBeachResortAddOns(scene);
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });

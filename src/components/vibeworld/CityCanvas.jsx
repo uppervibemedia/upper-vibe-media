@@ -1511,16 +1511,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               if (wf.foamOnly) {
                 const s = 1 + wave * 0.18;
                 wf.foam.scale.set((wf.baseScaleX || 1) * s, wf.foam.scale.y, (wf.baseScaleZ || 0.45) * s);
-                if (wf.mat) wf.mat.opacity = 0.2 + wave * 0.24;
-              } else if (wf.sheet) {
-                wf.sheet.position.y = wf.baseY - wave * 0.16;
-                wf.sheet.scale.y = 0.98 + wave * 0.04;
-                if (wf.mat) wf.mat.opacity = 0.58 + wave * 0.16;
+                if (wf.mat) wf.mat.opacity = 0.26 + wave * 0.22;
               } else if (wf.stream) {
-                wf.stream.position.y = wf.baseY - wave * 0.46;
-                if (typeof wf.baseX === "number") wf.stream.position.x = wf.baseX + Math.sin(t * 2.1 + wf.phase) * (wf.sway || 0);
-                wf.stream.scale.y = 0.9 + wave * 0.22;
-                if (wf.mat) wf.mat.opacity = 0.24 + wave * 0.38;
+                wf.stream.position.y = wf.baseY - wave * 0.42;
+                wf.stream.scale.y = 0.92 + wave * 0.18;
+                if (wf.mat) wf.mat.opacity = 0.3 + wave * 0.34;
               }
             }
           }
