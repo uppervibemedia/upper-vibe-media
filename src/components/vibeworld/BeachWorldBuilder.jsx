@@ -44,6 +44,37 @@ function makeLabel(text, colorHex) {
   return sprite;
 }
 
+function createUpperVibeBeachPlanet(scene) {
+  const group = new THREE.Group();
+  group.name = "upperVibeBeachPlanet";
+  group.position.set(-7.5, 3.1, -4.5);
+
+  const planet = new Mesh(
+    new THREE.SphereGeometry(2.6, 48, 32),
+    mat("#0B7FA0", { roughness: 0.58, metalness: 0.08 })
+  );
+  planet.castShadow = true;
+  group.add(planet);
+
+  [-0.95, -0.35, 0.25, 0.82].forEach((y, idx) => {
+    const band = new Mesh(
+      new THREE.TorusGeometry(Math.sqrt(Math.max(0.4, 2.6 * 2.6 - y * y)), 0.085 + idx * 0.01, 12, 96),
+      mat(idx % 2 === 0 ? "#D2B48C" : "#F0C878", { roughness: 0.72, metalness: 0.02 })
+    );
+    band.rotation.x = Math.PI / 2;
+    band.position.y = y;
+    group.add(band);
+  });
+
+  const glow = new PointLight(new Color("#40D4FF"), 1.4, 12);
+  glow.position.set(0, 1.8, 1.5);
+  group.add(glow);
+
+  scene.add(group);
+  scene.userData.upperVibeBeachPlanet = group;
+  return group;
+}
+
 export function createTransportPad(scene, { x, z, label, color = "#00E5FF", name = "transportPad" }) {
   const base = new Mesh(new CylinderGeometry(2.2, 2.45, 0.14, 48), mat("#111033", { roughness: 0.2, metalness: 0.8 }));
   base.position.set(x, 0.07, z);
@@ -135,6 +166,7 @@ export function createBeachWorld(scene) {
   createZenBeach(scene, 0, 0);
   createHoverboardZone(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
+  createUpperVibeBeachPlanet(scene);
 
   const moon = new DirectionalLight(new Color("#8899CC"), 0.55);
   moon.position.set(15, 22, SHORELINE_Z + 10);
