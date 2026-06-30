@@ -157,6 +157,33 @@ export function createCrystalZone(scene) {
   group.name = "crystalZone";
   group.position.set(CRYSTAL_ZONE_X, 0, CRYSTAL_ZONE_Z);
 
+  // ── Crystal privacy backdrop — visually separates this zone from the beach ──
+  const backdropMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#060A22"),
+    transparent: true,
+    opacity: 0.86,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+  });
+  const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(14.5, 5.2), backdropMat);
+  backdrop.position.set(0, 2.6, 5.4);
+  backdrop.renderOrder = 0;
+  group.add(backdrop);
+
+  const backdropGlowMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#5A35FF"),
+    transparent: true,
+    opacity: 0.18,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const backdropGlow = new THREE.Mesh(new THREE.RingGeometry(5.4, 5.85, IS_MOBILE ? 32 : 64), backdropGlowMat);
+  backdropGlow.position.set(0, 2.6, 5.35);
+  backdropGlow.scale.y = 0.36;
+  backdropGlow.renderOrder = 1;
+  group.add(backdropGlow);
+
   // ── Energy platform — circular base ────────────────────────────────
   const baseMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color("#1A0E44"),
