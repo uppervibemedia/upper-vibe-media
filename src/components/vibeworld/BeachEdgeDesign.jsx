@@ -45,31 +45,51 @@ function addResortHut(group, x, z, rot = 0) {
   roof.position.set(x, 1.62, z); roof.rotation.y = Math.PI / 4 + rot; group.add(roof);
 }
 
-function addWaterfall(group, x, width, height) {
-  const fallsMat = basic("#8FEAFF", { transparent: true, opacity: 0.58 });
+function addWaterfall(group, x, width, height, opts = {}) {
+  group.userData.waterfallStreams = group.userData.waterfallStreams || [];
+  const z = opts.z ?? -27.65;
+  const rotY = opts.rotY ?? 0;
+  const poolX = opts.poolX ?? x;
+  const poolZ = opts.poolZ ?? -23.5;
+  const baseY = height / 2 + 0.7;
+
+  const fallsMat = basic("#55E8FF", { transparent: true, opacity: 0.66 });
   const falls = new THREE.Mesh(new THREE.PlaneGeometry(width, height), fallsMat);
-  falls.position.set(x, height / 2 + 0.7, -27.65);
+  falls.position.set(x, baseY, z);
+  falls.rotation.y = rotY;
   falls.renderOrder = 11;
   group.add(falls);
 
-  const shine = new THREE.Mesh(new THREE.PlaneGeometry(width * 0.35, height * 0.92), basic("#FFFFFF", { transparent: true, opacity: 0.28 }));
-  shine.position.set(x - width * 0.15, height / 2 + 0.85, -27.6);
-  shine.renderOrder = 12;
+  for (let i = 0; i < 4; i++) {
+    const streamMat = basic(i % 2 ? "#CFFFFF" : "#8BF6FF", { transparent: true, opacity: 0.34 + i * 0.05 });
+    const stream = new THREE.Mesh(new THREE.PlaneGeometry(width * (0.14 + i * 0.025), height * 0.92), streamMat);
+    stream.position.set(x + (i - 1.5) * width * 0.18, baseY + 0.08, z + 0.035);
+    stream.rotation.y = rotY;
+    stream.renderOrder = 12;
+    group.add(stream);
+    group.userData.waterfallStreams.push({ stream, baseY: stream.position.y, mat: streamMat, phase: i * 0.37 });
+  }
+
+  const shine = new THREE.Mesh(new THREE.PlaneGeometry(width * 0.48, height * 0.92), basic("#FFFFFF", { transparent: true, opacity: 0.24 }));
+  shine.position.set(x - width * 0.13, baseY + 0.14, z + 0.04);
+  shine.rotation.y = rotY;
+  shine.renderOrder = 13;
   group.add(shine);
 
-  const pool = new THREE.Mesh(new THREE.CircleGeometry(width * 1.55, 28), basic("#42C8E8", { transparent: true, opacity: 0.42 }));
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(width * 1.55, 28), basic("#20C7EE", { transparent: true, opacity: 0.48 }));
   pool.rotation.x = -Math.PI / 2;
   pool.scale.z = 0.45;
-  pool.position.set(x, 0.07, -23.5);
+  pool.position.set(poolX, 0.07, poolZ);
   pool.renderOrder = 9;
   group.add(pool);
 
-  const foam = new THREE.Mesh(new THREE.RingGeometry(width * 1.08, width * 1.48, 28), basic("#FFFFFF", { transparent: true, opacity: 0.32 }));
+  const foam = new THREE.Mesh(new THREE.RingGeometry(width * 1.08, width * 1.48, 28), basic("#FFFFFF", { transparent: true, opacity: 0.38 }));
   foam.rotation.x = -Math.PI / 2;
   foam.scale.z = 0.45;
-  foam.position.set(x, 0.09, -23.5);
+  foam.position.set(poolX, 0.09, poolZ);
   foam.renderOrder = 10;
   group.add(foam);
+  group.userData.waterfallStreams.push({ foam, baseScaleX: foam.scale.x, baseScaleZ: foam.scale.z, mat: foam.material, phase: width * 0.21, foamOnly: true });
 }
 
 function addCliffWall(group) {
@@ -98,6 +118,32 @@ function addCliffWall(group) {
   invisibleWall.position.set(0, 4.5, -28.5);
   invisibleWall.name = "beachBackInvisibleCollisionWall";
   group.add(invisibleWall);
+}
+
+function addSideCliffEdges(group) {
+  const cliffMats = [standard("#626C66"), standard("#7A7365"), standard("#58645E")];
+  [-1, 1].forEach((side) => {
+    const x = side * 66;
+    [-14, 2, 18, 34, 48].forEach((z, i) => {
+      const height = 5.8 + (i % 3) * 1.15;
+      const cliff = new THREE.Mesh(new THREE.CylinderGeometry(4.4, 5.8, height, 6), cliffMats[(i + (side > 0 ? 1 : 0)) % cliffMats.length]);
+      cliff.position.set(x, height / 2 - 0.05, z);
+      cliff.scale.x = 0.78;
+      cliff.scale.z = 1.35;
+      cliff.rotation.y = side * 0.45 + i * 0.08;
+      group.add(cliff);
+      addRock(group, side * 60.5, z + 2, 1.8, 0.8, 1.35, i % 2 ? "#81776B" : "#677069");
+    });
+
+    addWaterfall(group, side * 63.2, 2.35, 5.8, { z: 7, rotY: side > 0 ? Math.PI / 2 : -Math.PI / 2, poolX: side * 59.5, poolZ: 7 });
+    addWaterfall(group, side * 63.2, 2.2, 5.2, { z: 30, rotY: side > 0 ? Math.PI / 2 : -Math.PI / 2, poolX: side * 59.5, poolZ: 30 });
+
+    [-8, 10, 28, 44].forEach((z, i) => addPalmCluster(group, side * 56, z, 0.95 + (i % 2) * 0.15));
+    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(2.5, 8, 82), basic("#000000", { transparent: true, opacity: 0 }));
+    sideWall.position.set(side * 63.5, 4, 16);
+    sideWall.name = side > 0 ? "beachEastInvisibleCollisionWall" : "beachWestInvisibleCollisionWall";
+    group.add(sideWall);
+  });
 }
 
 export function createBeachEdgeDesign(scene) {
@@ -132,6 +178,7 @@ export function createBeachEdgeDesign(scene) {
   addRock(group, -5, -31, 4.2, 1.25, 1.8, "#7F715F");
   addRock(group, 20, -30, 3.4, 1.1, 1.6, "#99846A");
   addCliffWall(group);
+  addSideCliffEdges(group);
 
   const railMat = basic("#F8D38A", { transparent: true, opacity: 0.48 });
   [[46, 24, 18, 0.12], [-42, 26, 14, -0.12], [31, -3, 12, 0.35]].forEach(([x, z, w, rot]) => {
@@ -141,4 +188,5 @@ export function createBeachEdgeDesign(scene) {
 
   scene.add(group);
   scene.userData.beachNaturalEdges = group;
+  scene.userData.beachWaterfallStreams = group.userData.waterfallStreams || [];
 }

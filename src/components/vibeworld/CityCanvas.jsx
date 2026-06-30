@@ -1501,6 +1501,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Beach animations: lightweight shoreline in City; full Zen Beach only in Beach World.
         if (worldModeRef.current === "beach") {
           if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
+          const waterfallStreams = scene.userData.beachWaterfallStreams || [];
+          if (waterfallStreams.length && (!mobileQuality || frameRef.current % (lowQuality ? 6 : 3) === 0)) {
+            for (const wf of waterfallStreams) {
+              const wave = Math.sin(t * 4.2 + wf.phase) * 0.5 + 0.5;
+              if (wf.foamOnly) {
+                const s = 1 + wave * 0.18;
+                wf.foam.scale.set((wf.baseScaleX || 1) * s, wf.foam.scale.y, (wf.baseScaleZ || 0.45) * s);
+                if (wf.mat) wf.mat.opacity = 0.26 + wave * 0.22;
+              } else if (wf.stream) {
+                wf.stream.position.y = wf.baseY - wave * 0.42;
+                wf.stream.scale.y = 0.92 + wave * 0.18;
+                if (wf.mat) wf.mat.opacity = 0.3 + wave * 0.34;
+              }
+            }
+          }
         } else if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 12 : 6) === 0) {
           animateSimpleCityShoreline(scene, t);
         }
