@@ -2,7 +2,6 @@ import * as THREE from "three";
 import createZenBeach from "./ZenBeach";
 import { createHoverboardZone } from "./HoverboardRingRun";
 import { buildVibeAcademyZone } from "./city-engine/zones/VibeAcademyZone";
-import { createCosmicSky } from "./CosmicSkySystem";
 import { createBeachDaySky } from "./BeachDaySky";
 import { createBeachReturnPlanet } from "./BeachReturnPlanet";
 import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
@@ -81,7 +80,6 @@ export function createTransportPad(scene, { x, z, label, color = "#00E5FF", name
 }
 
 export function createBeachWorld(scene) {
-  createCosmicSky(scene);
   scene.userData._beachDaylightSky = true;
   createBeachDaySky(scene);
 
@@ -95,9 +93,13 @@ export function createBeachWorld(scene) {
   islandShape.bezierCurveTo(70, 25, 46, 49, 8, 54);
   islandShape.bezierCurveTo(-32, 58, -66, 40, -68, 10);
   islandShape.bezierCurveTo(-70, -16, -46, -32, -8, -34);
-  const sand = new Mesh(new THREE.ShapeGeometry(islandShape, isMob ? 40 : 84), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
+  const sand = new Mesh(
+    new THREE.ExtrudeGeometry(islandShape, { depth: 0.28, bevelEnabled: false, curveSegments: isMob ? 8 : 16 }),
+    mat("#E6C98F", { roughness: 0.86, metalness: 0.0 })
+  );
+  sand.material.side = THREE.DoubleSide;
   sand.rotation.x = -Math.PI / 2;
-  sand.position.set(0, 0, 0);
+  sand.position.set(0, -0.28, 0);
   sand.receiveShadow = true;
   sand.name = "beach";
   scene.add(sand);

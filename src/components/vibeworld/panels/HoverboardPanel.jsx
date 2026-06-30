@@ -1,6 +1,6 @@
 /**
- * HoverboardPanel — Neon Surf Beach zone HUD.
- * Surf Vibe Coins: collected this ride, added to Vibe Coin wallet.
+ * HoverboardPanel — beach launch pad HUD.
+ * Beach Vibe Coins: collected this ride, added to Vibe Coin wallet.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,7 +11,7 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
   const [phase, setPhase] = useState("idle");
   const [sessionCoins, setSessionCoins] = useState(0);
   const [sessionBest, setSessionBest] = useState(() => {
-    try { return parseInt(localStorage.getItem("uvc_surf_best") || "0", 10); } catch { return 0; }
+    try { return parseInt(localStorage.getItem("uvc_hoverboard_best") || "0", 10); } catch { return 0; }
   });
   const [boostFlash, setBoostFlash] = useState(false);
   const [launchFlash, setLaunchFlash] = useState(false);
@@ -48,8 +48,8 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
     if (earned > 0) {
       // Save personal best
       try {
-        const prev = parseInt(localStorage.getItem("uvc_surf_best") || "0", 10);
-        if (earned > prev) { localStorage.setItem("uvc_surf_best", String(earned)); setSessionBest(earned); }
+        const prev = parseInt(localStorage.getItem("uvc_hoverboard_best") || "0", 10);
+        if (earned > prev) { localStorage.setItem("uvc_hoverboard_best", String(earned)); setSessionBest(earned); }
       } catch {}
       // Coins were already credited per-coin via vibeCoinsCollected events during the ride
     }
@@ -77,7 +77,7 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
 
       // Dispatch vibeCoinsCollected — one unique ID per coin unit so wallet deduplication works
       const ts = Date.now();
-      const coinIds = Array.from({ length: coinValue }, (_, i) => `surf_${orbId}_${ts}_${i}`);
+      const coinIds = Array.from({ length: coinValue }, (_, i) => `beach_${orbId}_${ts}_${i}`);
       window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
         detail: { coinIds, source: "hoverboard_orb" }
       }));
@@ -136,8 +136,8 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
             <div className="flex items-center gap-2.5">
               <Zap className="w-5 h-5 flex-shrink-0" style={{ color: "#00E5FF" }} />
               <div>
-                <span className="font-black text-white text-sm tracking-wider">NEON SURF BEACH</span>
-                <div style={{ fontSize: "9px", color: "rgba(0,229,255,0.5)", marginTop: "1px" }}>Temporary surf board · Beach game only</div>
+                <span className="font-black text-white text-sm tracking-wider">BEACH LAUNCH PAD</span>
+                <div style={{ fontSize: "9px", color: "rgba(0,229,255,0.5)", marginTop: "1px" }}>Hoverboard route · Vibe Coin run</div>
               </div>
             </div>
 
@@ -162,7 +162,7 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
                 boxShadow: "0 0 28px rgba(0,229,255,0.4)",
               }}
             >
-              🏄 PLAY NEON SURF
+              START HOVERBOARD RUN
             </button>
 
             <p className="text-[9px] text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
@@ -211,7 +211,7 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
               className="w-full flex items-center justify-center gap-1.5 py-2 pointer-events-auto transition-all hover:bg-white/5 active:scale-[0.97]"
               style={{ color: "rgba(255,255,255,0.45)", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em" }}
               >
-              <X className="w-3 h-3" /> EXIT NEON SURF
+              <X className="w-3 h-3" /> END RUN
               </button>
             </div>
           </div>

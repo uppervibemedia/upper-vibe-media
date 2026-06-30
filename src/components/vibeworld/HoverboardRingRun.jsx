@@ -1,5 +1,5 @@
 /**
- * NeonSurfBeach — Free-ride hoverboard beach zone.
+ * Beach launch pad — free-ride hoverboard zone.
  * Collectible Vibe Coins · Speed Boost Pads · Launch Pads (air launch)
  */
 import * as THREE from "three";
@@ -19,7 +19,7 @@ export const HOVERBOARD_INTERACT_RADIUS = 6.0;
 // Legacy (unused but kept for import compat)
 export const HOVERBOARD_RINGS = [];
 
-// ── SURF VIBE COINS ──────────────────────────────────────────────────────────
+// ── BEACH VIBE COINS ─────────────────────────────────────────────────────────
 // 70% easy (clear ride lines), 20% medium (light steering), 10% bonus (+5)
 // All placed at y=1.0 (easy reach height), close to ride path
 export const BEACH_ORBS = [
@@ -107,8 +107,8 @@ function getCoinFaceTex() {
   return _coinFaceTex;
 }
 
-// Build a surf Vibe Coin mesh at given position
-function buildSurfCoin(scene, orb) {
+// Build a beach Vibe Coin mesh at given position
+function buildBeachCoin(scene, orb) {
   const g = new Group();
   g.name = `hbOrb_${orb.id}`;
 
@@ -238,10 +238,10 @@ export function createHoverboardZone(scene) {
   titleLabel.position.set(SX, 3.8, SZ - 2.4);
   scene.add(titleLabel);
 
-  // ── SURF VIBE COINS ──────────────────────────────────────────────────────
+  // ── BEACH VIBE COINS ─────────────────────────────────────────────────────
   const orbMeshes = [];
   for (const orb of BEACH_ORBS) {
-    const entry = buildSurfCoin(scene, orb);
+    const entry = buildBeachCoin(scene, orb);
     orbMeshes.push(entry);
   }
   scene.userData.hbOrbMeshes = orbMeshes;
@@ -396,7 +396,7 @@ export function animateHoverboardZone(scene, t, beat) {
   const hbLight = scene.userData.hbLight;
   if (hbLight) hbLight.intensity = 2.5 + beat * 3.5 + Math.sin(t * 1.3) * 0.6;
 
-  // Surf Vibe Coins animation
+  // Beach Vibe Coins animation
   const orbs = scene.userData.hbOrbMeshes;
   if (orbs) {
     for (const coin of orbs) {
@@ -453,7 +453,7 @@ export function resetOrbs(scene) {
 }
 
 // ─── BEACH LAUNCH PAD SYSTEM (self-contained, no VibeLaunchZone dep) ──
-// Launches ANY rider on a beach pad (walking, personal hoverboard, or Neon Surf).
+// Launches ANY rider on a beach pad (walking or personal hoverboard).
 // Returns the launch state to integrate into CityCanvas/LaunchRide height pipeline.
 const LAUNCH_RISE = 0.55;      // seconds to rise
 const LAUNCH_FALL= 0.80;       // seconds to glide down
