@@ -84,37 +84,86 @@ function addSimplePalm(group, x, z, scale = 1) {
   group.add(crown);
 }
 
+function makeBeachWorldTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const ocean = ctx.createLinearGradient(0, 0, 512, 256);
+  ocean.addColorStop(0, "#063B57");
+  ocean.addColorStop(0.35, "#0B7FA0");
+  ocean.addColorStop(0.68, "#1597AD");
+  ocean.addColorStop(1, "#052C45");
+  ctx.fillStyle = ocean;
+  ctx.fillRect(0, 0, 512, 256);
+
+  const land = [
+    [70, 70, 92, 22], [190, 138, 120, 30], [345, 92, 104, 25],
+    [440, 175, 96, 26], [110, 204, 76, 18], [270, 38, 84, 16],
+  ];
+  land.forEach(([x, y, w, h], i) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, w);
+    g.addColorStop(0, i % 2 === 0 ? "rgba(246,210,138,0.95)" : "rgba(210,180,140,0.92)");
+    g.addColorStop(0.65, "rgba(191,141,72,0.82)");
+    g.addColorStop(1, "rgba(191,141,72,0)");
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, h / w);
+    ctx.rotate((i - 2) * 0.22);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, w, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  for (let i = 0; i < 16; i++) {
+    const y = 16 + i * 14;
+    const wave = ctx.createLinearGradient(0, y - 4, 0, y + 4);
+    wave.addColorStop(0, "rgba(255,255,255,0)");
+    wave.addColorStop(0.5, i % 3 === 0 ? "rgba(162,235,244,0.18)" : "rgba(255,240,198,0.12)");
+    wave.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = wave;
+    ctx.fillRect(0, y - 4, 512, 8);
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.minFilter = LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 function addCityBeachPlanet(group) {
   const planetGroup = new Group();
   planetGroup.name = "cityBeachBlueSandPlanet";
-  planetGroup.position.set(12, 8.4, 23.5);
+  planetGroup.position.set(12, 7.15, 23.25);
 
   const halo = new Mesh(
-    new THREE.SphereGeometry(4.9, 32, 24),
-    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.BackSide })
+    new THREE.SphereGeometry(5.65, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.18, depthWrite: false, side: THREE.BackSide })
   );
   halo.name = "cityBeachPlanetHalo";
   planetGroup.add(halo);
 
   const aura = new Mesh(
-    new THREE.SphereGeometry(4.25, 32, 24),
-    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.08, depthWrite: false })
+    new THREE.SphereGeometry(4.95, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.1, depthWrite: false })
   );
   aura.name = "cityBeachPlanetAura";
   planetGroup.add(aura);
 
   const ocean = new Mesh(
-    new THREE.SphereGeometry(3.35, 56, 36),
-    standardMat("#0B7FA0", { roughness: 0.5, metalness: 0.1 })
+    new THREE.SphereGeometry(3.75, 64, 40),
+    new MeshStandardMaterial({ map: makeBeachWorldTexture(), color: new Color("#ffffff"), roughness: 0.44, metalness: 0.12 })
   );
   ocean.name = "cityBeachPlanetOcean";
   ocean.castShadow = true;
   planetGroup.add(ocean);
 
-  [-1.35, -0.72, -0.12, 0.52, 1.12].forEach((y, idx) => {
-    const radius = Math.sqrt(Math.max(0.6, 3.35 * 3.35 - y * y));
+  [-1.55, -0.86, -0.18, 0.58, 1.3].forEach((y, idx) => {
+    const radius = Math.sqrt(Math.max(0.7, 3.75 * 3.75 - y * y));
     const band = new Mesh(
-      new THREE.TorusGeometry(radius, 0.13 + idx * 0.01, 12, 112),
+      new THREE.TorusGeometry(radius, 0.14 + idx * 0.012, 12, 128),
       standardMat(idx % 2 === 0 ? "#D2B48C" : "#F0C878", { roughness: 0.72, metalness: 0.02 })
     );
     band.rotation.x = Math.PI / 2;
@@ -124,7 +173,7 @@ function addCityBeachPlanet(group) {
   });
 
   const destinationRing = new Mesh(
-    new THREE.TorusGeometry(4.05, 0.055, 10, 128),
+    new THREE.TorusGeometry(4.55, 0.065, 10, 144),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.52, depthWrite: false })
   );
   destinationRing.name = "cityBeachPlanetDestinationRing";
