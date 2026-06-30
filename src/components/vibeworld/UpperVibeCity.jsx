@@ -800,8 +800,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const nearbyBeachActivity = (() => {
     if (worldMode !== "beach") return null;
-    const bonfireDx = playerPos.x - (-52);
-    const bonfireDz = playerPos.z - 0;
+    const bonfireDx = playerPos.x - (-42);
+    const bonfireDz = playerPos.z - (-10);
     if (Math.sqrt(bonfireDx * bonfireDx + bonfireDz * bonfireDz) < 7) return "bonfire";
     return null;
   })();
