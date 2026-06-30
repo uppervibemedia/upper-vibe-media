@@ -54,10 +54,10 @@ function addResortHut(group, x, z, rot = 0) {
 
 function addWaterfall(group, x, width, height, opts = {}) {
   group.userData.waterfallStreams = group.userData.waterfallStreams || [];
-  const z = opts.z ?? -27.65;
+  const z = opts.z ?? -41.65;
   const rotY = opts.rotY ?? 0;
   const poolX = opts.poolX ?? x;
-  const poolZ = opts.poolZ ?? -23.5;
+  const poolZ = opts.poolZ ?? -37.5;
   const baseY = height / 2 + 0.7;
 
   const fallsMat = basic("#55E8FF", { transparent: true, opacity: 0.66 });
@@ -107,29 +107,29 @@ function addCliffWall(group) {
     const width = 9.5 + (i % 3) * 1.7;
     const depth = 5.5 + (i % 2) * 1.4;
     const cliff = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.42, width * 0.58, height, 6), cliffMats[i % cliffMats.length]);
-    cliff.position.set(x, height / 2 - 0.1, -30 - (i % 2) * 0.8);
+    cliff.position.set(x, height / 2 - 0.1, -44 - (i % 2) * 0.8);
     cliff.scale.z = depth / width;
     cliff.rotation.y = (i - 5) * 0.08;
     group.add(cliff);
 
     const ledge = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), cliffMats[(i + 1) % cliffMats.length]);
-    ledge.position.set(x - 1.2, height * 0.58, -26.4 - (i % 2) * 0.6);
+    ledge.position.set(x - 1.2, height * 0.58, -40.4 - (i % 2) * 0.6);
     ledge.scale.set(width * 0.34, 0.75, 1.05);
     ledge.rotation.y = cliff.rotation.y + 0.25;
     group.add(ledge);
-    addRock(group, x + 3.5, -24.5 + (i % 2), 2.3, 1.05, 1.35, i % 2 ? "#79716A" : "#646C66");
-    addRock(group, x - 2.8, -25.2 + (i % 2), 1.35, 0.62, 0.9, i % 2 ? "#59635F" : "#8B8071");
-    if (i % 2 === 0) addBush(group, x + 0.4, -24.1, 0.9);
+    addRock(group, x + 3.5, -38.5 + (i % 2), 2.3, 1.05, 1.35, i % 2 ? "#79716A" : "#646C66");
+    addRock(group, x - 2.8, -39.2 + (i % 2), 1.35, 0.62, 0.9, i % 2 ? "#59635F" : "#8B8071");
+    if (i % 2 === 0) addBush(group, x + 0.4, -38.1, 0.9);
   });
 
   addWaterfall(group, -34, 3.0, 6.8);
   addWaterfall(group, 0, 3.6, 8.4);
   addWaterfall(group, 33, 2.8, 6.2);
 
-  [-54, -42, -22, -8, 16, 30, 46, 56].forEach((x, i) => addPalmCluster(group, x, -22.5 + (i % 2) * 1.8, 1.18));
+  [-54, -42, -22, -8, 16, 30, 46, 56].forEach((x, i) => addPalmCluster(group, x, -36.5 + (i % 2) * 1.8, 1.18));
 
   const invisibleWall = new THREE.Mesh(new THREE.BoxGeometry(138, 9, 2.5), basic("#000000", { transparent: true, opacity: 0 }));
-  invisibleWall.position.set(0, 4.5, -28.5);
+  invisibleWall.position.set(0, 4.5, -42.5);
   invisibleWall.name = "beachBackInvisibleCollisionWall";
   group.add(invisibleWall);
 }
@@ -190,13 +190,13 @@ export function createBeachEdgeDesign(scene) {
   foamEdge.renderOrder = 8;
   group.add(foamEdge);
 
-  [-55, -38, -20, 0, 22, 42, 58].forEach((x, i) => addDune(group, x, -29 + (i % 2), 5.2, 1.4));
+  [-55, -38, -20, 0, 22, 42, 58].forEach((x, i) => addDune(group, x, -43 + (i % 2), 5.2, 1.4));
   [-54, -58, -50, 50, 58, 54, -48, 48].forEach((x, i) => addRock(group, x, -22 + (i % 4) * 13, 1.6, 0.8, 1.15, i % 2 ? "#A28B72" : "#7D6E61"));
   [-50, -36, 34, 50, -18, 18].forEach((x, i) => addRock(group, x, 34 + (i % 2) * 4, 2.0, 0.9, 1.3, "#887968"));
-  addPalmCluster(group, -52, 20, 1.05); addPalmCluster(group, 52, 20, 1.05); addPalmCluster(group, -42, -22, 1.15); addPalmCluster(group, 44, -21, 1.15);
-  addPalmCluster(group, -16, -32, 1.25); addPalmCluster(group, 12, -33, 1.2); addPalmCluster(group, 30, -29, 1.08);
-  addRock(group, -5, -31, 4.2, 1.25, 1.8, "#7F715F");
-  addRock(group, 20, -30, 3.4, 1.1, 1.6, "#99846A");
+  addPalmCluster(group, -52, 20, 1.05); addPalmCluster(group, 52, 20, 1.05); addPalmCluster(group, -42, -36, 1.15); addPalmCluster(group, 44, -35, 1.15);
+  addPalmCluster(group, -16, -46, 1.25); addPalmCluster(group, 12, -47, 1.2); addPalmCluster(group, 30, -43, 1.08);
+  addRock(group, -5, -45, 4.2, 1.25, 1.8, "#7F715F");
+  addRock(group, 20, -44, 3.4, 1.1, 1.6, "#99846A");
   addCliffWall(group);
   addSideCliffEdges(group);
 
