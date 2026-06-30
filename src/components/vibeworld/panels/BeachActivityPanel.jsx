@@ -25,6 +25,12 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
   }, [open, type]);
 
   useEffect(() => {
+    if (type !== "frequency") return;
+    window.__uvcFrequencyCoveMode = mode;
+    return () => { window.__uvcFrequencyCoveMode = "affirmation"; };
+  }, [type, mode]);
+
+  useEffect(() => {
     if (!open || !started || type !== "coaster" || complete) return;
     const id = setInterval(() => setProgress((p) => Math.min(config.steps, p + 1)), 1000);
     return () => clearInterval(id);
@@ -71,7 +77,7 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
         transition={{ type: "spring", damping: 28, stiffness: 280 }}
         className="fixed inset-x-0 bottom-0 z-[75] rounded-t-3xl overflow-hidden pointer-events-auto"
         style={{
-          height: compactPanel ? (isMobile ? "min(42dvh, 330px)" : "min(36vh, 300px)") : (isMobile ? "min(64dvh, 470px)" : "min(52vh, 420px)"),
+          height: compactPanel ? (isMobile ? "min(34dvh, 280px)" : "min(30vh, 260px)") : (isMobile ? "min(64dvh, 470px)" : "min(52vh, 420px)"),
           maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - 8px)",
           background: "linear-gradient(180deg, rgba(8,18,28,0.98), rgba(5,8,18,0.98))",
           border: `1px solid ${config.color}33`,

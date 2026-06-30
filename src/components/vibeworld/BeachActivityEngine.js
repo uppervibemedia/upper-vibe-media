@@ -114,8 +114,20 @@ function makeUnderwaterScene(scene, group) {
     } else if (kind === "coral") addCoral(group, x, z, i % 2 ? "#FF7ABF" : "#B58CFF");
     else addSeaweed(group, x, z, 1.15 + (i % 2) * 0.25);
   });
+  for (let i = 0; i < 18; i++) {
+    const pebble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + (i % 4) * 0.025, 0), standard(i % 3 ? "#8AA0A4" : "#F2DCA8", { roughness: 0.8, metalness: 0.02 }));
+    pebble.position.set(28 + Math.random() * 15, -2.47, 39 + Math.random() * 19);
+    pebble.scale.set(1.4, 0.35, 1.0);
+    group.add(pebble);
+  }
+  for (let i = 0; i < 6; i++) {
+    const glowShell = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 7), standard(i % 2 ? "#7DEBFF" : "#FFF2BA", { roughness: 0.25, metalness: 0.28 }));
+    glowShell.scale.set(1.25, 0.42, 0.78);
+    glowShell.position.set(29 + i * 2.5, -2.18, 41 + (i % 3) * 5.4);
+    group.add(glowShell);
+  }
 
-  const lightRays = [[29, 39, 0.25], [35, 45, -0.18], [41, 52, 0.35], [32, 57, -0.28]].map(([x, z, r]) => addLightRay(group, x, z, r));
+  const lightRays = [[29, 39, 0.25], [35, 45, -0.18], [41, 52, 0.35], [32, 57, -0.28], [39, 40, 0.14], [28, 55, -0.38]].map(([x, z, r]) => addLightRay(group, x, z, r));
   const bubbles = [];
   for (let i = 0; i < 28; i++) {
     const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.045 + (i % 4) * 0.014, 8, 6), basic("#E5FFFF", 0.42, false));
@@ -170,7 +182,7 @@ function makeSurfboard(group) {
   board.name = "premiumSurfboard";
   const deck = new THREE.Mesh(new THREE.CapsuleGeometry(0.46, 2.65, 6, 20), standard("#68D7E8", { roughness: 0.24, metalness: 0.12 }));
   deck.rotation.x = Math.PI / 2;
-  deck.scale.y = 0.11;
+  deck.scale.z = 0.11;
   const noseMark = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 3), standard("#FFD36E", { roughness: 0.3, metalness: 0.12 }));
   noseMark.rotation.x = Math.PI / 2;
   noseMark.position.set(0, 0.075, 1.78);
@@ -275,7 +287,13 @@ function buildCoasterTrack(group, curve) {
   }));
   const gate = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.08, 0.12), basic("#00E5FF", 0.76));
   gate.position.set(0, 1.05, -1.65);
-  station.add(deck, canopy, gate);
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.14, 1.4), standard("#B48A52", { roughness: 0.62, metalness: 0.06 }));
+  ramp.position.set(-2.2, -0.02, 2.15);
+  ramp.rotation.x = -0.18;
+  const entryPad = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.08, 32), basic("#7DEBFF", 0.46));
+  entryPad.rotation.x = -Math.PI / 2;
+  entryPad.position.set(0, 0.07, 2.35);
+  station.add(deck, canopy, gate, ramp, entryPad);
   group.add(station);
 }
 function makeCoasterCart(group) {
@@ -377,7 +395,7 @@ export function tickBeachActivity(state, input, dt, t) {
     state.rings.forEach((ring, i) => {
       if (ring.done) return;
       ring.mesh.rotation.z += 0.012;
-      ring.mesh.position.y = 1.06 + Math.sin(t * 2.6 + i) * 0.08;
+      ring.mesh.position.y = 0.82 + Math.sin(t * 2.6 + i) * 0.045;
       ring.buoy.position.y = 0.22 + Math.sin(t * 2 + i) * 0.05;
       const dx = state.x - ring.x, dz = state.z - ring.z;
       if (Math.sqrt(dx * dx + dz * dz) < 1.45) { ring.done = true; ring.mesh.visible = false; ring.buoy.visible = false; state.progress += 1; }

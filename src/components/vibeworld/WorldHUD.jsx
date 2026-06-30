@@ -918,7 +918,7 @@ export default function WorldHUD({
 
         {zone?.id === "frequencycove" && (
           <motion.div key="frequency-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
-            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("frequency"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#7C3AED,#B58CFF)", color: "#fff", boxShadow: "0 0 20px rgba(181,140,255,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Sparkles className="w-3.5 h-3.5" />Enter Frequency Cove</button>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("frequency"); onMobileModalChange?.(false); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#7C3AED,#B58CFF)", color: "#fff", boxShadow: "0 0 20px rgba(181,140,255,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Sparkles className="w-3.5 h-3.5" />Enter Frequency Cove</button>
           </motion.div>
         )}
 

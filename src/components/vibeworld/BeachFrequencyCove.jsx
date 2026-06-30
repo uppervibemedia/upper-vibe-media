@@ -132,9 +132,12 @@ export function animateBeachFrequencyCove(scene, t, beat = 0) {
   const group = scene.userData.beachFrequencyCove;
   if (!group) return;
   const { rings = [], crystals = [], particles = [], light, aqua, cx, cz } = group.userData || {};
+  const mode = window.__uvcFrequencyCoveMode || "affirmation";
+  const modeColor = mode === "manifest" ? new THREE.Color("#B58CFF") : mode === "visualizer" ? new THREE.Color("#FFD36E") : new THREE.Color("#7DEBFF");
   rings.forEach((ring, i) => {
     ring.rotation.z += (i % 2 ? -0.006 : 0.008);
     ring.material.opacity = (i === 0 ? 0.42 : 0.24) + Math.sin(t * 1.4 + i) * 0.05 + beat * 0.08;
+    ring.material.color.lerp(modeColor, 0.035);
   });
   crystals.forEach((crystal, i) => {
     crystal.position.y = 0.56 + Math.sin(t * 1.7 + i) * 0.06;

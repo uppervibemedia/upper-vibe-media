@@ -1317,13 +1317,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // avatarEntryRef.current is the same object returned by createAvatar.
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
+        const actAnim = beachActivityStateRef.current;
+        const activityAnimSpeed = actAnim?.type === "surf" ? 3.2 : actAnim?.type === "dive" ? 1.35 : speed;
         if (avatarEntry?._isMixamo) {
           // Mixamo Xbot GLB avatar — same logic as soldier, including hoverboard freeze
           const emoteId = isDancingRef.current ? (activeEmoteRef.current?.id || "dance") : null;
-          updateMixamoAvatarAnimation(avatarEntry, speed, isDancingRef.current, moveDt, hbRidingRef.current, emoteId);
+          updateMixamoAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt, hbRidingRef.current, emoteId);
         } else if (avatarEntry?._isTestAvatar) {
           // Procedural test avatars (male/female) — no mixer/clips
-          updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, moveDt);
+          updateTestAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt);
         } else {
           // Current avatar — original GLB animation system, completely unchanged
           if (avatarEntry && isDancingRef.current) {
@@ -1338,7 +1340,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             avatarEntry._emoteTimer = 0;
             avatarEntry._emoteBones = null;
           }
-          if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, moveDt, hbRidingRef.current);
+          if (avatarEntry) updateAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt, hbRidingRef.current);
         }
 
         // ── Aura glow animation ─────────────────────────────
