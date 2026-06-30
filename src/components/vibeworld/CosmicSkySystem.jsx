@@ -399,13 +399,13 @@ export function createCosmicSky(scene) {
     {
       // BEACH WORLD PLANET — soft light-brown + blue, aligned over the beach sign view.
       id: "ice",
-      bodyColors: ["#8CB8C9", "#D2B48C", "#7EC8D6", "#E8CFA3", "#FFF1C8"],
-      glowColor: "rgba(126,200,214,0.48)", ringColor: "rgba(232,207,163,0.62)",
-      size: isMobile ? 34 : 52,
-      angleOffset: Math.PI * 0.04,
-      horizonY: 41,
-      radius: 94,
-      orbitSpeed: (Math.PI * 2) / 280,
+      bodyColors: ["#7FAFC7", "#C9A66B", "#5FBFE0", "#D8B989", "#F8E7B8"],
+      glowColor: "rgba(95,191,224,0.58)", ringColor: "rgba(216,185,137,0.68)",
+      size: isMobile ? 48 : 74,
+      angleOffset: 0,
+      horizonY: 36,
+      radius: 92,
+      orbitSpeed: 0,
     },
     {
       // HIGH-2 — golden nebula, upper-left back, very high
@@ -765,9 +765,9 @@ export function createCosmicSky(scene) {
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
   scene.userData.beachFlybyB = {
-    ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
+    ...buildBeachFlybyPlanet(["#6F91A8", "#B78B55", "#5FBFE0", "#F8E1A8"], "rgba(95,191,224,0.42)", isMobile ? 18 : 26),
     duration: 28, cycle: 76, baseStart: now0 + 43,
-    startCX: 54, endCX: -54, cy: 11, cz: 64,
+    startCX: 0, endCX: 0, cy: 13, cz: 64,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
 }
