@@ -3,6 +3,8 @@ import createZenBeach from "./ZenBeach";
 import { createHoverboardZone } from "./HoverboardRingRun";
 import { buildVibeAcademyZone } from "./city-engine/zones/VibeAcademyZone";
 import { createCosmicSky } from "./CosmicSkySystem";
+import { createBeachDaySky } from "./BeachDaySky";
+import { createBeachReturnPlanet } from "./BeachReturnPlanet";
 
 const { Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, CylinderGeometry, RingGeometry, Color, PointLight, AmbientLight, HemisphereLight, DirectionalLight, CanvasTexture, SpriteMaterial, Sprite, LinearFilter } = THREE;
 
@@ -79,6 +81,7 @@ export function createTransportPad(scene, { x, z, label, color = "#00E5FF", name
 
 export function createBeachWorld(scene) {
   createCosmicSky(scene);
+  createBeachDaySky(scene);
 
   const SHORELINE_Z = 35;
   const OCEAN_DEPTH = 62;
@@ -134,15 +137,16 @@ export function createBeachWorld(scene) {
   buildVibeAcademyZone(scene);
   createZenBeach(scene, 0, 0);
   createHoverboardZone(scene);
+  createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
 
-  const moon = new DirectionalLight(new Color("#8899CC"), 0.55);
-  moon.position.set(15, 22, SHORELINE_Z + 10);
-  scene.add(moon);
-  scene.add(new AmbientLight(new Color("#4C4A7A"), 0.62));
-  const hemi = new HemisphereLight(new Color("#6B64B8"), new Color("#C9A66B"), 0.58);
+  const sun = new DirectionalLight(new Color("#FFE0A3"), 1.65);
+  sun.position.set(-18, 34, SHORELINE_Z + 18);
+  scene.add(sun);
+  scene.add(new AmbientLight(new Color("#FFD7B0"), 1.18));
+  const hemi = new HemisphereLight(new Color("#8ED7FF"), new Color("#D9A86C"), 1.05);
   scene.add(hemi);
-  [[0, 4, 35, "#B0D8F0", 2.2, 52], [-24, 4, 24, "#F97316", 1.6, 20], [28, 4, 24, "#00C8FF", 2.6, 26], [-28, 3, 10, "#7C3AED", 1.8, 20]].forEach(([x, y, z, c, i, d]) => {
+  [[0, 5, 35, "#FFE3A6", 2.8, 58], [-24, 4, 24, "#FFB35C", 2.0, 24], [28, 4, 24, "#58D8FF", 2.2, 28], [-28, 3, 10, "#B58CFF", 1.35, 22]].forEach(([x, y, z, c, i, d]) => {
     const light = new PointLight(new Color(c), i, d);
     light.position.set(x, y, z);
     scene.add(light);

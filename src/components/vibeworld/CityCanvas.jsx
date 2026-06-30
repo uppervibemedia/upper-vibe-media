@@ -1986,44 +1986,46 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const findBeachPortalHit = (e) => {
+    const findTransportPlanetHit = (e) => {
       const scene = sceneRef.current;
       const camera = cameraRef.current;
-      const planet = scene?.userData?.cityBeachPlanet;
-      if (!scene || !camera || !planet || worldModeRef.current !== "city") return null;
+      const target = worldModeRef.current === "beach" ? "city" : "beach";
+      const planet = worldModeRef.current === "beach" ? scene?.userData?.beachReturnPlanet : scene?.userData?.cityBeachPlanet;
+      if (!scene || !camera || !planet) return null;
 
       const rect = canvas.getBoundingClientRect();
       const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
-      raycaster.far = 90;
+      raycaster.far = 120;
       const hits = raycaster.intersectObject(planet, true);
-      return hits.find((hit) => {
-        let obj = hit.object;
+      const hit = hits.find((item) => {
+        let obj = item.object;
         while (obj) {
-          if (obj.userData?.isBeachPortal) return true;
+          if (obj.userData?.isBeachPortal || obj.userData?.isReturnCityPortal) return true;
           obj = obj.parent;
         }
         return false;
       }) || null;
+      return hit ? { hit, target } : null;
     };
 
-    const setBeachPortalHover = (hovered) => {
-      const planet = sceneRef.current?.userData?.cityBeachPlanet;
+    const setTransportPlanetHover = (hovered) => {
+      const planet = worldModeRef.current === "beach" ? sceneRef.current?.userData?.beachReturnPlanet : sceneRef.current?.userData?.cityBeachPlanet;
       if (!planet) return;
       planet.userData._portalHover = hovered;
       canvas.style.cursor = hovered ? "pointer" : "";
     };
 
-    const triggerBeachPortal = () => {
-      const planet = sceneRef.current?.userData?.cityBeachPlanet;
+    const triggerTransportPlanet = (target) => {
+      const planet = worldModeRef.current === "beach" ? sceneRef.current?.userData?.beachReturnPlanet : sceneRef.current?.userData?.cityBeachPlanet;
       if (planet) {
         planet.userData._portalPulseUntil = performance.now() * 0.001 + 0.35;
         planet.userData._portalHover = true;
       }
       try { navigator?.vibrate?.(18); } catch {}
-      try { onPlanetTransportRef.current?.("beach"); } catch {}
+      try { onPlanetTransportRef.current?.(target); } catch {}
     };
 
     const handleClick = (e, fromTouch = false) => {
@@ -2031,9 +2033,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // fromTouch=true bypasses target check since touch events use canvas directly
       if (!fromTouch && e.target !== canvas) return;
 
-      const portalHit = findBeachPortalHit(e);
+      const portalHit = findTransportPlanetHit(e);
       if (portalHit) {
-        triggerBeachPortal();
+        triggerTransportPlanet(portalHit.target);
         return;
       }
 
@@ -2088,10 +2090,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
     const handlePortalHover = (e) => {
       if (mouseRef.current.down || e.target !== canvas) return;
-      setBeachPortalHover(!!findBeachPortalHit(e));
+      setTransportPlanetHover(!!findTransportPlanetHit(e));
     };
 
-    const handlePortalLeave = () => setBeachPortalHover(false);
+    const handlePortalLeave = () => setTransportPlanetHover(false);
 
     // Desktop: click on canvas and hover portal state
     canvas.addEventListener("click", handleClick);

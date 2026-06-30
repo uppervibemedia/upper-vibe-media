@@ -1126,11 +1126,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             }
           }}
           onPlanetTransport={(target) => {
-            if (target === "beach" && worldMode === "city") {
+            if ((target === "beach" && worldMode === "city") || (target === "city" && worldMode === "beach")) {
               transportPromptSourceRef.current = "planet";
-              setTransportTarget("beach");
+              setTransportTarget(target);
               setDismissedTransportTarget(null);
-              setTransportPrompt("beach");
+              setTransportPrompt(target);
             }
           }}
           isDancing={isDancing}
