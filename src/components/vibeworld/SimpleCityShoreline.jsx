@@ -87,27 +87,57 @@ function addSimplePalm(group, x, z, scale = 1) {
 function addCityBeachPlanet(group) {
   const planetGroup = new Group();
   planetGroup.name = "cityBeachBlueSandPlanet";
-  planetGroup.position.set(12, 13.5, 23);
+  planetGroup.position.set(12, 8.4, 23.5);
+
+  const halo = new Mesh(
+    new THREE.SphereGeometry(4.9, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.BackSide })
+  );
+  halo.name = "cityBeachPlanetHalo";
+  planetGroup.add(halo);
+
+  const aura = new Mesh(
+    new THREE.SphereGeometry(4.25, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.08, depthWrite: false })
+  );
+  aura.name = "cityBeachPlanetAura";
+  planetGroup.add(aura);
 
   const ocean = new Mesh(
-    new THREE.SphereGeometry(2.45, 48, 32),
-    standardMat("#0B7FA0", { roughness: 0.58, metalness: 0.08 })
+    new THREE.SphereGeometry(3.35, 56, 36),
+    standardMat("#0B7FA0", { roughness: 0.5, metalness: 0.1 })
   );
+  ocean.name = "cityBeachPlanetOcean";
   ocean.castShadow = true;
   planetGroup.add(ocean);
 
-  [-0.9, -0.32, 0.22, 0.78].forEach((y, idx) => {
-    const radius = Math.sqrt(Math.max(0.45, 2.45 * 2.45 - y * y));
+  [-1.35, -0.72, -0.12, 0.52, 1.12].forEach((y, idx) => {
+    const radius = Math.sqrt(Math.max(0.6, 3.35 * 3.35 - y * y));
     const band = new Mesh(
-      new THREE.TorusGeometry(radius, 0.09 + idx * 0.01, 12, 96),
-      standardMat(idx % 2 === 0 ? "#D2B48C" : "#F0C878", { roughness: 0.75, metalness: 0.02 })
+      new THREE.TorusGeometry(radius, 0.13 + idx * 0.01, 12, 112),
+      standardMat(idx % 2 === 0 ? "#D2B48C" : "#F0C878", { roughness: 0.72, metalness: 0.02 })
     );
     band.rotation.x = Math.PI / 2;
+    band.rotation.z = idx % 2 === 0 ? 0.08 : -0.05;
     band.position.y = y;
     planetGroup.add(band);
   });
 
+  const destinationRing = new Mesh(
+    new THREE.TorusGeometry(4.05, 0.055, 10, 128),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.52, depthWrite: false })
+  );
+  destinationRing.name = "cityBeachPlanetDestinationRing";
+  destinationRing.rotation.x = Math.PI / 2.35;
+  destinationRing.rotation.z = -0.18;
+  planetGroup.add(destinationRing);
+
+  const glow = new THREE.PointLight(new Color("#40D4FF"), 1.6, 18);
+  glow.position.set(0, 0.4, 1.8);
+  planetGroup.add(glow);
+
   group.add(planetGroup);
+  return planetGroup;
 }
 
 export function createSimpleCityShoreline(scene) {
@@ -169,7 +199,7 @@ export function createSimpleCityShoreline(scene) {
   group.add(path);
 
   [-26, -14, 24].forEach((x, i) => addSimplePalm(group, x, i === 1 ? 22 : 24.5, i === 1 ? 0.82 : 0.95));
-  addCityBeachPlanet(group);
+  const beachPlanet = addCityBeachPlanet(group);
 
   const label = makeShorelineLabel("Upper Vibe Shoreline");
   label.position.set(-12, 2.2, 20.5);
@@ -184,6 +214,7 @@ export function createSimpleCityShoreline(scene) {
   group.add(sunDisc);
 
   scene.add(group);
+  scene.userData.cityBeachPlanet = beachPlanet;
   scene.userData.cityShoreline = { group, foam, waterEdge };
   scene.userData.ocean = water;
   scene.userData._oceanOrig = null;
@@ -206,5 +237,15 @@ export function animateSimpleCityShoreline(scene, t) {
   if (shoreline.waterEdge?.material) {
     shoreline.waterEdge.material.color.set("#7EC8D6");
     shoreline.waterEdge.material.opacity = 0.12 + tide * 0.08;
+  }
+  const planet = scene.userData.cityBeachPlanet;
+  if (planet) {
+    planet.rotation.y = t * 0.075;
+    const halo = planet.getObjectByName("cityBeachPlanetHalo");
+    const aura = planet.getObjectByName("cityBeachPlanetAura");
+    const ring = planet.getObjectByName("cityBeachPlanetDestinationRing");
+    if (halo?.material) halo.material.opacity = 0.13 + tide * 0.06;
+    if (aura?.material) aura.material.opacity = 0.06 + tide * 0.05;
+    if (ring) ring.rotation.z = -0.18 + Math.sin(t * 0.35) * 0.08;
   }
 }
