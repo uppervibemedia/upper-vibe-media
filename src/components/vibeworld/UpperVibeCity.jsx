@@ -80,6 +80,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const mobileLayout = useMobileLayout(isMobile);
+  const smoothMovementMode = isMobile && /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const [worldMode, setWorldMode] = useState("city");
   const [worldSpawn, setWorldSpawn] = useState(null);
   const [transportTarget, setTransportTarget] = useState(null);
@@ -752,9 +753,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── City audio zone signal — synced from every-frame avatar position for iOS/PWA reliability ──
   const [rawDfState, setRawDfState] = useState(false);
   useEffect(() => {
-    const id = setInterval(() => setRawDfState(danceFloorFrameRef.current.onDanceFloor), 50);
+    const id = setInterval(() => {
+      const next = danceFloorFrameRef.current.onDanceFloor;
+      setRawDfState((prev) => prev === next ? prev : next);
+    }, smoothMovementMode ? 120 : 80);
     return () => clearInterval(id);
-  }, []);
+  }, [smoothMovementMode]);
 
   const {
     djTrack,
@@ -1179,9 +1183,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               setIsDancing(false);
               setActiveEmote(null);
             }
-            // Skip React re-render if position changed less than 0.3 units and rotation < 0.05 rad
+            // Skip frequent React re-renders while walking; CityCanvas refs still keep movement/audio exact.
             const prevRot = prevPosRef.current.rot ?? 0;
-            if (Math.abs(dx) < 0.3 && Math.abs(dz) < 0.3 && Math.abs(rot - prevRot) < 0.05) return;
+            const posThreshold = smoothMovementMode ? 0.65 : 0.3;
+            const rotThreshold = smoothMovementMode ? 0.12 : 0.05;
+            if (Math.abs(dx) < posThreshold && Math.abs(dz) < posThreshold && Math.abs(rot - prevRot) < rotThreshold) return;
             const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
             prevPosRef.current = { x, z, rot };
             setPlayerPos({ x, z, rot, animState });

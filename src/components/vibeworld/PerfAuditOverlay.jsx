@@ -188,8 +188,9 @@ export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvM
         sceneCountRef.current = countSceneObjects(scene);
       }
       const activeAnimations = estimateActiveAnimations(scene, { nearDanceFloor, nearCrystal, nearFerris, ferrisRiding, stageWatching, tvSmooth: tvMode && tvQuality === "smooth" });
-      const collisionChecks = worldMode === "city" ? 18 : 4;
-      const proximityTriggers = worldMode === "city" ? 5 : 2;
+      const movementPerf = window.__uvcMovementPerf || {};
+      const collisionChecks = movementPerf.collisionChecksPerFrame ?? (worldMode === "city" ? 18 : 4);
+      const proximityTriggers = movementPerf.zoneChecksPerSecond ?? (worldMode === "city" ? 5 : 2);
 
       // Pixel ratio (may change when TV Mode toggles)
       const pr = renderer ? renderer.getPixelRatio() : (window.devicePixelRatio || 1);
@@ -285,6 +286,10 @@ export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvM
       <Row k="activity" v={stats.activeActivity} vc="#FFD36E" />
       <Row k="audio" v={stats.audioSource} vc="#7DEBFF" />
       <Row k="video" v={stats.videoSource} vc="#B58CFF" />
+      <Row k="move mode" v={window.__uvcMovementPerf?.smoothMovementMode ? "iPhone smooth" : "standard"} vc="#44FF88" />
+      <Row k="move priority" v={window.__uvcMovementPerf?.prioritizingMovement ? "on" : "off"} vc={window.__uvcMovementPerf?.prioritizingMovement ? "#44FF88" : "#888"} />
+      <Row k="raycasts" v={window.__uvcMovementPerf?.raycastsPerFrame ?? 0} />
+      <Row k="remote tick" v={window.__uvcMovementPerf?.remoteAvatarTick || "full-rate"} />
 
       {/* TV Mode block */}
       {tvCol && (

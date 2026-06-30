@@ -1009,6 +1009,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         const isMoving = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08;
+        const smoothMovementMode = isMobileRef.current && worldModeRef.current === "city";
+        let prioritizeMovement = smoothMovementMode && (isMoving || userTouchingCamRef.current);
          if (Math.abs(inputStrafe) > 0.08 && Math.abs(inputFwd) < 0.08) hasAnyInput = true;
 
          // ─── MOVEMENT (GTA 5 style) ───────────────────────────────────
@@ -1094,6 +1096,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Apply velocity
         const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+        prioritizeMovement = smoothMovementMode && (isMoving || speed > 0.05 || userTouchingCamRef.current);
         px += vel.x * moveDt;
         pz += vel.z * moveDt;
 
@@ -1206,11 +1209,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camYawRef.current += yawDelta * Math.min(1, moveDt * 5.5);
         }
 
-        // Smooth camera yaw + pitch — responsive enough to avoid camera/avatar fighting
+        // Smooth camera yaw + pitch — iPhone movement mode keeps camera response prioritized.
         let yawDiff = camYawRef.current - camYawSmoothRef.current;
         while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
         while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-        const yawSmoothSpeed = isMobileRef.current ? 12.0 : 16.0;
+        const yawSmoothSpeed = smoothMovementMode ? 18.0 : isMobileRef.current ? 12.0 : 16.0;
         camYawSmoothRef.current += yawDiff * Math.min(1, moveDt * yawSmoothSpeed);
         camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, moveDt * 10.0);
 
@@ -1696,7 +1699,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // During stage fullscreen/watch (locked): hide all planets.
         scene.userData._hidePlanets = lockedRef.current;
         scene.userData._ferrisRiding = ferrisRidingRef.current;
-        animateCosmicSky(scene, camera, t, dt);
+        if (!prioritizeMovement || frameRef.current % 2 === 0) animateCosmicSky(scene, camera, t, dt);
         // LaunchRide bridge — passes avatar position + state into add-ons
         MOVEMENT_BRIDGE.px = px; MOVEMENT_BRIDGE.py = py; MOVEMENT_BRIDGE.pz = pz;
         MOVEMENT_BRIDGE.hbRiding = hbRidingRef.current;
@@ -1706,7 +1709,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
         // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
-        if (stageScreenPosRef && (!isMob || frameRef.current % 2 === 0)) {
+        if (stageScreenPosRef && lockedRef.current && (!isMob || frameRef.current % 2 === 0)) {
           if (!scene.userData._stageProjectionVecs) {
             scene.userData._stageProjectionVecs = {
               ss: new Vector3(0, 3.5, -34.4),
@@ -1730,6 +1733,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ─── REMOTE AVATARS — Phase 2: sync, spawn, despawn, animate ──
+        if (!prioritizeMovement || frameRef.current % 2 === 0) {
         const remoteMap = remoteAvatarsRef.current;
         const activeIds = new Set();
 
@@ -1901,6 +1905,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             delete remoteMap[id];
           }
         }
+        }
+
+        window.__uvcMovementPerf = {
+          smoothMovementMode,
+          prioritizingMovement: prioritizeMovement,
+          raycastsPerFrame: 0,
+          collisionChecksPerFrame: worldModeRef.current === "city" ? COLLISION_BOXES.length + 4 : 4,
+          zoneChecksPerSecond: smoothMovementMode ? 8 : 12,
+          remoteAvatarTick: prioritizeMovement ? "half-rate" : "full-rate",
+        };
 
         renderer.render(scene, camera);
         frameRef.current++;

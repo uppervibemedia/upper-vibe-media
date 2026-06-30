@@ -110,8 +110,7 @@ export function detectZone(px, pz) {
     if (mode === "city" && beachOnly.has(zone.id)) continue;
     const dx = px - zone.cx;
     const dz = pz - zone.cz;
-    const dist = Math.sqrt(dx * dx + dz * dz);
-    if (dist <= zone.radius) return zone;
+    if (dx * dx + dz * dz <= zone.radius * zone.radius) return zone;
   }
   return null; // wandering between zones
 }
