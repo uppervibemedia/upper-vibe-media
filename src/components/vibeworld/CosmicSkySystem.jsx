@@ -397,16 +397,15 @@ export function createCosmicSky(scene) {
     },
     // ── 4 NEW PLANETS (same system, extended) ───────────────────────────────────
     {
-      // BEACH WORLD PLANET — soft light-brown + blue, aligned over the beach sign view.
+      // HIGH-1 — LARGE RINGED PURPLE — FAR RIGHT end of world, very high in sky
       id: "ice",
-      bodyColors: ["#5C8FA8", "#B88B55", "#45BCE8", "#D0A56A", "#F4D9A2"],
-      glowColor: "rgba(69,188,232,0.68)", ringColor: "rgba(208,165,106,0.72)",
-      size: isMobile ? 44 : 66,
-      angleOffset: 0,
-      horizonY: 35,
-      radius: 90,
-      orbitSpeed: 0,
-      alignToCameraForward: true,
+      bodyColors: ["#2A1000", "#5A2800", "#A05018", "#D08030", "#FFB860"],
+      glowColor: "rgba(255,160,40,0.60)", ringColor: "rgba(255,200,80,0.70)",
+      size: isMobile ? 38 : 58,          // very large — prominent sky feature
+      angleOffset: Math.PI * 0.45,       // right end of world
+      horizonY: 45,                      // brought down — clearly visible in sky
+      radius: 95,
+      orbitSpeed: (Math.PI * 2) / 280,
     },
     {
       // HIGH-2 — golden nebula, upper-left back, very high
@@ -547,15 +546,14 @@ export function createCosmicSky(scene) {
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
     } else if (def.id === "ice") {
-      // Beach World planet: warm light-brown bands with soft blue atmospheric streaks.
+      // Ice (now large purple ringed): same band style as mega
       for (let b = 0; b < 9; b++) {
         const by = cy - R + (b / 8) * R * 2;
         const bw = R * (0.06 + rng() * 0.10);
-        const alpha = 0.08 + rng() * 0.10;
+        const alpha = 0.06 + rng() * 0.10;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.42, `rgba(208,165,106,${alpha})`);
-        bandG.addColorStop(0.72, `rgba(69,188,232,${alpha * 0.82})`);
+        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
@@ -657,7 +655,7 @@ export function createCosmicSky(scene) {
       pctx.stroke();
       pctx.beginPath();
       pctx.arc(0, 0, R * 1.65, 0, Math.PI * 2);
-      pctx.strokeStyle = def.id === "ice" ? "rgba(126,200,214,0.22)" : "rgba(200,140,255,0.18)";
+      pctx.strokeStyle = "rgba(200,140,255,0.18)";
       pctx.lineWidth = S * 0.022;
       pctx.stroke();
       pctx.restore();
@@ -692,7 +690,6 @@ export function createCosmicSky(scene) {
       horizonY: def.horizonY,
       radius: def.radius,
       orbitSpeed: def.orbitSpeed,
-      alignToCameraForward: !!def.alignToCameraForward,
       id: def.id,
     };
   });
@@ -872,7 +869,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const cityBlocking = inCityZone * Math.pow(facingCity, 1.5);
 
     for (const p of horizonPlanets) {
-      const angle = p.alignToCameraForward ? camYawWorld + Math.PI : t * p.orbitSpeed + p.angleOffset;
+      const angle = t * p.orbitSpeed + p.angleOffset;
 
       // Camera-relative position — ALWAYS inside far clip plane.
       const cx = camera.position.x + Math.sin(angle) * p.radius;
@@ -1006,7 +1003,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const beachFlybyA = scene.userData.beachFlybyA;
   const beachFlybyB = scene.userData.beachFlybyB;
   const playerZForBeachFlyby = scene.userData._playerZ ?? camera.position.z;
-  const showBeachFlyby = !scene.userData._hidePlanets && !scene.userData._ferrisRiding && playerZForBeachFlyby > 14;
+  const showBeachFlyby = !scene.userData._hidePlanets && !scene.userData._ferrisRiding && playerZForBeachFlyby > 8;
   animateBeachFlyby(beachFlybyA, showBeachFlyby);
   animateBeachFlyby(beachFlybyB, showBeachFlyby);
 

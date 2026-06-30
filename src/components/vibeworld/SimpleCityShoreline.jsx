@@ -88,47 +88,47 @@ export function createSimpleCityShoreline(scene) {
   const group = new Group();
   group.name = "simpleCityShoreline";
 
-  const sand = new Mesh(new PlaneGeometry(60, 18, 1, 1), standardMat("#D2B48C", { roughness: 0.95, metalness: 0 }));
+  const sand = new Mesh(new PlaneGeometry(76, 18, 1, 1), standardMat("#D2B48C", { roughness: 0.95, metalness: 0 }));
   sand.rotation.x = -Math.PI / 2;
-  sand.position.set(8, 0.002, 24);
+  sand.position.set(0, 0.002, 24);
   sand.receiveShadow = true;
   sand.name = "cityBeachSand";
   group.add(sand);
 
   const wetSand = new Mesh(
-    new PlaneGeometry(60, 3.2, 1, 1),
+    new PlaneGeometry(76, 3.2, 1, 1),
     new MeshBasicMaterial({ color: new Color("#C9A66B"), transparent: true, opacity: 0.58, depthWrite: false, side: THREE.DoubleSide })
   );
   wetSand.rotation.x = -Math.PI / 2;
-  wetSand.position.set(8, 0.008, 31.1);
+  wetSand.position.set(0, 0.008, 31.1);
   wetSand.renderOrder = 1;
   group.add(wetSand);
 
   const water = new Mesh(
-    new PlaneGeometry(66, 28, 1, 1),
+    new PlaneGeometry(84, 28, 1, 1),
     new MeshBasicMaterial({ color: new Color("#24496B"), transparent: true, opacity: 0.88, side: THREE.DoubleSide })
   );
   water.rotation.x = -Math.PI / 2;
-  water.position.set(9, -0.004, 45.5);
+  water.position.set(0, -0.004, 45.5);
   water.name = "cityShoreWater";
   group.add(water);
 
   const foam = new Mesh(
-    new PlaneGeometry(60, 0.9, 1, 1),
+    new PlaneGeometry(76, 0.9, 1, 1),
     new MeshBasicMaterial({ color: new Color("#F8F2E6"), transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide })
   );
   foam.rotation.x = -Math.PI / 2;
-  foam.position.set(8, 0.014, 32.15);
+  foam.position.set(0, 0.014, 32.15);
   foam.renderOrder = 2;
   foam.name = "foam";
   group.add(foam);
 
   const waterEdge = new Mesh(
-    new PlaneGeometry(60, 0.44, 1, 1),
+    new PlaneGeometry(76, 0.44, 1, 1),
     new MeshBasicMaterial({ color: new Color("#7EC8D6"), transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide })
   );
   waterEdge.rotation.x = -Math.PI / 2;
-  waterEdge.position.set(8, 0.018, 32.55);
+  waterEdge.position.set(0, 0.018, 32.55);
   waterEdge.renderOrder = 2;
   waterEdge.name = "shoreGlow";
   group.add(waterEdge);
@@ -142,10 +142,10 @@ export function createSimpleCityShoreline(scene) {
   path.renderOrder = 1;
   group.add(path);
 
-  [-14, 24, 32].forEach((x, i) => addSimplePalm(group, x, i === 0 ? 22 : 24.5, i === 0 ? 0.82 : 0.95));
+  [-26, -14, 24].forEach((x, i) => addSimplePalm(group, x, i === 1 ? 22 : 24.5, i === 1 ? 0.82 : 0.95));
 
-  const label = makeShorelineLabel("Upper Vibe Beach World");
-  label.position.set(16, 2.2, 20.5);
+  const label = makeShorelineLabel("Upper Vibe Shoreline");
+  label.position.set(-12, 2.2, 20.5);
   group.add(label);
 
   const sunDisc = new Mesh(
