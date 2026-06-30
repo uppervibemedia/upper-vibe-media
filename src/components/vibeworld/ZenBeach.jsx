@@ -112,7 +112,7 @@ function createLoungeCushion(scene, x, z, color) {
 
 export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const ZEN_X = -20, ZEN_Z = 22;
+  const ZEN_X = 40, ZEN_Z = 12;
 
   const calmSand = new Mesh(
     new CircleGeometry(6.2, 56),

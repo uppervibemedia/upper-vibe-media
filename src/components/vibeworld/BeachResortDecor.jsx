@@ -101,7 +101,7 @@ export function createBeachResortDecor(scene) {
   group.name = "beachResortDecor";
 
   const pathMat = basic("#E3D3B2", { transparent: true, opacity: 0.18 });
-  [[-34, 27, 22, 1.35, -0.12], [-16, 22, 28, 1.25, 0.08], [0, 18, 30, 1.25, 0.02], [0, 7, 28, 1.35, 0.02], [0, 31, 22, 1.15, 0.0], [35, 31, 22, 1.15, -0.08]].forEach(([x, z, w, d, rot], i) => {
+  [[-34, 27, 22, 1.35, -0.12], [-16, 22, 28, 1.25, 0.08], [0, 18, 30, 1.25, 0.02], [0, 7, 28, 1.35, 0.02], [0, 31, 22, 1.15, 0.0], [35, 31, 22, 1.15, -0.08], [40, 16, 16, 1.15, -0.18]].forEach(([x, z, w, d, rot], i) => {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pathMat.clone());
     p.rotation.x = -Math.PI / 2; p.rotation.z = rot; p.position.set(x, 0.03 + i * 0.001, z); p.renderOrder = 3; group.add(p);
   });
@@ -109,22 +109,9 @@ export function createBeachResortDecor(scene) {
   addBoardwalk(group, -34, 28, 8, -0.12);
   addBoardwalk(group, 35, 32, 8, 0.08);
 
-  addPalm(group, -8, 2, 0.88); addPalm(group, 8, 2, 0.82); addPalm(group, 14, 10, 0.86);
-  addUmbrella(group, -7, 5, "#DCE6EA"); addUmbrella(group, 7, 5, "#68D7E8");
-  addChair(group, -8, 7.2, "#C8CDD2", 0.25); addChair(group, -4, 4.8, "#7DD7E8", -0.2);
-  addChair(group, 4, 4.8, "#D9C27C", 0.1); addChair(group, 8, 7.2, "#9CA8B8", -0.35);
-  const loungeLabel = makeLabel("RESORT LOUNGE", "#FFD08A", [5.0, 0.9]);
-  loungeLabel.position.set(8, 2.0, 2.5); group.add(loungeLabel);
-
-  const cabana = new THREE.Mesh(new THREE.BoxGeometry(4.3, 1.75, 2.4), standard("#D5D0C2"));
-  cabana.position.set(13, 0.9, 4); group.add(cabana);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.0, 4), standard("#5F7280"));
-  roof.position.set(13, 2.25, 4); roof.rotation.y = Math.PI / 4; group.add(roof);
-
   addSmallVilla(group, -10, -6, -0.18);
   addSmallVilla(group, -24, 8, 0.35);
   addOpenAirStructure(group, 0, -20, "VIBE COASTER", "#68D7E8", 0.05);
-  addOpenAirStructure(group, 40, 12, "BEACH BAR", "#FFD08A", -0.28);
 
   addUmbrella(group, -5, 8, "#D9C27C"); addUmbrella(group, 7, 8, "#80DCEB"); addPalm(group, -9, 11, 0.85); addPalm(group, 11, 11, 0.78);
   [[-7,6.5,"#7DD7E8",0.5],[-3,4.5,"#C8CDD2",-0.2],[3,4.5,"#D9C27C",0.25],[7,6.5,"#9CA8B8",-0.55]].forEach(([x,z,c,r]) => addChair(group, x, z, c, r));
