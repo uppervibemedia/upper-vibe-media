@@ -131,6 +131,8 @@ export default function WorldHUD({
   nearJukebox = false,
   djTrack = null,
   onFerrisRideChange,
+  onStartBeachActivity,
+  beachActivityActive = false,
   // Follow system
   followSystem,
 }) {
@@ -896,21 +898,21 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "surfzone" && (
+        {zone?.id === "surfzone" && !beachActivityActive && (
           <motion.div key="surf-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
-            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("surf"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#68D7E8,#00E5FF)", color: "#021018", boxShadow: "0 0 20px rgba(104,215,232,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Surf Challenge</button>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); onStartBeachActivity?.("surf"); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#68D7E8,#00E5FF)", color: "#021018", boxShadow: "0 0 20px rgba(104,215,232,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Surf Challenge</button>
           </motion.div>
         )}
 
-        {zone?.id === "divezone" && (
+        {zone?.id === "divezone" && !beachActivityActive && (
           <motion.div key="dive-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
-            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("dive"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#42DDF2,#7C3AED)", color: "#fff", boxShadow: "0 0 20px rgba(66,221,242,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Dive Adventure</button>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); onStartBeachActivity?.("dive"); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#42DDF2,#7C3AED)", color: "#fff", boxShadow: "0 0 20px rgba(66,221,242,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Dive Adventure</button>
           </motion.div>
         )}
 
-        {zone?.id === "coaster" && (
+        {zone?.id === "coaster" && !beachActivityActive && (
           <motion.div key="coaster-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
-            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("coaster"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#021018", boxShadow: "0 0 20px rgba(0,229,255,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}>Ride Vibe Coaster</button>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); onStartBeachActivity?.("coaster"); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#021018", boxShadow: "0 0 20px rgba(0,229,255,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}>Ride Vibe Coaster</button>
           </motion.div>
         )}
 

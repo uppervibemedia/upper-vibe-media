@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Waves, Timer, Gem, Sparkles, Flame, Music4, Wind } from "lucide-react";
+import { X, Waves, Gem, Sparkles, Flame, Music4, Wind } from "lucide-react";
 
 const CONFIG = {
   surf: { title: "Surf Zone", start: "Start Surf Challenge", active: "Surf Challenge", icon: Waves, color: "#68D7E8", steps: 5, task: "Ride through surf checkpoints" },
@@ -11,7 +11,7 @@ const CONFIG = {
   bonfire: { title: "Bonfire Beach", start: "Relax by Bonfire", active: "Bonfire Relax", icon: Flame, color: "#FFB347", steps: 3, task: "Chill by the fire with your music still playing" },
 };
 
-export default function BeachActivityPanel({ type, open, onClose, isMobile, mobileLayout }) {
+export default function BeachActivityPanel({ type, open, onClose, isMobile, _mobileLayout }) {
   const config = CONFIG[type] || CONFIG.zen;
   const Icon = config.icon;
   const [started, setStarted] = useState(false);
@@ -59,7 +59,7 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, mobi
     });
   };
 
-  if (!open) return null;
+  if (!open || ["surf", "dive", "coaster"].includes(type)) return null;
 
   return (
     <AnimatePresence>

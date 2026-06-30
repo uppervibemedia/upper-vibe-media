@@ -28,6 +28,7 @@ import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 import { createBeachWorld, createTransportPad, CITY_BEACH_PAD, BEACH_RETURN_PAD } from "./BeachWorldBuilder.jsx";
 import { createSimpleCityShoreline, animateSimpleCityShoreline } from "./SimpleCityShoreline.jsx";
 import { animateBeachActivities } from "./BeachActivities.jsx";
+import { startBeachActivity, tickBeachActivity, applyBeachActivityCamera, exitBeachActivity } from "./BeachActivityEngine.js";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -541,7 +542,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, hoverboardJumpRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -648,6 +649,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const danceFloorFrameRefRef = useRef(props.danceFloorFrameRef);
   danceFloorFrameRefRef.current = props.danceFloorFrameRef;
   const pendingHoverboardJumpRef = useRef(false);
+  const beachActivityStateRef = useRef(null);
   const hoverboardJumpOffsetRef = useRef(0);
   const hoverboardVerticalVelocityRef = useRef(0);
   const hoverboardJumpingRef = useRef(false);
@@ -657,6 +659,29 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   useEffect(() => {
     if (hoverboardJumpRequest?.id) pendingHoverboardJumpRef.current = true;
   }, [hoverboardJumpRequest?.id]);
+
+  useEffect(() => {
+    if (!beachActivityRequest?.id || !beachActivityRequest?.type || !sceneRef.current) return;
+    if (beachActivityStateRef.current) return;
+    const [x, y, z, rot] = avatarPosRef.current;
+    const state = startBeachActivity(sceneRef.current, beachActivityRequest.type, { x, y, z, rot });
+    beachActivityStateRef.current = state;
+    velocityRef.current = { x: 0, z: 0 };
+    window.dispatchEvent(new CustomEvent("beachActivityProgress", { detail: { active: true, type: state.type, progress: 0, total: state.total } }));
+  }, [beachActivityRequest?.id]);
+
+  useEffect(() => {
+    if (!beachActivityExitRequest?.id || !sceneRef.current || !beachActivityStateRef.current) return;
+    const exit = exitBeachActivity(sceneRef.current, beachActivityStateRef.current, false);
+    beachActivityStateRef.current = null;
+    if (avatarRef.current) avatarRef.current.visible = true;
+    if (exit) {
+      avatarPosRef.current = [exit.x, SPAWN[1], exit.z, exit.rot || 0];
+      avatarRotRef.current = exit.rot || 0;
+      velocityRef.current = { x: 0, z: 0 };
+    }
+    window.dispatchEvent(new CustomEvent("beachActivityProgress", { detail: { active: false } }));
+  }, [beachActivityExitRequest?.id]);
 
   useEffect(() => {
     if (!moveTarget) return;
@@ -1084,10 +1109,35 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           ? resolveBeachBounds(px, pz, 0.3, hbRidingRef.current)
           : resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
 
+        const activeBeachActivity = beachActivityStateRef.current;
+        if (activeBeachActivity) {
+          const activityInput = isMobileRef.current
+            ? { x: mobileInputRef.current.x || 0, y: mobileInputRef.current.y || 0 }
+            : { x: (keys.d || keys.arrowright ? 1 : 0) + (keys.a || keys.arrowleft ? -1 : 0), y: (keys.w || keys.arrowup ? 1 : 0) + (keys.s || keys.arrowdown ? -1 : 0) };
+          const pose = tickBeachActivity(activeBeachActivity, activityInput, moveDt, t);
+          px = pose.x; py = pose.y; pz = pose.z; rot = pose.rot;
+          vel.x = 0; vel.z = 0;
+          if (activeBeachActivity._lastProgress !== activeBeachActivity.progress) {
+            activeBeachActivity._lastProgress = activeBeachActivity.progress;
+            window.dispatchEvent(new CustomEvent("beachActivityProgress", { detail: { active: true, type: activeBeachActivity.type, progress: activeBeachActivity.progress, total: activeBeachActivity.total } }));
+          }
+          if (activeBeachActivity.complete && !activeBeachActivity._completedSent) {
+            activeBeachActivity._completedSent = true;
+            const exit = exitBeachActivity(scene, activeBeachActivity, true);
+            beachActivityStateRef.current = null;
+            window.dispatchEvent(new CustomEvent("beachActivityCompleted", { detail: { type: activeBeachActivity.type } }));
+            window.dispatchEvent(new CustomEvent("beachActivityProgress", { detail: { active: false } }));
+            if (avatarRef.current) avatarRef.current.visible = true;
+            if (exit) { px = exit.x; py = SPAWN[1]; pz = exit.z; rot = exit.rot || 0; }
+          }
+        }
+
         // ── Launch arc handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE) ──
         // Step-on city pads auto-launch walking AND hoverboard riders.
         const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
-        py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current;
+        if (!beachActivityStateRef.current) {
+          py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current;
+        }
 
         avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
@@ -1182,7 +1232,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           };
         }
         const cv = scene.userData._camVecs;
-        if (ferrisRidingRef.current) {
+        if (beachActivityStateRef.current) {
+          applyBeachActivityCamera(beachActivityStateRef.current, camera, dt);
+          if (avatarRef.current) avatarRef.current.visible = beachActivityStateRef.current.type !== "coaster";
+        } else if (ferrisRidingRef.current) {
           if (!cv._rl) cv._rl = { yaw: 0, pitch: 0, rt: 0 };
           const rl = cv._rl;
           const joy = mobileInputRef.current;
@@ -1892,6 +1945,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (avatarEntryRef.current) {
           detachHoverboard(avatarEntryRef.current);
           if (equippedAuraRef.current) unbindAura(avatarEntryRef.current.root);
+        }
+        if (beachActivityStateRef.current) {
+          exitBeachActivity(scene, beachActivityStateRef.current, false);
+          beachActivityStateRef.current = null;
         }
         window.__hbScene = null;
         window.__uvcWorldMode = null;

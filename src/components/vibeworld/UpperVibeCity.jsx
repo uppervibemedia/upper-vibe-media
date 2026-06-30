@@ -57,6 +57,7 @@ import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
 import BeachPortalTransition from "@/components/vibeworld/BeachPortalTransition";
 import TransportConfirmModal from "@/components/vibeworld/TransportConfirmModal";
 import BeachQuestHUD from "@/components/vibeworld/BeachQuestHUD";
+import BeachActivityHUD from "@/components/vibeworld/BeachActivityHUD";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -209,6 +210,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [domeFullscreenOpen, setDomeFullscreenOpen] = useState(false);
   const [domeExitTarget, setDomeExitTarget] = useState(null);
   const [hoverboardJumpRequest, setHoverboardJumpRequest] = useState(null);
+  const [beachActivityRequest, setBeachActivityRequest] = useState(null);
+  const [beachActivityExitRequest, setBeachActivityExitRequest] = useState(null);
+  const [beachActivityHud, setBeachActivityHud] = useState(null);
 
 
 
@@ -726,7 +730,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Movement locked when typing in lounge chat or watching stage ──
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = loungeInputFocused || stageWatching;
+  const movementLocked = loungeInputFocused || stageWatching || !!beachActivityHud?.active;
 
   // ── Dance floor boundary — hysteresis to prevent boundary flicker ──────────
   // Use a slightly smaller radius to confirm entry (10.0) vs exit (10.5).
@@ -790,6 +794,28 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     updateBeachQuest((q) => ({ ...q, relaxedBonfire: true }), 0, "bonfire_relax");
     try { navigator?.vibrate?.(15); } catch {}
   }, [updateBeachQuest]);
+
+  const handleStartBeachActivity = useCallback((type) => {
+    if (!type || beachActivityHud?.active) return;
+    setBeachActivityRequest({ id: Date.now(), type });
+    setMobileModalOpen(false);
+    setAnyBlockingUIOpen(true);
+  }, [beachActivityHud?.active]);
+
+  const handleExitBeachActivity = useCallback(() => {
+    setBeachActivityExitRequest({ id: Date.now() });
+    setAnyBlockingUIOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const onProgress = (e) => {
+      const detail = e.detail || {};
+      setBeachActivityHud(detail.active ? detail : null);
+      setAnyBlockingUIOpen(!!detail.active);
+    };
+    window.addEventListener("beachActivityProgress", onProgress);
+    return () => window.removeEventListener("beachActivityProgress", onProgress);
+  }, []);
 
   useEffect(() => {
     if (worldMode !== "beach") return;
@@ -1235,6 +1261,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           isPlayingNeonSurf={isPlayingNeonSurf}
           personalHoverboardActive={personalHoverboardActive}
           hoverboardJumpRequest={hoverboardJumpRequest}
+          beachActivityRequest={beachActivityRequest}
+          beachActivityExitRequest={beachActivityExitRequest}
           ferrisRiding={ferrisRiding}
           rendererRef={rendererRef}
           tvMode={tvMode}
@@ -1396,8 +1424,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         nearJukebox={nearJukebox}
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}
+        onStartBeachActivity={handleStartBeachActivity}
+        beachActivityActive={!!beachActivityHud?.active}
         followSystem={followSystem}
         username={user?.world_username || ""}
+      />
+
+      <BeachActivityHUD
+        activity={beachActivityHud}
+        onExit={handleExitBeachActivity}
+        isMobile={isMobile}
+        mobileLayout={mobileLayout}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
