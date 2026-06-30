@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import createZenBeach from "./ZenBeach";
-import { buildVibeAcademyZone } from "./city-engine/zones/VibeAcademyZone";
 import { createBeachDaySky } from "./BeachDaySky";
 import { createBeachReturnPlanet } from "./BeachReturnPlanet";
 import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
@@ -143,7 +142,6 @@ export function createBeachWorld(scene) {
   scene.add(shoreGlow);
   scene.userData.shoreGlow = shoreGlow;
 
-  buildVibeAcademyZone(scene);
   createZenBeach(scene, 0, 0);
   createBeachResortAddOns(scene);
   createBeachReturnPlanet(scene);

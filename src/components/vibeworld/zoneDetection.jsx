@@ -53,9 +53,9 @@ const ZONES = {
     icon: "Sun",
   },
   academy: {
-    name: "Vibe Academy",
+    name: "Vibe Academy Retreat",
     id: "academy",
-    cx: -28, cz: 5, radius: 5,
+    cx: -18, cz: 16, radius: 7,
     icon: "GraduationCap",
   },
   ferriswheel: {

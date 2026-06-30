@@ -858,7 +858,7 @@ export default function WorldHUD({
               }}
             >
               <GraduationCap className="w-3.5 h-3.5" />
-              Enter Academy
+              Enter Vibe Academy
             </button>
           </motion.div>
         )}
