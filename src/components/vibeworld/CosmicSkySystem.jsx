@@ -399,13 +399,14 @@ export function createCosmicSky(scene) {
     {
       // BEACH WORLD PLANET — soft light-brown + blue, aligned over the beach sign view.
       id: "ice",
-      bodyColors: ["#7FAFC7", "#C9A66B", "#5FBFE0", "#D8B989", "#F8E7B8"],
-      glowColor: "rgba(95,191,224,0.58)", ringColor: "rgba(216,185,137,0.68)",
-      size: isMobile ? 48 : 74,
+      bodyColors: ["#5C8FA8", "#B88B55", "#45BCE8", "#D0A56A", "#F4D9A2"],
+      glowColor: "rgba(69,188,232,0.68)", ringColor: "rgba(208,165,106,0.72)",
+      size: isMobile ? 72 : 110,
       angleOffset: 0,
-      horizonY: 36,
-      radius: 92,
+      horizonY: 33,
+      radius: 88,
       orbitSpeed: 0,
+      alignToCameraForward: true,
     },
     {
       // HIGH-2 — golden nebula, upper-left back, very high
@@ -553,8 +554,8 @@ export function createCosmicSky(scene) {
         const alpha = 0.08 + rng() * 0.10;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.45, `rgba(232,207,163,${alpha})`);
-        bandG.addColorStop(0.7, `rgba(126,200,214,${alpha * 0.7})`);
+        bandG.addColorStop(0.42, `rgba(208,165,106,${alpha})`);
+        bandG.addColorStop(0.72, `rgba(69,188,232,${alpha * 0.82})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
@@ -691,6 +692,7 @@ export function createCosmicSky(scene) {
       horizonY: def.horizonY,
       radius: def.radius,
       orbitSpeed: def.orbitSpeed,
+      alignToCameraForward: !!def.alignToCameraForward,
       id: def.id,
     };
   });
@@ -870,7 +872,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const cityBlocking = inCityZone * Math.pow(facingCity, 1.5);
 
     for (const p of horizonPlanets) {
-      const angle = t * p.orbitSpeed + p.angleOffset;
+      const angle = p.alignToCameraForward ? camYawWorld + Math.PI : t * p.orbitSpeed + p.angleOffset;
 
       // Camera-relative position — ALWAYS inside far clip plane.
       const cx = camera.position.x + Math.sin(angle) * p.radius;
