@@ -12,6 +12,8 @@ export const BEACH_ACTIVITY_POINTS = {
   questBoard: { x: 29, z: -10, radius: 7 },
   bonfire: { x: 0, z: 14, radius: 7 },
   photoSpot: { x: 45, z: 27, radius: 6 },
+  surf: { x: -24, z: 33, radius: 7 },
+  dive: { x: 32, z: 33, radius: 7 },
 };
 
 function basic(color, opts = {}) {
@@ -115,23 +117,54 @@ function addTreasureShells(group) {
 }
 
 function addSurfPreview(group) {
-  const rack = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.16, 0.55), standard("#85613E"));
-  rack.position.set(-51, 0.32, 19.2);
+  const lane = new THREE.Mesh(new THREE.PlaneGeometry(22, 4.2), basic("#7FE8F4", { transparent: true, opacity: 0.18 }));
+  lane.rotation.x = -Math.PI / 2;
+  lane.rotation.z = -0.18;
+  lane.position.set(-30, 0.035, 39);
+  group.add(lane);
+
+  const rack = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.16, 0.55), standard("#85613E"));
+  rack.position.set(-24, 0.32, 31.8);
   group.add(rack);
-  [-1.1, 0, 1.1].forEach((off, i) => {
-    const board = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.12, 2.4), standard(i === 1 ? "#68D7E8" : "#D9C27C", { metalness: 0.12 }));
-    board.position.set(-51 + off, 0.58, 19.2);
-    board.rotation.set(0.4, 0.08, 0);
+  [-1.15, 0, 1.15].forEach((off, i) => {
+    const board = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.11, 2.7), standard(i === 1 ? "#68D7E8" : "#D9C27C", { metalness: 0.12 }));
+    board.position.set(-24 + off, 0.58, 31.8);
+    board.rotation.set(0.42, -0.2, 0);
     group.add(board);
   });
-  [[-47, 34], [-41, 39], [-34, 43]].forEach(([x, z], i) => {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.045, 8, 44), basic("#7FE8F4", { transparent: true, opacity: 0.42 }));
+  [[-28, 36], [-34, 40], [-40, 44]].forEach(([x, z], i) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.045, 8, 44), basic("#7FE8F4", { transparent: true, opacity: 0.46 }));
     ring.position.set(x, 1.0, z);
     ring.rotation.set(Math.PI / 2, 0.15 * i, 0);
     group.add(ring);
   });
-  const sign = label("SURF CHALLENGE", "#68D7E8", [5.2, 0.8]);
-  sign.position.set(-51, 2.35, 16.9);
+  const sign = label("SURF ZONE", "#68D7E8", [4.4, 0.72]);
+  sign.position.set(-24, 1.85, 29.7);
+  group.add(sign);
+}
+
+function addDivePreview(group) {
+  const dockMat = standard("#A87948", { roughness: 0.72, metalness: 0.06 });
+  for (let i = 0; i < 5; i++) {
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.08, 4.6), dockMat.clone());
+    plank.position.set(30 + i * 0.62, 0.12, 33.2);
+    group.add(plank);
+  }
+  const platform = new THREE.Mesh(new THREE.CircleGeometry(2.1, 36), basic("#42DDF2", { transparent: true, opacity: 0.2 }));
+  platform.rotation.x = -Math.PI / 2;
+  platform.position.set(34, 0.045, 36.2);
+  group.add(platform);
+  [[31.5, 37.5], [34.5, 39.8], [37, 36.7]].forEach(([x, z], i) => {
+    const coral = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.2, 7), standard(i % 2 ? "#B58CFF" : "#32D6B4", { roughness: 0.55, metalness: 0.08 }));
+    coral.position.set(x, 0.62, z);
+    coral.rotation.z = (i - 1) * 0.15;
+    group.add(coral);
+  });
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.65, 0.8), standard("#7B4E2A", { roughness: 0.52, metalness: 0.18 }));
+  chest.position.set(36.5, 0.38, 38.5);
+  group.add(chest);
+  const sign = label("DIVE ZONE", "#42DDF2", [4.3, 0.72]);
+  sign.position.set(32, 1.85, 29.8);
   group.add(sign);
 }
 
@@ -143,6 +176,7 @@ export function createBeachActivities(scene) {
   addPhotoSpot(group);
   addTreasureShells(group);
   addSurfPreview(group);
+  addDivePreview(group);
   scene.add(group);
   scene.userData.beachActivities = group;
   scene.userData.beachShellMeshes = group.userData.shells;

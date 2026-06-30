@@ -71,10 +71,22 @@ const ZONES = {
     icon: "ShoppingBag",
   },
   hoverboard: {
-    name: "Surf Zone",
+    name: "Beach Launch Pads",
     id: "hoverboard",
     cx: -54, cz: 12, radius: 8,
     icon: "Zap",
+  },
+  surfzone: {
+    name: "Surf Zone",
+    id: "surfzone",
+    cx: -24, cz: 33, radius: 7,
+    icon: "Waves",
+  },
+  divezone: {
+    name: "Dive Zone",
+    id: "divezone",
+    cx: 32, cz: 33, radius: 7,
+    icon: "Waves",
   },
   crystalzone: {
     name: "Crystal Zone",
@@ -86,7 +98,7 @@ const ZONES = {
 
 export function detectZone(px, pz) {
   const mode = typeof window !== "undefined" ? (window.__uvcWorldMode || "city") : "city";
-  const beachOnly = new Set(["zenbeach", "beach", "academy", "hoverboard"]);
+  const beachOnly = new Set(["zenbeach", "beach", "academy", "hoverboard", "surfzone", "divezone"]);
   for (const zone of Object.values(ZONES)) {
     if (mode === "beach" && !beachOnly.has(zone.id)) continue;
     if (mode === "city" && beachOnly.has(zone.id)) continue;

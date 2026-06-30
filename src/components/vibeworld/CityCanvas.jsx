@@ -1492,10 +1492,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (updateSigns) {
           const signs = scene.userData._neonSigns || [];
           for (const child of signs) {
-            if (isMob) {
-              const sdx = child.position.x - px, sdz = child.position.z - pz;
-              if (sdx * sdx + sdz * sdz > 2025) continue; // skip signs >45u away on mobile
-            }
+            const sdx = child.position.x - px, sdz = child.position.z - pz;
+            const distSq = sdx * sdx + sdz * sdz;
+            if (worldModeRef.current === "beach") {
+              child.visible = distSq < 676; // nearby-only beach signage: 26u radius
+              if (!child.visible) continue;
+            } else if (isMob && distSq > 2025) continue; // skip signs >45u away on mobile
             child.lookAt(camera.position);
           }
         }
