@@ -61,13 +61,13 @@ const ZONES = {
   ferriswheel: {
     name: "Neon Vibe Wheel",
     id: "ferriswheel",
-    cx: 22, cz: 5, radius: 9.5,
+    cx: 0, cz: 24, radius: 9.5,
     icon: "Ferris",
   },
   shop: {
     name: "Upper Vibe Shop",
     id: "shop",
-    cx: 0, cz: 10, radius: 6,
+    cx: 22, cz: 5, radius: 6,
     icon: "ShoppingBag",
   },
   hoverboard: {

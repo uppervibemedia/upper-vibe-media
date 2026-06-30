@@ -42,8 +42,8 @@ const {
 } = THREE;
 
 // ── World placement ────────────────────────────────────────────────
-export const WHEEL_X = 22;
-export const WHEEL_Z = 5;
+export const WHEEL_X = 0;
+export const WHEEL_Z = 24;
 export const WHEEL_INTERACT_RADIUS = 10;
 export const WHEEL_RADIUS = 6.2;       // rim center radius
 export const NUM_CABINS = 8;

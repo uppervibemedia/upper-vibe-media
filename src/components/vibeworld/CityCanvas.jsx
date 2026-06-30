@@ -368,7 +368,7 @@ export function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 8.65. UPPER VIBE SHOP — central plaza storefront
   // ═════════════════════════════════════════════════════════════
-  const shopGroup = createUpperVibeShop(scene, [0, 0, 10]);
+  const shopGroup = createUpperVibeShop(scene, [22, 0, 5]);
   if (shopGroup) shopGroup.rotation.y = Math.PI; // face toward player spawn
   scene.userData.shopGroup = shopGroup;
   createTransportPad(scene, { ...CITY_BEACH_PAD, label: "Enter Upper Vibe Beach World", color: "#00E5FF", name: "enterBeachPad" });
