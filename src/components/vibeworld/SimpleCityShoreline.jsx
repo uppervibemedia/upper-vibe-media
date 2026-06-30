@@ -151,11 +151,11 @@ function makeBeachWorldTexture() {
 function addCityBeachPlanet(group) {
   const planetGroup = new Group();
   planetGroup.name = "cityBeachBlueSandPlanet";
-  planetGroup.position.set(12, 7.35, 27.75);
+  planetGroup.position.set(12, 7.7, 34.5);
 
   const halo = new Mesh(
-    new THREE.SphereGeometry(5.65, 32, 24),
-    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.18, depthWrite: false, side: THREE.BackSide })
+    new THREE.SphereGeometry(4.7, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.1, depthWrite: false, side: THREE.BackSide })
   );
   halo.name = "cityBeachPlanetHalo";
   planetGroup.add(halo);
@@ -168,7 +168,7 @@ function addCityBeachPlanet(group) {
   ocean.castShadow = true;
   planetGroup.add(ocean);
 
-  const glow = new THREE.PointLight(new Color("#40D4FF"), 1.6, 18);
+  const glow = new THREE.PointLight(new Color("#40D4FF"), 1.2, 12);
   glow.position.set(0, 0.4, 1.8);
   planetGroup.add(glow);
 
@@ -278,6 +278,6 @@ export function animateSimpleCityShoreline(scene, t) {
   if (planet) {
     planet.rotation.y = t * 0.075;
     const halo = planet.getObjectByName("cityBeachPlanetHalo");
-    if (halo?.material) halo.material.opacity = 0.13 + tide * 0.06;
+    if (halo?.material) halo.material.opacity = 0.08 + tide * 0.035;
   }
 }
