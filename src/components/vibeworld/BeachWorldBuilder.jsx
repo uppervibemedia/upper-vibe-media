@@ -5,6 +5,7 @@ import { buildVibeAcademyZone } from "./city-engine/zones/VibeAcademyZone";
 import { createCosmicSky } from "./CosmicSkySystem";
 import { createBeachDaySky } from "./BeachDaySky";
 import { createBeachReturnPlanet } from "./BeachReturnPlanet";
+import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
 
 const { Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, CylinderGeometry, RingGeometry, Color, PointLight, AmbientLight, HemisphereLight, DirectionalLight, CanvasTexture, SpriteMaterial, Sprite, LinearFilter } = THREE;
 
@@ -137,6 +138,7 @@ export function createBeachWorld(scene) {
 
   buildVibeAcademyZone(scene);
   createZenBeach(scene, 0, 0);
+  createBeachResortAddOns(scene);
   createHoverboardZone(scene);
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
