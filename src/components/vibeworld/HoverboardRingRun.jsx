@@ -13,7 +13,7 @@ const {
   SpriteMaterial, Sprite, CanvasTexture, LinearFilter,
 } = THREE;
 
-export const HOVERBOARD_START = { x: 28, z: 23 };
+export const HOVERBOARD_START = { x: -38, z: 23 };
 export const HOVERBOARD_INTERACT_RADIUS = 6.0;
 
 // Legacy (unused but kept for import compat)
@@ -23,33 +23,33 @@ export const HOVERBOARD_RINGS = [];
 // 70% easy (clear ride lines), 20% medium (light steering), 10% bonus (+5)
 // All placed at y=1.0 (easy reach height), close to ride path
 export const BEACH_ORBS = [
-  // Easy lane — straight line across beach (70%)
-  { id: 0,  x: 22,  z: 27, color: "#00E5FF", value: 1 },
-  { id: 1,  x: 16,  z: 29, color: "#00E5FF", value: 1 },
-  { id: 2,  x:  8,  z: 28, color: "#00E5FF", value: 1 },
-  { id: 3,  x:  0,  z: 30, color: "#FFD700", value: 1 },
-  { id: 4,  x: -8,  z: 29, color: "#00E5FF", value: 1 },
-  { id: 5,  x:-16,  z: 27, color: "#00E5FF", value: 1 },
-  { id: 6,  x:-22,  z: 29, color: "#00E5FF", value: 1 },
-  // Medium — slight curve off main path (20%)
-  { id: 7,  x: 20,  z: 23, color: "#C43BFF", value: 1 },
-  { id: 8,  x:  5,  z: 25, color: "#C43BFF", value: 1 },
-  { id: 9,  x:-12,  z: 24, color: "#C43BFF", value: 1 },
-  // Bonus coins +5 (10%) — near boost pads or turns
-  { id: 10, x: 12,  z: 27, color: "#FFD700", value: 5 },
-  { id: 11, x:-14,  z: 26, color: "#FFD700", value: 5 },
+  // Easy lane — open launch-pad route on the left side of the island
+  { id: 0,  x: -47, z: 24, color: "#00E5FF", value: 1 },
+  { id: 1,  x: -42, z: 27, color: "#00E5FF", value: 1 },
+  { id: 2,  x: -36, z: 29, color: "#00E5FF", value: 1 },
+  { id: 3,  x: -30, z: 30, color: "#FFD700", value: 1 },
+  { id: 4,  x: -24, z: 29, color: "#00E5FF", value: 1 },
+  { id: 5,  x: -18, z: 27, color: "#00E5FF", value: 1 },
+  { id: 6,  x: -12, z: 25, color: "#00E5FF", value: 1 },
+  // Medium — slight curve off main path
+  { id: 7,  x: -45, z: 20, color: "#C43BFF", value: 1 },
+  { id: 8,  x: -32, z: 24, color: "#C43BFF", value: 1 },
+  { id: 9,  x: -20, z: 22, color: "#C43BFF", value: 1 },
+  // Bonus coins +5 — near boost pads or turns
+  { id: 10, x: -40, z: 26, color: "#FFD700", value: 5 },
+  { id: 11, x: -24, z: 26, color: "#FFD700", value: 5 },
 ];
 
 // ── SPEED BOOST PADS — green, speed arrow icons, temporary speed burst ────
 export const BOOST_PADS = [
-  { x:  12, z: 27, rot: 0.0 },
-  { x: -14, z: 26, rot:-0.2 },
+  { x: -40, z: 26, rot: 0.0 },
+  { x: -24, z: 26, rot:-0.2 },
 ];
 
 // ── LAUNCH PADS — orange/red, rocket icons, launch rider into the air ─────
 export const LAUNCH_PADS = [
-  { x: -5,  z: 30, rot: 0.3 },
-  { x:  20, z: 24, rot: 0.1 },
+  { x: -46, z: 28, rot: 0.3 },
+  { x: -28, z: 24, rot: 0.1 },
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -361,9 +361,9 @@ export function createHoverboardZone(scene) {
   scene.userData.hbLight = hbLight;
 
   for (const [lx, lz, col] of [
-    [0,  29, "#C43BFF"],
-    [-15, 27, "#00FF88"],
-    [15,  25, "#FF6600"],
+    [-38, 29, "#C43BFF"],
+    [-48, 27, "#00FF88"],
+    [-24, 25, "#FF6600"],
   ]) {
     const lgt = new PointLight();
     lgt.color = new Color(col);
@@ -458,7 +458,7 @@ export function resetOrbs(scene) {
 const LAUNCH_RISE = 0.55;      // seconds to rise
 const LAUNCH_FALL= 0.80;       // seconds to glide down
 const LAUNCH_PEAK = 10;        // peak height
-const LAUNCH_DIRS = [{fx: -2, fz: -10}, {fx: 8, fz: -6}];
+const LAUNCH_DIRS = [{fx: 7, fz: -6}, {fx: 8, fz: -4}];
 const LAUNCH_SPEED = 3.0;
 
 export function tickBeachLaunch(scene, dt, prevLift, onTrigger) {

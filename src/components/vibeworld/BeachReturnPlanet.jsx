@@ -36,25 +36,25 @@ function makePlanetTexture() {
 export function createBeachReturnPlanet(scene) {
   const group = new THREE.Group();
   group.name = "beachReturnPlanet";
-  group.position.set(-12, 7.4, 37.5);
+  group.position.set(38, 7.2, -2);
   group.userData.isReturnCityPortal = true;
 
   const planet = new THREE.Mesh(
-    new THREE.SphereGeometry(3.05, 64, 32),
+    new THREE.SphereGeometry(2.55, 48, 24),
     new THREE.MeshStandardMaterial({ map: makePlanetTexture(), roughness: 0.72, metalness: 0.02, emissive: new THREE.Color("#0B5F8E"), emissiveIntensity: 0.14 })
   );
   planet.userData.isReturnCityPortal = true;
   group.add(planet);
 
   const atmosphere = new THREE.Mesh(
-    new THREE.SphereGeometry(3.55, 48, 24),
+    new THREE.SphereGeometry(3.05, 40, 20),
     new THREE.MeshBasicMaterial({ color: new THREE.Color("#74D8FF"), transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending })
   );
   atmosphere.userData.isReturnCityPortal = true;
   group.add(atmosphere);
 
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(3.95, 0.07, 12, 96),
+    new THREE.TorusGeometry(3.35, 0.065, 10, 72),
     new THREE.MeshBasicMaterial({ color: new THREE.Color("#FFD18A"), transparent: true, opacity: 0.72, depthWrite: false })
   );
   ring.rotation.set(1.15, 0.15, 0.4);

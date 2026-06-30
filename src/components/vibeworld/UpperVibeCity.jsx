@@ -1011,9 +1011,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setFerrisRiding(false);
     setNearJukebox(false);
     if (target === "beach") {
-      setWorldSpawn({ x: 0, z: -5, rot: 0 });
-      setPlayerPos({ x: 0, z: -5, rot: 0, animState: "idle" });
-      prevPosRef.current = { x: 0, z: -5, rot: 0 };
+      setWorldSpawn({ x: 26, z: -5, rot: -0.7 });
+      setPlayerPos({ x: 26, z: -5, rot: -0.7, animState: "idle" });
+      prevPosRef.current = { x: 26, z: -5, rot: -0.7 };
       setWorldMode("beach");
     } else {
       setWorldSpawn({ x: 12, z: 4, rot: Math.PI });

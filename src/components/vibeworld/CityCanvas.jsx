@@ -198,10 +198,10 @@ const BEACH_SHORELINE_Z = 32; // sand meets the ocean here
 
 function resolveBeachBounds(px, pz, r, isHoverboarding = false) {
   let x = px, z = pz;
-  if (x > 56 - r) x = 56 - r;
-  if (x < -56 + r) x = -56 + r;
-  if (z < -22 + r) z = -22 + r;
-  const maxZ = isHoverboarding ? 80 : 34 - r;
+  if (x > 62 - r) x = 62 - r;
+  if (x < -62 + r) x = -62 + r;
+  if (z < -28 + r) z = -28 + r;
+  const maxZ = isHoverboarding ? 80 : 35 - r;
   if (z > maxZ) z = maxZ;
   return [x, z];
 }

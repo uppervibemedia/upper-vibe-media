@@ -10,7 +10,7 @@ import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
 const { Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, CylinderGeometry, RingGeometry, Color, PointLight, AmbientLight, HemisphereLight, DirectionalLight, CanvasTexture, SpriteMaterial, Sprite, LinearFilter } = THREE;
 
 export const CITY_BEACH_PAD = { x: 12, z: 8, radius: 3.2 };
-export const BEACH_RETURN_PAD = { x: 0, z: -9, radius: 3.2 };
+export const BEACH_RETURN_PAD = { x: 32, z: -8, radius: 3.2 };
 
 function mat(hexColor, opts = {}) {
   const m = new MeshStandardMaterial();
@@ -89,15 +89,17 @@ export function createBeachWorld(scene) {
   const OCEAN_DEPTH = 62;
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  const sand = new Mesh(new PlaneGeometry(126, 90), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
+  const islandShape = new THREE.Shape();
+  islandShape.absellipse(0, 9, 64, 46, 0, Math.PI * 2, false, 0);
+  const sand = new Mesh(new THREE.ShapeGeometry(islandShape, isMob ? 36 : 72), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
   sand.rotation.x = -Math.PI / 2;
-  sand.position.set(0, 0, 10);
+  sand.position.set(0, 0, 0);
   sand.receiveShadow = true;
   sand.name = "beach";
   scene.add(sand);
 
-  const pathMat = new MeshBasicMaterial({ color: new Color("#E0C999"), transparent: true, opacity: 0.44, depthWrite: false, side: THREE.DoubleSide });
-  [[0, 9, 62, 4.5], [-24, 16, 5, 26], [20, 21, 52, 5]].forEach(([x, z, w, d]) => {
+  const pathMat = new MeshBasicMaterial({ color: new Color("#E0C999"), transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+  [[14, -5, 38, 3.0], [-18, -5, 42, 3.0], [0, 9, 46, 3.2], [-28, 18, 34, 2.8], [27, 18, 32, 2.8], [0, 25, 58, 2.6]].forEach(([x, z, w, d]) => {
     const path = new Mesh(new PlaneGeometry(w, d), pathMat.clone());
     path.rotation.x = -Math.PI / 2;
     path.position.set(x, 0.012, z);
@@ -106,7 +108,7 @@ export function createBeachWorld(scene) {
     scene.add(path);
   });
 
-  const oceanGeo = new PlaneGeometry(132, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
+  const oceanGeo = new PlaneGeometry(160, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
   const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#3E8FC0" : "#4EA4D8"), side: THREE.DoubleSide }));
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
@@ -119,7 +121,7 @@ export function createBeachWorld(scene) {
   scene.userData.shorelineZ = SHORELINE_Z;
 
   const foamMat = new MeshBasicMaterial({ color: new Color("#FFFFFF"), transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
-  const foam = new Mesh(new PlaneGeometry(132, 1.6), foamMat);
+  const foam = new Mesh(new PlaneGeometry(150, 1.6), foamMat);
   foam.rotation.x = -Math.PI / 2;
   foam.position.set(0, 0.006, SHORELINE_Z + 0.3);
   foam.renderOrder = 2;
@@ -128,7 +130,7 @@ export function createBeachWorld(scene) {
   scene.userData.foam = foam;
   scene.userData._foamBaseZ = SHORELINE_Z + 0.3;
 
-  const shoreGlow = new Mesh(new PlaneGeometry(132, 0.55), new MeshBasicMaterial({ color: new Color("#00D4F0"), transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
+  const shoreGlow = new Mesh(new PlaneGeometry(150, 0.55), new MeshBasicMaterial({ color: new Color("#00D4F0"), transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
   shoreGlow.rotation.x = -Math.PI / 2;
   shoreGlow.position.set(0, 0.012, SHORELINE_Z);
   shoreGlow.renderOrder = 2;
