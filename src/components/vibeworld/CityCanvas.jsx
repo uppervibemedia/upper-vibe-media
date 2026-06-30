@@ -599,9 +599,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  // Spawn near Vibe Check: avatar faces toward (-16,-13) from (-10,-4)
-  // angle = atan2(-16 - -10, -13 - -4) = atan2(-6, -9) ≈ -2.55 rad (NW direction)
-  const SPAWN_AVATAR_ROT = -2.55;
+  // Default city spawn is just off the beach transporter; face the pad without standing on it.
+  const SPAWN_AVATAR_ROT = Math.PI / 2;
   const avatarRotRef = useRef(spawnOverride?.rot !== undefined ? spawnOverride.rot : SPAWN_AVATAR_ROT);
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
@@ -609,9 +608,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   // camYaw is independent of avatar rotation; avatar rotation is avatarRotRef
   // Third-person camera: camYaw is WORLD-SPACE absolute angle (not relative to avatar)
   // 0 = camera looks from +Z toward avatar (south), increases clockwise
-  // Spawn near Vibe Check: avatar faces toward (-16,-13) from (-10,-4) → angle ≈ -2.5 rad (NW)
-  // Camera sits opposite (SE), camYaw = avatar.rot + π ≈ -2.5+π ≈ 0.64 rad
-  const SPAWN_CAM_YAW = 0.64;
+  // Camera sits behind the transporter-facing spawn direction.
+  const SPAWN_CAM_YAW = Math.PI * 1.5;
   const camYawRef = useRef(SPAWN_CAM_YAW);
   const camYawSmoothRef = useRef(SPAWN_CAM_YAW);
   const camPitchRef = useRef(0.08);    // slight upward default

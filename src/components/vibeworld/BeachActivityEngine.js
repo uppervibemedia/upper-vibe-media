@@ -12,9 +12,9 @@ const DIVE_ITEMS = [
   { x: 36, y: -1.38, z: 57, color: "#FFB347", kind: "chest" },
 ];
 const COASTER_POINTS = [
-  [-12, 1.25, -22], [-24, 4.4, -27], [-42, 6.15, -24], [-55, 3.7, -16],
-  [-38, 5.4, -10], [-14, 7.0, -17], [12, 5.8, -27], [38, 4.2, -24],
-  [54, 2.9, -14], [28, 5.4, -8], [3, 3.1, -12], [-12, 1.25, -22],
+  [-12, 1.25, -22], [-24, 6.8, -29], [-42, 12.4, -25], [-55, 3.0, -16],
+  [-38, 8.2, -9], [-14, 13.2, -18], [12, 5.0, -29], [38, 10.6, -25],
+  [54, 2.7, -14], [28, 8.8, -7], [3, 3.2, -12], [-12, 1.25, -22],
 ];
 
 function basic(color, opacity = 1, depthWrite = opacity >= 1) {
@@ -346,7 +346,9 @@ export function startBeachActivity(scene, type, pose) {
   }
   if (type === "coaster") {
     state.curve = new THREE.CatmullRomCurve3(COASTER_POINTS.map(([x, y, z]) => new THREE.Vector3(x, y, z)), false, "catmullrom", 0.45);
-    state.duration = 42;
+    state.duration = 36;
+    state.total = 100;
+    state.rideU = 0;
     buildCoasterTrack(group, state.curve);
     state.cart = makeCoasterCart(group);
   }
@@ -441,8 +443,13 @@ export function tickBeachActivity(state, input, dt, t) {
     if (state.progress >= state.total) state.complete = true;
   }
   if (state.type === "coaster") {
-    const u = Math.min(1, state.t / state.duration);
-    const eased = u < 0.08 ? (u * u) / 0.08 : u > 0.92 ? 1 - ((1 - u) * (1 - u)) / 0.08 : u;
+    const currentU = state.rideU || 0;
+    const fastDrop = (currentU > 0.18 && currentU < 0.34) || (currentU > 0.56 && currentU < 0.72);
+    const climb = (currentU > 0.08 && currentU < 0.18) || (currentU > 0.44 && currentU < 0.56);
+    const speedBoost = fastDrop ? 1.9 : climb ? 0.62 : 1.05;
+    state.rideU = Math.min(1, currentU + (dt / state.duration) * speedBoost);
+    const u = state.rideU;
+    const eased = u < 0.06 ? (u * u) / 0.06 : u > 0.94 ? 1 - ((1 - u) * (1 - u)) / 0.06 : u;
     const pos = state.curve.getPointAt(Math.min(0.999, eased));
     const tangent = state.curve.getTangentAt(Math.min(0.999, eased));
     state.x = pos.x; state.y = pos.y + 0.18; state.z = pos.z; state.rot = Math.atan2(tangent.x, tangent.z);
@@ -452,7 +459,7 @@ export function tickBeachActivity(state, input, dt, t) {
       state.cart.rotation.z = -tangent.x * 0.18;
       state.cart.rotation.x = tangent.y * 0.18;
     }
-    state.progress = u >= 1 ? 1 : 0;
+    state.progress = Math.min(100, Math.round(u * 100));
     if (u >= 1) state.complete = true;
   }
   return { x: state.x, y: state.y, z: state.z, rot: state.rot };
@@ -462,13 +469,16 @@ export function applyBeachActivityCamera(state, camera, dt) {
   if (!state || !camera) return;
   const pos = new THREE.Vector3(state.x, state.y, state.z);
   if (state.type === "coaster") {
-    const u = Math.min(0.985, Math.max(0, state.t / state.duration));
+    const u = Math.min(0.985, Math.max(0, state.rideU || 0));
     const tangent = state.curve.getTangentAt(u).normalize();
     const side = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
-    const look = state.curve.getPointAt(Math.min(0.999, u + 0.025));
-    const camPos = pos.clone().add(tangent.clone().multiplyScalar(-3.8)).add(side.multiplyScalar(Math.sin(u * Math.PI * 6) * 0.7)).add(new THREE.Vector3(0, 1.55, 0));
-    camera.position.lerp(camPos, Math.min(1, dt * 5.5));
-    camera.lookAt(look.x, look.y + 0.55, look.z);
+    const look = state.curve.getPointAt(Math.min(0.999, u + 0.032));
+    const fastDrop = (u > 0.18 && u < 0.34) || (u > 0.56 && u < 0.72);
+    const seatCam = pos.clone().add(tangent.clone().multiplyScalar(0.95)).add(new THREE.Vector3(0, 0.92, 0));
+    const chaseCam = pos.clone().add(tangent.clone().multiplyScalar(-4.3)).add(side.multiplyScalar(Math.sin(u * Math.PI * 6) * 0.55)).add(new THREE.Vector3(0, 1.85, 0));
+    const camPos = fastDrop ? seatCam : chaseCam;
+    camera.position.lerp(camPos, Math.min(1, dt * (fastDrop ? 8.5 : 5.8)));
+    camera.lookAt(look.x, look.y + (fastDrop ? 0.25 : 0.65), look.z);
     return;
   }
   if (state.type === "dive") {

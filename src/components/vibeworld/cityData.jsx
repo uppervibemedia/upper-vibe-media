@@ -1,11 +1,9 @@
 /**
  * Simple Park Layout
  */
-// Spawn near the Vibe Check zone so users see it first on entry.
-// Vibe Check center: (-16, -13), radius 4.
-// Spawn at (-10, -4) — clear of the zone trigger, clear of the dance floor (center 0,-13 r=10.5),
-// avatar faces toward Vibe Check (-X, -Z direction), camera sits behind on +X/+Z side.
-export const SPAWN = [-10, 0, -4];
+// Spawn near the Upper Vibe Beach transporter, but safely outside the pad trigger.
+// City transporter pad: (12, 8), radius 3.2. Spawn at (7, 8) keeps users close without auto-triggering transport.
+export const SPAWN = [7, 0, 8];
 export const PARK_RADIUS = 44;
 
 // Empty districts — will be populated later when city is built
