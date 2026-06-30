@@ -399,13 +399,13 @@ export function createCosmicSky(scene) {
     {
       // BEACH — large Upper Vibe Beach planet with ocean-blue and sandy-brown tones
       id: "ice",
-      bodyColors: ["#04334D", "#0B7194", "#B77B34", "#E0B46F", "#FFF1C2"],
-      glowColor: "rgba(64,215,255,0.72)", ringColor: "rgba(244,209,137,0.78)",
-      size: isMobile ? 42 : 64,          // special beach-world sky feature
+      bodyColors: ["#06405A", "#0B7FA0", "#D0A35A", "#F0C878", "#FFF1C2"],
+      glowColor: "rgba(40,190,230,0.55)", ringColor: "rgba(240,200,120,0.68)",
+      size: isMobile ? 38 : 58,          // very large — prominent sky feature
       angleOffset: Math.PI * 0.45,       // right end of world
-      horizonY: 34,                      // lower so it reads from regular camera view
-      radius: 88,
-      orbitSpeed: (Math.PI * 2) / 320,
+      horizonY: 45,                      // brought down — clearly visible in sky
+      radius: 95,
+      orbitSpeed: (Math.PI * 2) / 280,
     },
     {
       // HIGH-2 — golden nebula, upper-left back, very high
@@ -546,30 +546,18 @@ export function createCosmicSky(scene) {
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
     } else if (def.id === "ice") {
-      // Upper Vibe Beach planet: water-and-sand world with island continents, not gas bands
-      for (let p = 0; p < 12; p++) {
-        const px2 = cx + (rng() - 0.5) * R * 1.45;
-        const py2 = cy + (rng() - 0.5) * R * 1.45;
-        const pr = R * (0.10 + rng() * 0.26);
-        const landG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-        landG.addColorStop(0, `rgba(252,225,160,${0.32 + rng()*0.18})`);
-        landG.addColorStop(0.48, `rgba(192,132,68,${0.20 + rng()*0.12})`);
-        landG.addColorStop(0.68, `rgba(245,226,170,${0.12 + rng()*0.10})`);
-        landG.addColorStop(0.84, `rgba(105,224,240,${0.10 + rng()*0.08})`);
-        landG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = landG;
-        pctx.beginPath();
-        pctx.arc(px2, py2, pr, 0, Math.PI * 2);
-        pctx.fill();
-      }
-      for (let w = 0; w < 10; w++) {
-        const wy = cy - R + (w / 9) * R * 2;
-        const waveG = pctx.createLinearGradient(cx - R, wy, cx + R, wy + R * 0.08);
-        waveG.addColorStop(0, "rgba(255,255,255,0)");
-        waveG.addColorStop(0.5, w % 2 === 0 ? "rgba(160,242,255,0.13)" : "rgba(255,235,180,0.10)");
-        waveG.addColorStop(1, "rgba(255,255,255,0)");
-        pctx.fillStyle = waveG;
-        pctx.fillRect(cx - R, wy - R * 0.025, R * 2, R * 0.05);
+      // Upper Vibe Beach planet: alternating ocean-blue and sandy-brown bands
+      for (let b = 0; b < 9; b++) {
+        const by = cy - R + (b / 8) * R * 2;
+        const bw = R * (0.06 + rng() * 0.10);
+        const alpha = 0.08 + rng() * 0.12;
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        const sandBand = b % 2 === 0;
+        bandG.addColorStop(0, "rgba(0,0,0,0)");
+        bandG.addColorStop(0.5, sandBand ? `rgba(245,205,125,${alpha})` : `rgba(40,190,220,${alpha})`);
+        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
     } else if (def.id === "teal") {
       // Teal: smooth horizontal bands
@@ -711,11 +699,11 @@ export function createCosmicSky(scene) {
   // ── Beach flyby planets — bright, low, horizon-safe sprites ────────────────
   // Restored without dark terminator shading so they cannot render as a black blob.
   function buildBeachFlybyPlanet(colors, glowColor, size) {
-    const S = isMobile ? 160 : 256;
+    const S = isMobile ? 128 : 192;
     const pc = document.createElement("canvas");
     pc.width = S; pc.height = S;
     const pctx = pc.getContext("2d");
-    const cx = S / 2, cy = S / 2, R = S * 0.27;
+    const cx = S / 2, cy = S / 2, R = S * 0.24;
 
     const halo = pctx.createRadialGradient(cx, cy, R * 0.75, cx, cy, R * 1.8);
     halo.addColorStop(0, glowColor);
@@ -746,36 +734,6 @@ export function createCosmicSky(scene) {
       pctx.fillStyle = band;
       pctx.fillRect(cx - R, by - R * 0.06, R * 2, R * 0.12);
     }
-    for (let p = 0; p < 7; p++) {
-      const px2 = cx + (Math.sin(p * 2.1) * 0.42 + (p % 2 ? 0.08 : -0.05)) * R;
-      const py2 = cy + (Math.cos(p * 1.7) * 0.36) * R;
-      const pr = R * (0.14 + (p % 3) * 0.035);
-      const patch = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-      patch.addColorStop(0, p % 2 === 0 ? "rgba(244,211,145,0.28)" : "rgba(85,220,240,0.20)");
-      patch.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = patch;
-      pctx.beginPath();
-      pctx.arc(px2, py2, pr, 0, Math.PI * 2);
-      pctx.fill();
-    }
-
-    pctx.restore();
-
-    pctx.save();
-    pctx.beginPath();
-    pctx.arc(cx, cy, R, 0, Math.PI * 2);
-    pctx.clip();
-    const shadow = pctx.createRadialGradient(cx + R * 0.5, cy + R * 0.5, 0, cx + R * 0.65, cy + R * 0.65, R * 1.08);
-    shadow.addColorStop(0, "rgba(0,0,0,0)");
-    shadow.addColorStop(0.58, "rgba(0,0,0,0.12)");
-    shadow.addColorStop(1, "rgba(0,0,0,0.34)");
-    pctx.fillStyle = shadow;
-    pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-    const shine = pctx.createRadialGradient(cx - R * 0.36, cy - R * 0.34, 0, cx - R * 0.36, cy - R * 0.34, R * 0.48);
-    shine.addColorStop(0, "rgba(255,255,255,0.18)");
-    shine.addColorStop(1, "rgba(255,255,255,0)");
-    pctx.fillStyle = shine;
-    pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
     const tex = new THREE.CanvasTexture(pc);
@@ -801,16 +759,16 @@ export function createCosmicSky(scene) {
 
   const now0 = performance.now() * 0.001;
   scene.userData.beachFlybyA = {
-    ...buildBeachFlybyPlanet(["#08445E", "#0D8AA5", "#D7AA66", "#FFF0B8"], "rgba(78,219,255,0.42)", isMobile ? 7 : 10),
-    duration: 38, cycle: 88, baseStart: now0 + 5,
-    startCX: -64, endCX: 64, cy: 12, cz: 86, arcHeight: 5, zCurve: 2,
-    _fadeInEnd: 0.14, _fadeOutStart: 0.86,
+    ...buildBeachFlybyPlanet(["#0E6A78", "#16A0A8", "#40E0D0", "#B8FFF4"], "rgba(70,230,210,0.42)", isMobile ? 13 : 18),
+    duration: 28, cycle: 76, baseStart: now0 + 5,
+    startCX: -54, endCX: 54, cy: 9, cz: 62,
+    _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
   scene.userData.beachFlybyB = {
-    ...buildBeachFlybyPlanet(["#6A3510", "#B87932", "#0B86A5", "#F6D28C"], "rgba(255,205,118,0.38)", isMobile ? 6 : 9),
-    duration: 38, cycle: 88, baseStart: now0 + 49,
-    startCX: 56, endCX: -72, cy: 13, cz: 88, arcHeight: 4, zCurve: 2,
-    _fadeInEnd: 0.14, _fadeOutStart: 0.86,
+    ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
+    duration: 28, cycle: 76, baseStart: now0 + 43,
+    startCX: 34, endCX: -74, cy: 11, cz: 64,
+    _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
 }
 
@@ -1028,21 +986,19 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const prog = Math.min(phase / fb.duration, 1);
     const fadeIn = Math.min(prog / fb._fadeInEnd, 1);
     const fadeOut = prog > fb._fadeOutStart ? Math.max(0, 1 - (prog - fb._fadeOutStart) / (1 - fb._fadeOutStart)) : 1;
-    fb.mat.opacity = shouldShow ? Math.min(fadeIn, fadeOut) * 0.46 : 0;
+    fb.mat.opacity = shouldShow ? Math.min(fadeIn, fadeOut) * 0.72 : 0;
 
-    const smooth = prog * prog * (3 - 2 * prog);
-    const ox = fb.startCX + (fb.endCX - fb.startCX) * smooth;
-    const arcLift = Math.sin(Math.PI * smooth) * (fb.arcHeight || 18);
+    const ox = fb.startCX + (fb.endCX - fb.startCX) * prog;
+    const centerProximity = Math.max(0, 1 - Math.abs(ox) / 30);
+    const centerLift = centerProximity * centerProximity * 14;
     const camPitch = scene.userData._camPitch ?? 0;
-    const pitchLift = Math.max(0, -camPitch) * 40;
-    const curveZ = Math.sin(Math.PI * smooth) * (fb.zCurve || -8);
+    const pitchLift = Math.max(0, -camPitch) * 60;
 
     fb.sprite.position.set(
       camera.position.x + ox,
-      camera.position.y + fb.cy + arcLift + pitchLift,
-      camera.position.z + fb.cz + curveZ
+      camera.position.y + fb.cy + centerLift + pitchLift,
+      camera.position.z + fb.cz
     );
-    fb.sprite.material.rotation = Math.sin(smooth * Math.PI * 2) * 0.18;
   }
 
   const beachFlybyA = scene.userData.beachFlybyA;

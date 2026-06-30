@@ -84,91 +84,55 @@ function addSimplePalm(group, x, z, scale = 1) {
   group.add(crown);
 }
 
-function makeBeachWorldTexture() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 768;
-  canvas.height = 384;
-  const ctx = canvas.getContext("2d");
-  const ocean = ctx.createLinearGradient(0, 0, 768, 384);
-  ocean.addColorStop(0, "#052A46");
-  ocean.addColorStop(0.28, "#086987");
-  ocean.addColorStop(0.58, "#0A91AC");
-  ocean.addColorStop(1, "#07314D");
-  ctx.fillStyle = ocean;
-  ctx.fillRect(0, 0, 768, 384);
-
-  const continents = [
-    [108, 112, 150, 54, -0.18], [300, 220, 190, 70, 0.16], [520, 120, 170, 58, -0.28],
-    [650, 270, 145, 52, 0.22], [180, 310, 120, 42, 0.1], [410, 58, 130, 38, -0.1],
-  ];
-  continents.forEach(([x, y, w, h, rot], i) => {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(rot);
-    ctx.scale(1, h / w);
-    const coast = ctx.createRadialGradient(0, 0, w * 0.36, 0, 0, w * 1.08);
-    coast.addColorStop(0, i % 2 === 0 ? "rgba(247,214,151,1)" : "rgba(222,177,111,1)");
-    coast.addColorStop(0.56, "rgba(196,137,70,0.96)");
-    coast.addColorStop(0.72, "rgba(242,222,166,0.58)");
-    coast.addColorStop(0.84, "rgba(102,219,235,0.38)");
-    coast.addColorStop(1, "rgba(102,219,235,0)");
-    ctx.fillStyle = coast;
-    ctx.beginPath();
-    ctx.arc(0, 0, w, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  });
-
-  for (let i = 0; i < 34; i++) {
-    const x = (i * 97) % 768;
-    const y = 28 + ((i * 53) % 328);
-    const len = 42 + (i % 5) * 22;
-    const wave = ctx.createLinearGradient(x - len, y, x + len, y + 6);
-    wave.addColorStop(0, "rgba(255,255,255,0)");
-    wave.addColorStop(0.5, i % 3 === 0 ? "rgba(199,246,255,0.24)" : "rgba(255,240,198,0.17)");
-    wave.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((i % 7 - 3) * 0.08);
-    ctx.fillStyle = wave;
-    ctx.fillRect(-len, -2, len * 2, 4);
-    ctx.restore();
-  }
-
-  const glow = ctx.createRadialGradient(230, 110, 0, 230, 110, 360);
-  glow.addColorStop(0, "rgba(255,255,255,0.16)");
-  glow.addColorStop(0.35, "rgba(154,233,255,0.08)");
-  glow.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, 768, 384);
-
-  const texture = new CanvasTexture(canvas);
-  texture.minFilter = LinearFilter;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
 function addCityBeachPlanet(group) {
   const planetGroup = new Group();
   planetGroup.name = "cityBeachBlueSandPlanet";
-  planetGroup.position.set(12, 7.7, 34.5);
+  planetGroup.position.set(12, 8.4, 23.5);
 
   const halo = new Mesh(
-    new THREE.SphereGeometry(4.7, 32, 24),
-    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.1, depthWrite: false, side: THREE.BackSide })
+    new THREE.SphereGeometry(4.9, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.BackSide })
   );
   halo.name = "cityBeachPlanetHalo";
   planetGroup.add(halo);
 
+  const aura = new Mesh(
+    new THREE.SphereGeometry(4.25, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.08, depthWrite: false })
+  );
+  aura.name = "cityBeachPlanetAura";
+  planetGroup.add(aura);
+
   const ocean = new Mesh(
-    new THREE.SphereGeometry(3.75, 64, 40),
-    new MeshStandardMaterial({ map: makeBeachWorldTexture(), color: new Color("#ffffff"), roughness: 0.44, metalness: 0.12 })
+    new THREE.SphereGeometry(3.35, 56, 36),
+    standardMat("#0B7FA0", { roughness: 0.5, metalness: 0.1 })
   );
   ocean.name = "cityBeachPlanetOcean";
   ocean.castShadow = true;
   planetGroup.add(ocean);
 
-  const glow = new THREE.PointLight(new Color("#40D4FF"), 1.2, 12);
+  [-1.35, -0.72, -0.12, 0.52, 1.12].forEach((y, idx) => {
+    const radius = Math.sqrt(Math.max(0.6, 3.35 * 3.35 - y * y));
+    const band = new Mesh(
+      new THREE.TorusGeometry(radius, 0.13 + idx * 0.01, 12, 112),
+      standardMat(idx % 2 === 0 ? "#D2B48C" : "#F0C878", { roughness: 0.72, metalness: 0.02 })
+    );
+    band.rotation.x = Math.PI / 2;
+    band.rotation.z = idx % 2 === 0 ? 0.08 : -0.05;
+    band.position.y = y;
+    planetGroup.add(band);
+  });
+
+  const destinationRing = new Mesh(
+    new THREE.TorusGeometry(4.05, 0.055, 10, 128),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.52, depthWrite: false })
+  );
+  destinationRing.name = "cityBeachPlanetDestinationRing";
+  destinationRing.rotation.x = Math.PI / 2.35;
+  destinationRing.rotation.z = -0.18;
+  planetGroup.add(destinationRing);
+
+  const glow = new THREE.PointLight(new Color("#40D4FF"), 1.6, 18);
   glow.position.set(0, 0.4, 1.8);
   planetGroup.add(glow);
 
@@ -278,6 +242,10 @@ export function animateSimpleCityShoreline(scene, t) {
   if (planet) {
     planet.rotation.y = t * 0.075;
     const halo = planet.getObjectByName("cityBeachPlanetHalo");
-    if (halo?.material) halo.material.opacity = 0.08 + tide * 0.035;
+    const aura = planet.getObjectByName("cityBeachPlanetAura");
+    const ring = planet.getObjectByName("cityBeachPlanetDestinationRing");
+    if (halo?.material) halo.material.opacity = 0.13 + tide * 0.06;
+    if (aura?.material) aura.material.opacity = 0.06 + tide * 0.05;
+    if (ring) ring.rotation.z = -0.18 + Math.sin(t * 0.35) * 0.08;
   }
 }
