@@ -43,7 +43,7 @@ const ZONES = {
   zenbeach: {
     name: "Zen Beach",
     id: "zenbeach",
-    cx: -20, cz: 22, radius: 5,
+    cx: -34, cz: 30, radius: 6,
     icon: "Waves",
   },
   beach: {
@@ -71,9 +71,9 @@ const ZONES = {
     icon: "ShoppingBag",
   },
   hoverboard: {
-    name: "Neon Surf Beach",
+    name: "Surf Zone",
     id: "hoverboard",
-    cx: 28, cz: 23, radius: 8,
+    cx: -54, cz: 12, radius: 8,
     icon: "Zap",
   },
   crystalzone: {

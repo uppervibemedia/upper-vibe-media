@@ -36,7 +36,7 @@ export function createBeachRollerCoaster(scene) {
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const group = new THREE.Group();
   group.name = "beachResortRollerCoaster";
-  group.position.set(-38, 0, -8);
+  group.position.set(36, 0, 22);
 
   const basePoints = [
     new THREE.Vector3(-10, 1.8, -7), new THREE.Vector3(-6, 5.2, -10),
@@ -72,7 +72,7 @@ export function createBeachRollerCoaster(scene) {
   group.add(cart);
 
   const sign = makeLabel("VIBE COASTER", "#00DDF5");
-  sign.position.set(-7.2, 2.45, -4.8);
+  sign.position.set(-7.2, 2.15, -4.8);
   group.add(sign);
 
   const light = new THREE.PointLight(new THREE.Color("#00DDF5"), 1.35, 18);

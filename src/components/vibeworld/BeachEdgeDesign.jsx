@@ -23,6 +23,13 @@ function addDune(group, x, z, sx, sz) {
   group.add(dune);
 }
 
+function addBush(group, x, z, scale = 1) {
+  const bush = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), standard("#2F7A4E"));
+  bush.position.set(x, 0.32 * scale, z);
+  bush.scale.set(1.4 * scale, 0.55 * scale, 1.0 * scale);
+  group.add(bush);
+}
+
 function addPalmCluster(group, x, z, scale = 1) {
   const tallScale = scale * 1.75;
   for (let i = 0; i < 3; i++) {
@@ -105,7 +112,14 @@ function addCliffWall(group) {
     cliff.rotation.y = (i - 5) * 0.08;
     group.add(cliff);
 
+    const ledge = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), cliffMats[(i + 1) % cliffMats.length]);
+    ledge.position.set(x - 1.2, height * 0.58, -26.4 - (i % 2) * 0.6);
+    ledge.scale.set(width * 0.34, 0.75, 1.05);
+    ledge.rotation.y = cliff.rotation.y + 0.25;
+    group.add(ledge);
     addRock(group, x + 3.5, -24.5 + (i % 2), 2.3, 1.05, 1.35, i % 2 ? "#79716A" : "#646C66");
+    addRock(group, x - 2.8, -25.2 + (i % 2), 1.35, 0.62, 0.9, i % 2 ? "#59635F" : "#8B8071");
+    if (i % 2 === 0) addBush(group, x + 0.4, -24.1, 0.9);
   });
 
   addWaterfall(group, -34, 3.0, 6.8);
@@ -132,7 +146,13 @@ function addSideCliffEdges(group) {
       cliff.scale.z = 1.35;
       cliff.rotation.y = side * 0.45 + i * 0.08;
       group.add(cliff);
+      const ledge = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), cliffMats[(i + 1) % cliffMats.length]);
+      ledge.position.set(side * 61.5, height * 0.52, z - 1.5);
+      ledge.scale.set(1.0, 0.7, 2.2);
+      group.add(ledge);
       addRock(group, side * 60.5, z + 2, 1.8, 0.8, 1.35, i % 2 ? "#81776B" : "#677069");
+      addRock(group, side * 58.5, z - 1.6, 1.05, 0.55, 0.8, i % 2 ? "#5D6862" : "#918473");
+      if (i % 2 === 1) addBush(group, side * 57, z + 0.5, 0.82);
     });
 
     addWaterfall(group, side * 63.2, 2.35, 5.8, { z: 7, rotY: side > 0 ? Math.PI / 2 : -Math.PI / 2, poolX: side * 59.5, poolZ: 7 });

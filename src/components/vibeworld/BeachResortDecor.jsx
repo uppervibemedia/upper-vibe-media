@@ -55,6 +55,25 @@ function addGlowStone(group, x, z, color = "#B58CFF") {
   ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.045, z); ring.renderOrder = 6; group.add(ring);
 }
 
+function addBeachTowel(group, x, z, color, rot = 0) {
+  const towel = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 1.75), basic(color, { transparent: true, opacity: 0.92 }));
+  towel.rotation.x = -Math.PI / 2;
+  towel.rotation.z = rot;
+  towel.position.set(x, 0.055, z);
+  towel.renderOrder = 6;
+  group.add(towel);
+}
+
+function addBoardwalk(group, x, z, w, rot = 0) {
+  const deckMat = standard("#B98E5C");
+  for (let i = 0; i < 6; i++) {
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(w / 6 - 0.08, 0.05, 1.25), deckMat.clone());
+    plank.position.set(x + Math.cos(rot) * (i - 2.5) * (w / 6), 0.08, z - Math.sin(rot) * (i - 2.5) * (w / 6));
+    plank.rotation.y = rot;
+    group.add(plank);
+  }
+}
+
 function addSmallVilla(group, x, z, rot = 0) {
   const base = new THREE.Mesh(new THREE.BoxGeometry(3.7, 1.25, 2.6), standard("#EFE5D4"));
   base.position.set(x, 0.64, z); base.rotation.y = rot; group.add(base);
@@ -81,41 +100,51 @@ export function createBeachResortDecor(scene) {
   const group = new THREE.Group();
   group.name = "beachResortDecor";
 
-  const pathMat = basic("#D8CFB7", { transparent: true, opacity: 0.26 });
-  [[16, -5, 36, 2.0], [-16, -5, 36, 2.0], [0, 9, 44, 2.2], [-26, 18, 30, 2.0], [26, 16, 28, 2.0]].forEach(([x, z, w, d], i) => {
+  const pathMat = basic("#E3D3B2", { transparent: true, opacity: 0.18 });
+  [[30, -8, 24, 1.4, -0.12], [12, -5, 28, 1.35, 0.08], [-17, 3, 32, 1.35, 0.2], [-41, 12, 26, 1.25, -0.1], [-26, 26, 24, 1.2, 0.22], [18, 24, 30, 1.2, -0.16]].forEach(([x, z, w, d, rot], i) => {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pathMat.clone());
-    p.rotation.x = -Math.PI / 2; p.position.set(x, 0.03 + i * 0.001, z); p.renderOrder = 3; group.add(p);
+    p.rotation.x = -Math.PI / 2; p.rotation.z = rot; p.position.set(x, 0.03 + i * 0.001, z); p.renderOrder = 3; group.add(p);
   });
-  [[32,-8],[8,-8],[0,10],[-54,12],[-38,-8],[27,31]].forEach(([x,z]) => addGlowStone(group, x, z));
+  [[32,-8],[14,-6],[-10,2],[-54,12],[-38,-8],[-34,30],[34,24],[0,15]].forEach(([x,z]) => addGlowStone(group, x, z));
+  addBoardwalk(group, 33, -6, 8, -0.12);
+  addBoardwalk(group, -44, 11, 8, 0.12);
 
-  addPalm(group, 6, -12, 0.9); addPalm(group, 14, -10, 0.85); addPalm(group, 20, -12, 0.85);
-  addUmbrella(group, 8, -7, "#DCE6EA"); addUmbrella(group, 16, -6, "#68D7E8");
-  addChair(group, 7, -5.2, "#C8CDD2", 0.25); addChair(group, 11, -5.5, "#7DD7E8", -0.2);
-  addChair(group, 15, -4.8, "#D9C27C", 0.1); addChair(group, 19, -5.6, "#9CA8B8", -0.35);
-  const loungeLabel = makeLabel("RESORT LOUNGE", "#FFD08A", [5.2, 1.0]);
-  loungeLabel.position.set(13, 2.28, -9); group.add(loungeLabel);
+  addPalm(group, 18, -14, 0.88); addPalm(group, 27, -12, 0.82); addPalm(group, 36, -11, 0.86);
+  addUmbrella(group, 22, -7, "#DCE6EA"); addUmbrella(group, 31, -6, "#68D7E8");
+  addChair(group, 21, -5.2, "#C8CDD2", 0.25); addChair(group, 26, -5.5, "#7DD7E8", -0.2);
+  addChair(group, 31, -4.8, "#D9C27C", 0.1); addChair(group, 36, -5.6, "#9CA8B8", -0.35);
+  const loungeLabel = makeLabel("RESORT LOUNGE", "#FFD08A", [5.0, 0.9]);
+  loungeLabel.position.set(29, 2.0, -9); group.add(loungeLabel);
 
   const cabana = new THREE.Mesh(new THREE.BoxGeometry(4.3, 1.75, 2.4), standard("#D5D0C2"));
-  cabana.position.set(20, 0.9, -14); group.add(cabana);
+  cabana.position.set(36, 0.9, -14); group.add(cabana);
   const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.0, 4), standard("#5F7280"));
-  roof.position.set(20, 2.25, -14); roof.rotation.y = Math.PI / 4; group.add(roof);
+  roof.position.set(36, 2.25, -14); roof.rotation.y = Math.PI / 4; group.add(roof);
 
-  addSmallVilla(group, -16, -13, -0.18);
-  addSmallVilla(group, -27, 4, 0.35);
-  addOpenAirStructure(group, -38, 14, "SURF SHOP", "#68D7E8", 0.22);
-  addOpenAirStructure(group, 30, 10, "BEACH BAR", "#FFD08A", -0.28);
+  addSmallVilla(group, -8, -14, -0.18);
+  addSmallVilla(group, -24, 4, 0.35);
+  addOpenAirStructure(group, -49, 13, "SURF ZONE", "#68D7E8", 0.2);
+  addOpenAirStructure(group, 40, 13, "BEACH BAR", "#FFD08A", -0.28);
 
-  addUmbrella(group, -4, 12, "#D9C27C"); addUmbrella(group, 5, 13, "#80DCEB"); addPalm(group, -7, 16, 0.85);
-  [-2, 2, 6, -6].forEach((x, i) => addChair(group, x, 10 + (i % 2) * 2, i % 2 ? "#7DD7E8" : "#C8CDD2", i * 0.4));
-  const fire = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 36), basic("#78E7FF", { transparent: true, opacity: 0.46 }));
-  fire.rotation.x = -Math.PI / 2; fire.position.set(0, 0.06, 12); fire.renderOrder = 5; group.add(fire);
-  const hangoutLabel = makeLabel("BEACH HANGOUT", "#FFB347", [5.2, 1.0]);
-  hangoutLabel.position.set(0, 2.25, 8.4); group.add(hangoutLabel);
+  addUmbrella(group, -5, 15, "#D9C27C"); addUmbrella(group, 7, 15, "#80DCEB"); addPalm(group, -9, 18, 0.85); addPalm(group, 11, 18, 0.78);
+  [[-7,13.5,"#7DD7E8",0.5],[-3,11.5,"#C8CDD2",-0.2],[3,11.5,"#D9C27C",0.25],[7,13.5,"#9CA8B8",-0.55]].forEach(([x,z,c,r]) => addChair(group, x, z, c, r));
+  addBeachTowel(group, -1, 16.2, "#F7B267", 0.28);
+  addBeachTowel(group, 4.4, 16.0, "#7DD7E8", -0.18);
+  const shade = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.14, 3.2), standard("#E7D4A3"));
+  shade.position.set(0, 1.85, 15.2); group.add(shade);
+  for (const [x,z] of [[-2.6,13.8],[2.6,13.8],[-2.6,16.6],[2.6,16.6]]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.75, 8), standard("#85613E"));
+    post.position.set(x, 0.9, z); group.add(post);
+  }
+  const fire = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.52, 36), basic("#78E7FF", { transparent: true, opacity: 0.5 }));
+  fire.rotation.x = -Math.PI / 2; fire.position.set(0, 0.06, 13.5); fire.renderOrder = 5; group.add(fire);
+  const hangoutLabel = makeLabel("BEACH HANGOUT", "#FFB347", [5.0, 0.9]);
+  hangoutLabel.position.set(0, 2.05, 10.3); group.add(hangoutLabel);
 
-  const arrivalLabel = makeLabel("ARRIVAL / TELEPORT", "#EDB84A", [5.8, 1.0]);
-  arrivalLabel.position.set(31, 2.35, -12.5); group.add(arrivalLabel);
+  const arrivalLabel = makeLabel("ARRIVAL / TELEPORT", "#EDB84A", [5.4, 0.9]);
+  arrivalLabel.position.set(31, 2.05, -11.2); group.add(arrivalLabel);
 
-  [[13, 1.5, -8], [0, 1.1, 12], [32, 1.4, -8], [-24, 1.1, 18]].forEach(([x, y, z]) => {
+  [[29, 1.5, -8], [0, 1.1, 14], [32, 1.4, -8], [-34, 1.1, 28], [-49, 1.2, 13], [40, 1.2, 13]].forEach(([x, y, z]) => {
     const light = new THREE.PointLight(new THREE.Color("#FFD08A"), 0.82, 10);
     light.position.set(x, y, z); group.add(light);
   });
