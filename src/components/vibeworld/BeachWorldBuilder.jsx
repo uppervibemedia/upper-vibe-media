@@ -95,7 +95,7 @@ export function createBeachWorld(scene) {
   islandShape.bezierCurveTo(-70, -16, -46, -32, -8, -34);
   const sand = new Mesh(
     new THREE.ExtrudeGeometry(islandShape, { depth: 0.28, bevelEnabled: false, curveSegments: isMob ? 8 : 16 }),
-    mat("#E6C98F", { roughness: 0.86, metalness: 0.0 })
+    mat("#D7C5A4", { roughness: 0.78, metalness: 0.04 })
   );
   sand.material.side = THREE.DoubleSide;
   sand.rotation.x = -Math.PI / 2;
@@ -104,7 +104,7 @@ export function createBeachWorld(scene) {
   sand.name = "beach";
   scene.add(sand);
 
-  const pathMat = new MeshBasicMaterial({ color: new Color("#E0C999"), transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+  const pathMat = new MeshBasicMaterial({ color: new Color("#D8CFB7"), transparent: true, opacity: 0.26, depthWrite: false, side: THREE.DoubleSide });
   [[14, -5, 38, 3.0], [-18, -5, 42, 3.0], [0, 9, 46, 3.2], [-28, 18, 34, 2.8], [27, 18, 32, 2.8], [0, 25, 58, 2.6]].forEach(([x, z, w, d]) => {
     const path = new Mesh(new PlaneGeometry(w, d), pathMat.clone());
     path.rotation.x = -Math.PI / 2;
@@ -115,7 +115,7 @@ export function createBeachWorld(scene) {
   });
 
   const oceanGeo = new PlaneGeometry(160, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
-  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#3E8FC0" : "#4EA4D8"), side: THREE.DoubleSide }));
+  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#287C9D" : "#2F91B6"), side: THREE.DoubleSide }));
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
   ocean.name = "ocean";

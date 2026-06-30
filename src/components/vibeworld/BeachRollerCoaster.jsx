@@ -5,7 +5,7 @@ function basic(color, opts = {}) {
 }
 
 function standard(color) {
-  const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.55, metalness: 0.12 });
+  const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.38, metalness: 0.36 });
   return mat;
 }
 
@@ -49,7 +49,7 @@ export function createBeachRollerCoaster(scene) {
     const curve = new THREE.CatmullRomCurve3(basePoints.map((p) => p.clone().add(new THREE.Vector3(offset, 0, 0))), true, "catmullrom", 0.55);
     const track = new THREE.Mesh(
       new THREE.TubeGeometry(curve, isMob ? 64 : 96, 0.075, 8, true),
-      basic(offset < 0 ? "#00DDF5" : "#F6C45D", { transparent: true, opacity: 0.92 })
+      basic(offset < 0 ? "#7DEBFF" : "#D9C27C", { transparent: true, opacity: 0.88 })
     );
     track.name = "beachCoasterTrack";
     group.add(track);
@@ -57,16 +57,16 @@ export function createBeachRollerCoaster(scene) {
 
   basePoints.forEach((p, i) => {
     if (i % 2 === 1 && isMob) return;
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, Math.max(0.8, p.y), 8), standard("#6A4A33"));
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, Math.max(0.8, p.y), 8), standard("#5D6872"));
     post.position.set(p.x, p.y / 2, p.z);
     group.add(post);
   });
 
-  const station = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.45, 2.4), standard("#C58B45"));
+  const station = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.45, 2.4), standard("#A9B2B8"));
   station.position.set(-9, 0.35, -5.4);
   group.add(station);
 
-  const cart = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.52, 0.92), standard("#FF5DA2"));
+  const cart = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.52, 0.92), standard("#16232C"));
   cart.position.set(2, 6.7, -7.6);
   cart.rotation.y = 0.42;
   group.add(cart);

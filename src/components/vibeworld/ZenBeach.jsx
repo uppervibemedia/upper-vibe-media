@@ -115,7 +115,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
 
   const calmSand = new Mesh(
     new CircleGeometry(6.2, 56),
-    mat("#EAD09A", { roughness: 0.9, metalness: 0.0, transparent: true, opacity: 0.72 })
+    mat("#D8C6A5", { roughness: 0.78, metalness: 0.04, transparent: true, opacity: 0.72 })
   );
   calmSand.rotation.x = -Math.PI / 2;
   calmSand.position.set(ZEN_X, 0.004, ZEN_Z);
@@ -125,7 +125,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // Circular meditation platform — warm natural base so Zen Beach sits cleanly on the sand strip
   const zenPlat = new Mesh(
     new CircleGeometry(4.1, 48),
-    mat("#D9B875", { roughness: 0.82, metalness: 0.02, transparent: true, opacity: 0.9 })
+    mat("#C9C4B8", { roughness: 0.58, metalness: 0.16, transparent: true, opacity: 0.9 })
   );
   zenPlat.rotation.x = -Math.PI / 2;
   zenPlat.position.set(ZEN_X, 0.008, ZEN_Z);

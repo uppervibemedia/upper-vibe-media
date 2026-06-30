@@ -70,7 +70,7 @@ export function createBeachReturnPlanet(scene) {
 
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(3.32, 0.055, 10, 96),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color("#FFD18A"), transparent: true, opacity: 0.82, depthWrite: false })
+    new THREE.MeshBasicMaterial({ color: new THREE.Color("#D9C27C"), transparent: true, opacity: 0.78, depthWrite: false })
   );
   ring.rotation.set(1.15, 0.15, 0.4);
   ring.userData.isReturnCityPortal = true;

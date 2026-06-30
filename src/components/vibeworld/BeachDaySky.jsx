@@ -6,10 +6,10 @@ export function createBeachDaySky(scene) {
   canvas.height = 512;
   const ctx = canvas.getContext("2d");
   const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  sky.addColorStop(0, "#48AEFF");
-  sky.addColorStop(0.42, "#8ED7FF");
-  sky.addColorStop(0.74, "#CDEEFF");
-  sky.addColorStop(1, "#FFD6A8");
+  sky.addColorStop(0, "#4AAEFF");
+  sky.addColorStop(0.45, "#91D8FF");
+  sky.addColorStop(0.82, "#D8F0FF");
+  sky.addColorStop(1, "#F2D8B8");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 

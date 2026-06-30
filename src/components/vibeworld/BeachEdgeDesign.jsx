@@ -38,9 +38,9 @@ function addPalmCluster(group, x, z, scale = 1) {
 }
 
 function addResortHut(group, x, z, rot = 0) {
-  const base = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.25, 2.4), standard("#D9B875"));
+  const base = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.25, 2.4), standard("#D5D0C2"));
   base.position.set(x, 0.64, z); base.rotation.y = rot; group.add(base);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.45, 0.85, 4), standard("#B9753C"));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.45, 0.85, 4), standard("#5F7280"));
   roof.position.set(x, 1.62, z); roof.rotation.y = Math.PI / 4 + rot; group.add(roof);
 }
 
@@ -48,13 +48,13 @@ export function createBeachEdgeDesign(scene) {
   const group = new THREE.Group();
   group.name = "beachNaturalEdges";
 
-  const waterMat = basic("#3E9ED3", { transparent: true, opacity: 0.5 });
+  const waterMat = basic("#2F91B6", { transparent: true, opacity: 0.48 });
   [[-68, 12, 18, 100], [68, 12, 18, 100], [0, -34, 150, 16], [0, 56, 150, 18]].forEach(([x, z, w, d]) => {
     const water = new THREE.Mesh(new THREE.PlaneGeometry(w, d), waterMat.clone());
     water.rotation.x = -Math.PI / 2; water.position.set(x, 0.001, z); group.add(water);
   });
 
-  const edgeGlow = new THREE.Mesh(new THREE.RingGeometry(58.5, 60, 128), basic("#56DFFF", { transparent: true, opacity: 0.16 }));
+  const edgeGlow = new THREE.Mesh(new THREE.RingGeometry(58.5, 60, 128), basic("#7DEBFF", { transparent: true, opacity: 0.13 }));
   edgeGlow.rotation.x = -Math.PI / 2;
   edgeGlow.scale.y = 0.72;
   edgeGlow.position.set(0, 0.04, 9);

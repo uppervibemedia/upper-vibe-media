@@ -5,7 +5,7 @@ function basic(color, opts = {}) {
 }
 
 function standard(color) {
-  return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.76, metalness: 0.04 });
+  return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.58, metalness: 0.16 });
 }
 
 function makeLabel(text, colorHex, scale = [4.8, 0.94]) {
@@ -58,7 +58,7 @@ export function createBeachResortDecor(scene) {
   const group = new THREE.Group();
   group.name = "beachResortDecor";
 
-  const pathMat = basic("#F7DFA2", { transparent: true, opacity: 0.34 });
+  const pathMat = basic("#D8CFB7", { transparent: true, opacity: 0.26 });
   [[16, -5, 36, 2.0], [-16, -5, 36, 2.0], [0, 9, 44, 2.2], [-26, 18, 30, 2.0], [26, 16, 28, 2.0]].forEach(([x, z, w, d], i) => {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pathMat.clone());
     p.rotation.x = -Math.PI / 2; p.position.set(x, 0.03 + i * 0.001, z); p.renderOrder = 3; group.add(p);
@@ -66,20 +66,20 @@ export function createBeachResortDecor(scene) {
   [[32,-8],[8,-8],[0,10],[-38,22],[-38,-8],[27,31]].forEach(([x,z]) => addGlowStone(group, x, z));
 
   addPalm(group, 6, -12, 0.9); addPalm(group, 14, -10, 0.85); addPalm(group, 20, -12, 0.85);
-  addUmbrella(group, 8, -7, "#FF7DB5"); addUmbrella(group, 16, -6, "#00DDF5");
-  addChair(group, 7, -5.2, "#F6C45D", 0.25); addChair(group, 11, -5.5, "#7DD3FC", -0.2);
-  addChair(group, 15, -4.8, "#F9A8D4", 0.1); addChair(group, 19, -5.6, "#B58CFF", -0.35);
+  addUmbrella(group, 8, -7, "#DCE6EA"); addUmbrella(group, 16, -6, "#68D7E8");
+  addChair(group, 7, -5.2, "#C8CDD2", 0.25); addChair(group, 11, -5.5, "#7DD7E8", -0.2);
+  addChair(group, 15, -4.8, "#D9C27C", 0.1); addChair(group, 19, -5.6, "#9CA8B8", -0.35);
   const loungeLabel = makeLabel("RESORT LOUNGE", "#FFD08A", [5.2, 1.0]);
   loungeLabel.position.set(13, 2.28, -9); group.add(loungeLabel);
 
-  const cabana = new THREE.Mesh(new THREE.BoxGeometry(4.3, 1.75, 2.4), standard("#F0D7A0"));
+  const cabana = new THREE.Mesh(new THREE.BoxGeometry(4.3, 1.75, 2.4), standard("#D5D0C2"));
   cabana.position.set(20, 0.9, -14); group.add(cabana);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.0, 4), standard("#C87938"));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.0, 4), standard("#5F7280"));
   roof.position.set(20, 2.25, -14); roof.rotation.y = Math.PI / 4; group.add(roof);
 
-  addUmbrella(group, -4, 12, "#F6C45D"); addUmbrella(group, 5, 13, "#B58CFF"); addPalm(group, -7, 16, 0.85);
-  [-2, 2, 6, -6].forEach((x, i) => addChair(group, x, 10 + (i % 2) * 2, i % 2 ? "#7DD3FC" : "#FF7DB5", i * 0.4));
-  const fire = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 36), basic("#FFB347", { transparent: true, opacity: 0.58 }));
+  addUmbrella(group, -4, 12, "#D9C27C"); addUmbrella(group, 5, 13, "#80DCEB"); addPalm(group, -7, 16, 0.85);
+  [-2, 2, 6, -6].forEach((x, i) => addChair(group, x, 10 + (i % 2) * 2, i % 2 ? "#7DD7E8" : "#C8CDD2", i * 0.4));
+  const fire = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 36), basic("#78E7FF", { transparent: true, opacity: 0.46 }));
   fire.rotation.x = -Math.PI / 2; fire.position.set(0, 0.06, 12); fire.renderOrder = 5; group.add(fire);
   const hangoutLabel = makeLabel("BEACH HANGOUT", "#FFB347", [5.2, 1.0]);
   hangoutLabel.position.set(0, 2.25, 8.4); group.add(hangoutLabel);
