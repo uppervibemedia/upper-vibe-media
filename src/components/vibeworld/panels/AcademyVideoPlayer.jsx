@@ -60,7 +60,8 @@ export default function AcademyVideoPlayer({
       if (typeof data === "string") {
         try { data = JSON.parse(data); } catch { return; }
       }
-      if (data?.event === "onStateChange" && data?.info === 1) {
+      const playerState = typeof data?.info === "object" ? data.info.playerState : data?.info;
+      if ((data?.event === "onStateChange" || data?.event === "infoDelivery") && playerState === 1) {
         pauseGlobalForYoutube();
       }
     };
@@ -90,6 +91,7 @@ export default function AcademyVideoPlayer({
   const exitFullscreen = () => {
     leaveVideoExperience();
     setFullscreen(false);
+    setPlaylistOpen(false);
   };
 
   const rootStyle = fullscreen ? {
