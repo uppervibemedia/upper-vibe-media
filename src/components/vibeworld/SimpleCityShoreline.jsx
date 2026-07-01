@@ -147,8 +147,8 @@ function addCityBeachPlanet(group) {
   planetGroup.position.set(10, 11.2, 58.5);
 
   const halo = new Mesh(
-    new THREE.SphereGeometry(3.65, 36, 20),
-    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide })
+    new THREE.SphereGeometry(2.52, 36, 20),
+    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })
   );
   halo.name = "cityBeachPlanetHalo";
   halo.userData = { isBeachPortal: true };
@@ -288,7 +288,7 @@ export function animateSimpleCityShoreline(scene, t) {
     const baseScale = planet.userData.baseScale || 1;
     const targetScale = baseScale * (interactive ? 1.08 + pulse : 1);
     planet.scale.setScalar(planet.scale.x + (targetScale - planet.scale.x) * 0.2);
-    if (halo?.material) halo.material.opacity = (interactive ? 0.18 : 0.1) + tide * 0.035;
+    if (halo?.material) halo.material.opacity = (interactive ? 0.12 : 0.055) + tide * 0.018;
     if (label) label.visible = interactive;
     if (ring) ring.rotation.z = -0.18 + Math.sin(t * 0.35) * 0.08;
   }
