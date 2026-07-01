@@ -541,13 +541,26 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     } catch {}
     return "test-mixamo-female"; // default: female avatar
   });
+  const [liveOutfitColorKey, setLiveOutfitColorKey] = useState(() => user?.avatar_outfit_color || "electric-blue");
+  const [liveSkinToneKey, setLiveSkinToneKey] = useState(() => {
+    try { return sessionStorage.getItem("uvc_skin_tone") || user?.skin_tone || "medium"; } catch { return user?.skin_tone || "medium"; }
+  });
+  const [liveHairStyleKey, setLiveHairStyleKey] = useState(() => {
+    try { return sessionStorage.getItem("uvc_hair_style") || ""; } catch { return ""; }
+  });
+
+  useEffect(() => {
+    if (user?.avatar_outfit_color) setLiveOutfitColorKey(user.avatar_outfit_color);
+    if (user?.skin_tone) setLiveSkinToneKey(user.skin_tone);
+  }, [user?.avatar_outfit_color, user?.skin_tone]);
 
   const avatarConfig = {
     avatarType: user?.avatar_type || "neutral",
-    skinTone: user?.skin_tone || "medium",
+    skinTone: liveSkinToneKey,
     rpmAvatarUrl: user?.rpm_avatar_url || null,
-    outfitColorKey: user?.avatar_outfit_color || "electric-blue",
+    outfitColorKey: liveOutfitColorKey,
     avatarTypeKey: testAvatarTypeKey,
+    hairStyleKey: liveHairStyleKey,
   };
 
   // Sync avatar type from user profile when user data arrives (returning users)
@@ -917,12 +930,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     equippedClothing,
     avatarTypeKey: testAvatarTypeKey,
     avatarSkinTone: avatarConfig.skinTone,
+    avatarHairStyle: liveHairStyleKey,
     avatarStyle: user?.avatar_style || "streetwear",
     avatarOutfitColor: avatarConfig.outfitColorKey,
   }, {
     isDancing,
     personalHoverboardActive,
-  });
+  }, rawPosRef);
 
   // ── Follow System ─────────────────────────────────────────────────────
   const followSystem = useFollowSystem(user?.id, user?.full_name || user?.username);
@@ -1250,9 +1264,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onRemoteAvatarClick={handleRemoteAvatarClick}
           retintRef={retintInWorldRef}
           onPositionChange={(x, z, rot) => {
-            // Update raw position refs EVERY frame (before throttle) for iOS safety
-            rawPosRef.current = { x, z };
-            {
+            { 
               const dfDx = x - DANCE_FLOOR_CX;
               const dfDz = z - DANCE_FLOOR_CZ;
               const isInsideDanceFloor = worldMode === "city" && Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_ENTER_R;
@@ -1263,6 +1275,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const dx = x - prev.x;
             const dz = z - prev.z;
             const speed = Math.sqrt(dx * dx + dz * dz);
+            const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
+            rawPosRef.current = { x, y: 0, z, rot, animState };
             // Stop auto-dance as soon as the player starts moving
             if (isDancingRef.current && speed > 0.015) {
               setIsDancing(false);
@@ -1273,7 +1287,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const posThreshold = smoothMovementMode ? 0.65 : 0.3;
             const rotThreshold = smoothMovementMode ? 0.12 : 0.05;
             if (Math.abs(dx) < posThreshold && Math.abs(dz) < posThreshold && Math.abs(rot - prevRot) < rotThreshold) return;
-            const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
             prevPosRef.current = { x, z, rot };
             setPlayerPos({ x, z, rot, animState });
           }}
@@ -1564,11 +1577,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey, suitColor, avatarTypeKey: newTypeKey, hairStyleKey: newHairStyle }) => {
+        onApply={({ outfitColorKey, skinColorKey, suitColor, avatarTypeKey: newTypeKey, hairStyleKey: newHairStyle }) => {
           const typeChanged = newTypeKey && newTypeKey !== testAvatarTypeKey;
-          if (typeChanged) {
-            setTestAvatarTypeKey(newTypeKey);
-          }
+          if (typeChanged) setTestAvatarTypeKey(newTypeKey);
+          if (outfitColorKey) setLiveOutfitColorKey(outfitColorKey);
+          if (skinColorKey) setLiveSkinToneKey(skinColorKey);
+          setLiveHairStyleKey(newHairStyle || "");
           // Always remount the world so hair style + avatar type take effect
           setLoading(true);
           setAvatarVersion((v) => v + 1);

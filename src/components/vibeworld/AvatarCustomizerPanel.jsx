@@ -79,6 +79,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
       } catch {}
       onApply?.({
         outfitColorKey,
+        skinColorKey,
         avatarTypeKey,
         hairStyleKey,
         suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex,

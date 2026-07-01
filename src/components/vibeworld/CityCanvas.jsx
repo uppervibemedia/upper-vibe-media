@@ -188,6 +188,13 @@ function circleVsCircle(x1, z1, r1, x2, z2, r2) {
   return dx * dx + dz * dz < (r1 + r2) * (r1 + r2);
 }
 
+function normalizeAngleDiff(target, current) {
+  let diff = target - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return diff;
+}
+
 // Skyline boundary — rectangular perimeter matching CitySkyline.jsx wall positions
 // North wall: z=-36  East wall: x=36  West wall: x=-36
 // Beach/south open face starts at z=15 (where wings end)
@@ -1739,6 +1746,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const remoteSignature = [
             remoteAvatarType,
             remote.skin_tone || "medium",
+            remote.hair_style || "",
             remote.avatar_style || "streetwear",
             remote.avatar_outfit_color || "",
             remote.username || "User",
@@ -1773,7 +1781,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 spawnY: SPAWN[1],
                 spawnZ: remote.pos_z || 0,
                 gender: remoteGender,
-                hairStyle: remoteGender === "female" ? "ponytail" : "short",
+                hairStyle: remote.hair_style || (remoteGender === "female" ? "ponytail" : "short"),
                 outfitColorKey: remote.avatar_outfit_color || null,
                 skinToneKey: remote.skin_tone || "medium",
                 isRemote: true,
@@ -1803,16 +1811,26 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const targetZ = remote.pos_z || 0;
           const targetRot = remote.rotation || 0;
 
-          // Smooth position lerp
-          g.position.x += (targetX - g.position.x) * Math.min(1, 8 * dt);
+          // Smooth remote interpolation: snap only for true teleports/respawns.
+          const rdx = targetX - g.position.x;
+          const rdz = targetZ - g.position.z;
+          const remoteError = Math.sqrt(rdx * rdx + rdz * rdz);
+          if (remoteError > 18 || !entry._settled) {
+            g.position.x = targetX;
+            g.position.z = targetZ;
+            entry._settled = true;
+          } else if (remoteError > 0.015) {
+            const nearRemote = Math.sqrt((px - g.position.x) ** 2 + (pz - g.position.z) ** 2) < 22;
+            const follow = nearRemote ? 11.5 : 7.0;
+            const alpha = 1 - Math.exp(-follow * dt);
+            g.position.x += rdx * alpha;
+            g.position.z += rdz * alpha;
+          }
           g.position.y = SPAWN[1];
-          g.position.z += (targetZ - g.position.z) * Math.min(1, 8 * dt);
 
-          // Smooth rotation
-          let rotDiff = targetRot - g.rotation.y;
-          while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
-          while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-          g.rotation.y += rotDiff * Math.min(1, 6 * dt);
+          // Smooth shortest-path rotation so avatars face their travel direction cleanly.
+          const rotDiff = normalizeAngleDiff(targetRot, g.rotation.y);
+          if (Math.abs(rotDiff) > 0.002) g.rotation.y += rotDiff * Math.min(1, 10 * dt);
 
           // Calculate velocity for walk animation
           const dx = g.position.x - entry.prevPos.x;
@@ -1823,8 +1841,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // ─── Remote avatar animation — use received state ──
           const remoteEntry = g.userData._avatarEntry;
           const animState = remote.animation_state || remote.animationState || "idle";
-          const remoteIsDancing = animState === "dance" || !!remote.is_dancing;
-          const remoteIsHoverboarding = animState === "hbRiding" || !!remote.personal_hoverboard_active;
+          const remoteIsDancing = animState === "dance" || animState === "dancing" || !!remote.is_dancing;
+          const remoteIsHoverboarding = animState === "hbRiding" || animState === "neonSurf" || !!remote.personal_hoverboard_active || !!remote.is_playing_neon_surf;
           // Neon Surf is separate — remote animation stays normal, no hoverboard attach
           if (remoteEntry) {
           if (remoteEntry._isMixamo) {
@@ -1845,17 +1863,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // ── Remote aura sync ────────────────────────────
           const rs = remoteHbStateRef.current;
           const prevS = rs[remote.user_id];
-          const hasAura   = !!remote.equipped_aura;
+          const hasAura = !!remote.equipped_aura;
+          const auraKey = remote.equipped_aura || "";
+          const auraColor = remote.equipped_aura_color || "";
           const isRidingHb = !!remote.personal_hoverboard_active;
           const isRidingNeon = !!remote.is_playing_neon_surf;
-          if (prevS && prevS.hasAura !== hasAura) {
-            if (hasAura) {
-              bindAura(g, remote.equipped_aura, remote.equipped_aura_color || null);
-            } else {
-              unbindAura(g);
-            }
-          } else if (hasAura && !prevS) {
-            bindAura(g, remote.equipped_aura, remote.equipped_aura_color || null);
+          const auraChanged = !prevS || prevS.hasAura !== hasAura || prevS.auraKey !== auraKey || prevS.auraColor !== auraColor;
+          if (auraChanged) {
+            if (hasAura) bindAura(g, auraKey, auraColor || null);
+            else unbindAura(g);
           }
 
           // ── Remote hoverboard sync (PERSONAL board — NOT Neon Surf) ──
@@ -1873,7 +1889,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             // Wasn't riding before either — noop
           }
 
-          rs[remote.user_id] = { hasAura, isRiding: isRidingHb, isDancing: remoteIsDancing };
+          rs[remote.user_id] = { hasAura, auraKey, auraColor, isRiding: isRidingHb, isDancing: remoteIsDancing };
         }
 
         // Despawn avatars that are no longer present

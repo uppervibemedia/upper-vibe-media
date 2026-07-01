@@ -12,40 +12,22 @@
     },
     "avatar_type": {
       "type": "string",
-      "enum": [
-        "masculine",
-        "feminine",
-        "nonbinary",
-        "neutral",
-        "default",
-        "cyber",
-        "cosmic",
-        "neon"
-      ],
-      "default": "neutral"
+      "description": "Legacy avatar type value"
     },
     "avatar_type_key": {
       "type": "string",
-      "description": "Exact avatar key used in CityCanvas e.g. test-mixamo-female, test-mixamo-male"
+      "description": "Exact avatar key used in CityCanvas e.g. test-mixamo-female, test-mixamo, current"
     },
     "skin_tone": {
       "type": "string",
-      "enum": [
-        "light",
-        "medium-light",
-        "medium",
-        "medium-dark",
-        "dark",
-        "deep"
-      ],
-      "default": "medium"
+      "description": "Skin tone key used by procedural avatars"
+    },
+    "hair_style": {
+      "type": "string",
+      "description": "Hair style key used by procedural avatars"
     },
     "avatar_style": {
       "type": "string",
-      "enum": [
-        "streetwear",
-        "cosmic"
-      ],
       "default": "streetwear",
       "description": "Outfit style for the avatar"
     },
@@ -55,12 +37,17 @@
     },
     "current_zone": {
       "type": "string",
-      "description": "Current zone in Vibe World e.g. plaza, lounge, stage"
+      "description": "Current zone in Vibe World e.g. city, beach, stage, academy, dance floor"
     },
     "pos_x": {
       "type": "number",
       "default": 0,
       "description": "World X position"
+    },
+    "pos_y": {
+      "type": "number",
+      "default": 0,
+      "description": "World Y position"
     },
     "pos_z": {
       "type": "number",
@@ -78,10 +65,23 @@
         "idle",
         "walking",
         "running",
-        "dancing"
+        "jumping",
+        "dancing",
+        "hbRiding",
+        "neonSurf",
+        "busy",
+        "watching"
       ],
       "default": "idle",
-      "description": "Current animation state of the avatar"
+      "description": "Current movement or activity state of the avatar"
+    },
+    "is_dancing": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_playing_neon_surf": {
+      "type": "boolean",
+      "default": false
     },
     "equipped_aura": {
       "type": "string",
@@ -112,9 +112,30 @@
       "type": "string",
       "description": "Item id of equipped clothing, empty if none"
     },
+    "vibe_level_label": {
+      "type": "string",
+      "description": "Optional public Vibe Level label"
+    },
+    "vibe_score_privacy": {
+      "type": "string",
+      "enum": [
+        "hidden",
+        "level_only",
+        "exact"
+      ],
+      "default": "level_only"
+    },
+    "vibe_score_public": {
+      "type": "number",
+      "description": "Optional exact public score only when privacy allows it"
+    },
     "is_online": {
       "type": "boolean",
       "default": true
+    },
+    "last_position_at": {
+      "type": "string",
+      "description": "ISO timestamp of last movement/appearance update"
     },
     "last_heartbeat": {
       "type": "string",

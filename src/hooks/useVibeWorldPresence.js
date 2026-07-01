@@ -14,12 +14,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
-const POSITION_MS = 3000;      // Send position every 3s — reduces DB write load
-const HEARTBEAT_MS = 15_000;   // Full heartbeat every 15s
-const STALE_MS = 20_000;       // Mark as offline if no heartbeat for 20s
-const BATCH_MS = 150;          // Batch incoming subscribe events every 150ms
-const POS_THRESHOLD = 0.15;    // Minimum position delta to trigger an update (was 0.05)
-const ROT_THRESHOLD = 0.08;    // Minimum rotation delta to trigger an update (was 0.02)
+const POSITION_MS = 120;       // Moving users broadcast at ~8–10Hz, skipped when unchanged
+const HEARTBEAT_MS = 10_000;   // Full heartbeat every 10s
+const STALE_MS = 24_000;       // Mark as offline if no heartbeat for 24s
+const BATCH_MS = 80;           // Batch incoming subscribe events briefly
+const POS_THRESHOLD = 0.08;    // Small movement delta before sending
+const ROT_THRESHOLD = 0.04;    // Small facing delta before sending
 
 function worldKeyForZone(zone) {
   const value = String(zone || "").toLowerCase();
@@ -51,11 +51,11 @@ function getLifetimeOrbs() {
   }
 }
 
-export default function useVibeWorldPresence(user, currentZone, position, equippedState = {}, liveState = {}) {
+export default function useVibeWorldPresence(user, currentZone, position, equippedState = {}, liveState = {}, livePositionRef = null) {
   const {
     equippedAura = "", equippedAuraColor = "", equippedHoverboard = "",
     equippedNameplate = "", equippedBadge = "", equippedClothing = "",
-    avatarTypeKey = "", avatarSkinTone = "", avatarStyle = "", avatarOutfitColor = "",
+    avatarTypeKey = "", avatarSkinTone = "", avatarStyle = "", avatarOutfitColor = "", avatarHairStyle = "",
   } = equippedState;
   const {
     isDancing = false,
@@ -74,23 +74,26 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
   const posRef = useRef({ x: 0, z: 0, rot: 0 });
   const animRef = useRef("idle");
   const mountedRef = useRef(true);
-  // Track last-sent state so the fast path (sendPosition, 2s) fires immediately on state changes
-  const lastSentRef = useRef({ x: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "", dancing: false, riding: false, neonSurf: false, aura: "", hoverboard: "", nameplate: "", badge: "", clothing: "", avatarKey: "", skin: "", style: "", outfit: "" });
+  // Track last-sent state so movement and appearance changes broadcast immediately.
+  const lastSentRef = useRef({ x: Infinity, y: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "", dancing: false, riding: false, neonSurf: false, aura: "", auraColor: "", hoverboard: "", nameplate: "", badge: "", clothing: "", avatarKey: "", skin: "", hair: "", style: "", outfit: "" });
+  const sendInFlightRef = useRef(false);
   const usersMapRef = useRef({});
 
   // Keep refs current without triggering re-renders
   zoneRef.current = currentZone || "";
   localWorldRef.current = worldKeyForZone(currentZone);
-  posRef.current = position || { x: 0, z: 0, rot: 0 };
-  animRef.current = position?.animState || "idle";
+  const livePosition = livePositionRef?.current || position || { x: 0, y: 0, z: 0, rot: 0 };
+  posRef.current = livePosition;
+  animRef.current = livePosition?.animState || position?.animState || "idle";
 
   // ── Rapid position sync — also carries live animation/riding state ───────
   const sendPosition = useCallback(async () => {
     if (!user?.id || !mountedRef.current) return;
     const rid = recordIdRef.current;
     if (!rid) return;
+    if (sendInFlightRef.current) return;
 
-    const { x, z, rot } = posRef.current;
+    const { x = 0, y = 0, z = 0, rot = 0 } = posRef.current || {};
     const zone = zoneRef.current;
     const baseAnim = animRef.current;
     const last = lastSentRef.current;
@@ -100,6 +103,8 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       if (stored) liveAvatarTypeKey = stored;
     } catch {}
     const liveSkinTone = avatarSkinTone || user.skin_tone || "medium";
+    let liveHairStyle = avatarHairStyle || "";
+    try { liveHairStyle = liveHairStyle || sessionStorage.getItem("uvc_hair_style") || ""; } catch {}
     const liveAvatarStyle = avatarStyle || user.avatar_style || "streetwear";
     const liveOutfitColor = avatarOutfitColor || user.avatar_outfit_color || "electric-blue";
 
@@ -108,7 +113,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     let anim = baseAnim;
     if (isRidingPersonal) anim = "hbRiding";
     else if (isRidingNeonSurf) anim = "neonSurf";
-    else if (isDancing) anim = "dance";
+    else if (isDancing) anim = "dancing";
 
     const dancing = isDancing;
     const riding = isRidingPersonal;
@@ -117,6 +122,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     // Skip full position update if nothing changed (saves DB writes)
     if (
       Math.abs(x - last.x) < POS_THRESHOLD &&
+      Math.abs((y || 0) - (last.y || 0)) < POS_THRESHOLD &&
       Math.abs(z - last.z) < POS_THRESHOLD &&
       Math.abs(rot - last.rot) < ROT_THRESHOLD &&
       zone === last.zone &&
@@ -125,12 +131,14 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       riding === last.riding &&
       neonSurf === last.neonSurf &&
       equippedAura === last.aura &&
+      equippedAuraColor === last.auraColor &&
       equippedHoverboard === last.hoverboard &&
       equippedNameplate === last.nameplate &&
       equippedBadge === last.badge &&
       equippedClothing === last.clothing &&
       liveAvatarTypeKey === last.avatarKey &&
       liveSkinTone === last.skin &&
+      liveHairStyle === last.hair &&
       liveAvatarStyle === last.style &&
       liveOutfitColor === last.outfit
     ) {
@@ -138,31 +146,37 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     }
 
     lastSentRef.current = {
-      x, z, rot, zone, anim,
+      x, y, z, rot, zone, anim,
       dancing,
       riding,
       neonSurf,
       aura: equippedAura || "",
+      auraColor: equippedAuraColor || "",
       hoverboard: equippedHoverboard || "",
       nameplate: equippedNameplate || "",
       badge: equippedBadge || "",
       clothing: equippedClothing || "",
       avatarKey: liveAvatarTypeKey,
       skin: liveSkinTone,
+      hair: liveHairStyle,
       style: liveAvatarStyle,
       outfit: liveOutfitColor,
     };
 
     // Full position update — only when state actually changed
+    sendInFlightRef.current = true;
     try {
+      const nowIso = new Date().toISOString();
       await base44.entities.VibeWorldPresence.update(rid, {
         pos_x: x,
+        pos_y: y || 0,
         pos_z: z,
         rotation: rot,
         current_zone: zone,
         avatar_type: user.avatar_type || liveAvatarTypeKey,
         avatar_type_key: liveAvatarTypeKey,
         skin_tone: liveSkinTone,
+        hair_style: liveHairStyle,
         avatar_style: liveAvatarStyle,
         avatar_outfit_color: liveOutfitColor,
         animation_state: anim,
@@ -175,17 +189,20 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         equipped_nameplate: equippedNameplate || "",
         equipped_badge: equippedBadge || "",
         equipped_clothing: equippedClothing || "",
-        last_heartbeat: new Date().toISOString(),
+        last_position_at: nowIso,
+        last_heartbeat: nowIso,
       });
     } catch {
       // Silently skip rate limits / network issues
+    } finally {
+      sendInFlightRef.current = false;
     }
-  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
   // Broadcast avatar/item changes immediately so other people see updates without refreshing.
   useEffect(() => {
     sendPosition();
-  }, [sendPosition, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [sendPosition, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
   // ── Full heartbeat (slower — online status + full identity) ──────────────
   const isBroadcastingRef = useRef(false);
@@ -199,6 +216,8 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       const stored = sessionStorage.getItem("uvc_test_avatar");
       if (stored) liveAvatarTypeKey = stored;
     } catch {}
+    let liveHairStyle = avatarHairStyle || "";
+    try { liveHairStyle = liveHairStyle || sessionStorage.getItem("uvc_hair_style") || ""; } catch {}
 
     const payload = {
       user_id: user.id,
@@ -206,16 +225,18 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       avatar_type: user.avatar_type || liveAvatarTypeKey,
       avatar_type_key: liveAvatarTypeKey,
       skin_tone: avatarSkinTone || user.skin_tone || "medium",
+      hair_style: liveHairStyle,
       avatar_style: avatarStyle || user.avatar_style || "streetwear",
       avatar_outfit_color: avatarOutfitColor || user.avatar_outfit_color || "electric-blue",
       current_zone: zoneRef.current,
-      pos_x: posRef.current.x,
-      pos_z: posRef.current.z,
-      rotation: posRef.current.rot,
+      pos_x: posRef.current.x || 0,
+      pos_y: posRef.current.y || 0,
+      pos_z: posRef.current.z || 0,
+      rotation: posRef.current.rot || 0,
       // Derive effective animation state from live state
       animation_state: isRidingPersonal ? "hbRiding" :
         isRidingNeonSurf ? "neonSurf" :
-        isDancing ? "dance" :
+        isDancing ? "dancing" :
         animRef.current || "idle",
       is_dancing: isDancing,
       personal_hoverboard_active: isRidingPersonal,
@@ -227,6 +248,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       equipped_badge: equippedBadge,
       equipped_clothing: equippedClothing,
       is_online: true,
+      last_position_at: now,
       last_heartbeat: now,
       joined_at: now,
       lifetime_orbs: getLifetimeOrbs(),
@@ -242,21 +264,24 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       }
       const dancing = isDancing, riding = isRidingPersonal, neonSurf = isRidingNeonSurf;
       lastSentRef.current = {
-        x: posRef.current.x,
-        z: posRef.current.z,
-        rot: posRef.current.rot,
+        x: posRef.current.x || 0,
+        y: posRef.current.y || 0,
+        z: posRef.current.z || 0,
+        rot: posRef.current.rot || 0,
         zone: zoneRef.current,
-        anim: riding ? "hbRiding" : neonSurf ? "neonSurf" : dancing ? "dance" : animRef.current || "idle",
+        anim: riding ? "hbRiding" : neonSurf ? "neonSurf" : dancing ? "dancing" : animRef.current || "idle",
         dancing,
         riding,
         neonSurf,
         aura: equippedAura || "",
+        auraColor: equippedAuraColor || "",
         hoverboard: equippedHoverboard || "",
         nameplate: equippedNameplate || "",
         badge: equippedBadge || "",
         clothing: equippedClothing || "",
         avatarKey: liveAvatarTypeKey,
         skin: avatarSkinTone || user.skin_tone || "medium",
+        hair: liveHairStyle,
         style: avatarStyle || user.avatar_style || "streetwear",
         outfit: avatarOutfitColor || user.avatar_outfit_color || "electric-blue",
       };
@@ -267,7 +292,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     } catch (err) {
       console.warn("[VibeWorldPresence] heartbeat failed — record may not exist:", err?.message);
     }
-  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -331,27 +356,26 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
 
     const unsubscribe = base44.entities.VibeWorldPresence.subscribe((event) => {
       if (!mountedRef.current) return;
+      const remoteUserId = event.data?.user_id || event.old_data?.user_id || event.id;
       // Skip own events — we track ourselves separately
-      if (event.data?.user_id === user.id) return;
-      // Phase 5: Only accept online, non-stale users
+      if (remoteUserId === user.id) return;
+      // Phase 5: Only accept online, non-stale users; remove offline/other-world users immediately.
       if (event.type !== "delete" && event.data) {
         const d = event.data;
-        if (!d.is_online) return;
+        if (!d.is_online) {
+          pendingChanges.set(remoteUserId, { ...event, type: "delete" });
+          if (!batchTimer) batchTimer = setTimeout(() => { batchTimer = null; flushBatch(); }, BATCH_MS);
+          return;
+        }
         const lastBeat = d.last_heartbeat ? new Date(d.last_heartbeat).getTime() : 0;
-        if (Date.now() - lastBeat > STALE_MS) return;
-        if (worldKeyForZone(d.current_zone) !== localWorldRef.current) {
-          pendingChanges.set(event.id, { ...event, type: "delete" });
-          if (!batchTimer) {
-            batchTimer = setTimeout(() => {
-              batchTimer = null;
-              flushBatch();
-            }, BATCH_MS);
-          }
+        if (Date.now() - lastBeat > STALE_MS || worldKeyForZone(d.current_zone) !== localWorldRef.current) {
+          pendingChanges.set(remoteUserId, { ...event, type: "delete" });
+          if (!batchTimer) batchTimer = setTimeout(() => { batchTimer = null; flushBatch(); }, BATCH_MS);
           return;
         }
       }
 
-      pendingChanges.set(event.id, event);
+      pendingChanges.set(remoteUserId, event);
 
       if (!batchTimer) {
         batchTimer = setTimeout(() => {
