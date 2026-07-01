@@ -892,6 +892,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const inCityZone = playerZ < 14
       ? Math.max(0, Math.min(1, (14 - playerZ) / 8)) // 1 at z≤6, 0 at z≥14
       : 0;
+    const beachSideView = playerZ > 8 ? Math.max(0, Math.min(1, (playerZ - 8) / 24)) : 0;
 
     // Combined fade: city zone × facing city direction
     // facingCity^1.5 slightly sharpens it without killing NE/NW coverage
@@ -910,8 +911,10 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const frontFactor = Math.max(0, Math.cos(angle));
       const buildingArc = frontFactor * frontFactor * (20 + (p.clearanceBoost || 0));
       const highPassLift = (p.clearanceBoost || 0) * (0.45 + Math.max(0, Math.sin(angle + p.angleOffset)) * 0.35);
+      const isHighFlyPlanet = p.id === "aurora" || p.id === "solarViolet";
+      const beachLowering = isHighFlyPlanet ? beachSideView * 22 : 0;
 
-      const cy = camera.position.y + p.horizonY + buildingArc + highPassLift + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
+      const cy = camera.position.y + p.horizonY - beachLowering + buildingArc + highPassLift + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
 
       // Ferris ride: fade ALL planets out to prevent them passing through ride geometry.

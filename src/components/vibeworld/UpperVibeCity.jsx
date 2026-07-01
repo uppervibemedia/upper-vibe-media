@@ -35,7 +35,7 @@ import {
   pauseUpperVibeRadio,
   resumeUpperVibeRadio,
 } from "@/lib/radioAudioManager";
-import { setCityGlobalUserManuallyPaused } from "@/lib/vibeCityAudioController";
+import { setCityGlobalUserManuallyPaused, pauseGlobalMusicImmediately, restoreGlobalMusic } from "@/lib/vibeCityAudioController";
 // CrystalZone is now decorative-only — no imports needed
 import { getSessionCoins, addSessionCoins, resetSessionCoins } from "@/lib/vibeCoinBank";
 import { loadWallet, earnCoins, getWalletBalance, isCoinAlreadyCollected } from "@/components/vibeworld/wallet/vibeCoinWallet";
@@ -627,19 +627,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     });
   }, []);
 
-  /** Pause global player if currently playing. Returns true if it was playing. */
+  /** Pause global music if currently playing. Returns true if it was playing. */
   const pauseGlobal = useCallback(() => {
-    if (isPlaying && togglePlay) {
-      togglePlay();
-      return true;
-    }
-    return false;
-  }, [isPlaying, togglePlay]);
+    const ramBefore = ramGetState();
+    const globalAudio = audioRef?.current;
+    const wasPlaying = !!(isPlaying || ramBefore.isPlaying || (globalAudio && !globalAudio.paused));
+    if (isPlaying && togglePlay) togglePlay();
+    pauseGlobalMusicImmediately();
+    return wasPlaying;
+  }, [isPlaying, togglePlay, audioRef]);
 
-  /** Resume global player if it was paused by us and isn't already playing. */
+  /** Resume global music if it was paused by us and isn't already playing. */
   const resumeGlobalIfNeeded = useCallback((wasPlayingRef) => {
-    if (wasPlayingRef.current && !isPlaying && togglePlay) {
-      togglePlay();
+    if (wasPlayingRef.current) {
+      restoreGlobalMusic();
+      const ramAfter = ramGetState();
+      if (ramAfter.activeMode === null && !isPlaying && togglePlay) {
+        togglePlay();
+      }
     }
     wasPlayingRef.current = false;
   }, [isPlaying, togglePlay]);
@@ -651,9 +656,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     // 1) Close fullscreen if it's open
     if (stageFullScreen) setStageFullScreen(false);
 
-    // 2) Pause global player
-    pauseGlobal();
-    stagePausedPlayerRef.current = true;
+    // 2) Pause global music
+    stagePausedPlayerRef.current = pauseGlobal();
 
     // 3) Enter watch mode — preserve the user's existing stageMuted preference.
     //    If they unmuted last time, keep it unmuted. iOS autoplay requires muted start,

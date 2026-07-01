@@ -43,7 +43,10 @@ export default function useVibeCityAudioMachine({ isUserInsideDanceFloor, defaul
   }, [playerAudioRef, suppressExternalPlayer]);
 
   useEffect(() => {
-    const retry = () => retryCityAudioFromGesture(defaultTrack);
+    const retry = () => {
+      if (!suppressExternalPlayer) return;
+      retryCityAudioFromGesture(defaultTrack);
+    };
     window.addEventListener("touchstart", retry, { capture: true, passive: true });
     window.addEventListener("touchmove", retry, { capture: true, passive: true });
     window.addEventListener("pointerdown", retry, { capture: true, passive: true });
@@ -55,7 +58,7 @@ export default function useVibeCityAudioMachine({ isUserInsideDanceFloor, defaul
       window.removeEventListener("click", retry, true);
       leaveCityDanceFloor();
     };
-  }, [defaultTrack]);
+  }, [defaultTrack, suppressExternalPlayer]);
 
   return {
     cityAudioMode: debugSnapshot.cityAudioMode,
