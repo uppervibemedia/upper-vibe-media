@@ -240,55 +240,76 @@ export function getTodaysQuestions() {
   return [...CORE_QUESTIONS, ...rotating];
 }
 
-/** Calculate Vibe Score from an array of { id, score } answers */
-export function calcVibeScoreFromAnswers(answers, streakScore, yesterdayCompleted) {
-  if (!answers.length) return 0;
-  const coreIds = CORE_QUESTIONS.map((q) => q.id);
-  const coreAnswers = answers.filter((a) => coreIds.includes(a.id));
-  const rotatingAnswers = answers.filter((a) => !coreIds.includes(a.id));
+export const VIBE_SCORE_WEIGHTS = {
+  safety: 0.25,
+  clarity: 0.20,
+  consistency: 0.20,
+  gratitude: 0.15,
+  rest: 0.10,
+  action: 0.10,
+};
 
-  // Core questions average (60% weight)
-  const coreAvg = coreAnswers.length
-    ? coreAnswers.reduce((s, a) => s + a.score, 0) / coreAnswers.length
-    : 50;
+const CATEGORY_QUESTION_IDS = {
+  safety: ["stress", "resilience", "mental_strength"],
+  clarity: ["focus", "goals_clarity", "purpose", "meaning"],
+  consistency: ["confidence", "discipline", "follow_through", "weekly_reflection", "presence"],
+  gratitude: ["gratitude", "joy", "wins", "optimism"],
+  rest: ["energy", "rest_quality", "fresh_start"],
+  action: ["mood"],
+};
 
-  // Rotating questions average (10% weight)
-  const rotAvg = rotatingAnswers.length
-    ? rotatingAnswers.reduce((s, a) => s + a.score, 0) / rotatingAnswers.length
-    : 50;
-
-  const yesterdayBonus = yesterdayCompleted ? 100 : 0;
-
-  const raw = Math.round(
-    coreAvg * 0.60 +
-    rotAvg * 0.10 +
-    streakScore * 0.25 +
-    yesterdayBonus * 0.05
-  );
-
-  return raw;
+function clampScore(value) {
+  return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
 }
 
-/** Vibe category from score */
+export function calcVibeCategoryScoresFromAnswers(answers = []) {
+  const byId = Object.fromEntries((answers || []).map((a) => [a.id, clampScore(a.score)]));
+  return Object.fromEntries(Object.entries(CATEGORY_QUESTION_IDS).map(([category, ids]) => {
+    const values = ids.map((id) => byId[id]).filter((v) => Number.isFinite(v));
+    const score = values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : 50;
+    return [category, clampScore(score)];
+  }));
+}
+
+export function deriveVibeCategoryScoresFromScore(score = 50) {
+  const base = clampScore(score);
+  return Object.fromEntries(Object.keys(VIBE_SCORE_WEIGHTS).map((category) => [category, base]));
+}
+
+/** Calculate Vibe Score from the six shared weighted categories */
+export function calcVibeScoreFromAnswers(answers) {
+  if (!answers?.length) return 0;
+  const categories = calcVibeCategoryScoresFromAnswers(answers);
+  const raw = Object.entries(VIBE_SCORE_WEIGHTS).reduce((sum, [key, weight]) => sum + (categories[key] || 0) * weight, 0);
+  return clampScore(raw);
+}
+
+/** Vibe category from score — single source of truth across every screen */
 export function vibeCategory(score) {
-  if (score <= 34) return { label: "Low Energy",   color: "#F87171", emoji: "😶",  moodTag: "low_energy"  };
-  if (score <= 59) return { label: "Neutral",       color: "#FB923C", emoji: "😐",  moodTag: "neutral"     };
-  if (score <= 79) return { label: "Intentional",   color: "#FBBF24", emoji: "🎯",  moodTag: "intentional" };
-  return                   { label: "High Vibe",    color: "#4ADE80", emoji: "⚡",  moodTag: "high_vibe"   };
+  const value = clampScore(score);
+  if (value <= 39) return { label: "Low Frequency", color: "#F87171", emoji: "🌑", moodTag: "low_energy" };
+  if (value <= 59) return { label: "Rebuilding", color: "#FB923C", emoji: "🧱", moodTag: "neutral" };
+  if (value <= 69) return { label: "Intentional", color: "#FBBF24", emoji: "🎯", moodTag: "intentional" };
+  if (value <= 84) return { label: "Locked In", color: "#4ADE80", emoji: "🔒", moodTag: "intentional" };
+  if (value <= 94) return { label: "High Vibe", color: "#00E5FF", emoji: "⚡", moodTag: "high_vibe" };
+  return { label: "Legend Mode", color: "#D4A843", emoji: "👑", moodTag: "high_vibe" };
 }
 
 /** Short personalized message for results screen */
 export function vibeMessage(score) {
-  if (score <= 34) return "Your energy needs attention today. Start small — one aligned action can shift everything.";
-  if (score <= 59) return "You're present and moving. Channel that neutral energy into one clear intention.";
-  if (score <= 79) return "You're operating with intention. Stay focused and let your actions lead the way.";
-  return "You're fully activated today. Move with this energy — this is your frequency at its peak.";
+  const level = vibeCategory(score).label;
+  if (level === "Low Frequency") return "Your frequency needs care today. Start with safety, breath, and one small aligned action.";
+  if (level === "Rebuilding") return "You are rebuilding your signal. Protect your peace and choose one clear next step.";
+  if (level === "Intentional") return "You are moving with intention. Keep your focus clean and your actions steady.";
+  if (level === "Locked In") return "You are locked in. Stay consistent and let your energy lead with structure.";
+  if (level === "High Vibe") return "Your frequency is high. Use the momentum with gratitude, clarity, and grounded action.";
+  return "Legend Mode is active. Keep leading your day from alignment, discipline, and purpose.";
 }
 
 /** Mood tags mapped to music recommendation query */
 export const MOOD_MUSIC_MAP = {
-  low_energy:  ["uplifting", "grounding", "healing"],
-  neutral:     ["activation", "motivation", "focus"],
+  low_energy: ["uplifting", "grounding", "healing"],
+  neutral: ["activation", "motivation", "focus"],
   intentional: ["focus", "manifestation", "432hz"],
-  high_vibe:   ["high_vibe", "celebration", "hiphop"],
+  high_vibe: ["high_vibe", "celebration", "hiphop"],
 };
