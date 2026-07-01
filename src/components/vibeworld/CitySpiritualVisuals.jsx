@@ -62,6 +62,26 @@ function angelTexture() {
   });
 }
 
+function angelNumberTexture(num, color = "rgba(232,252,255,0.9)") {
+  return makeTexture((ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(4,8,18,0.44)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.44;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(8, 8, w - 16, h - 16);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 72px Syne, Inter, sans-serif";
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = color;
+    ctx.fillText(num, w / 2, h / 2 + 3);
+  }, 256, 128);
+}
+
 function moonTexture() {
   return makeTexture((ctx, w, h) => {
     const phases = [0, 0.25, 0.5, 1, 0.75]; ctx.clearRect(0, 0, w, h);
@@ -187,6 +207,7 @@ export function createCitySpiritualVisuals(scene) {
     ["tree", 10.8, -8, 4, 0.3, 0.16],
     ["metatron", 11.4, -24, 3, 0.22, 0.12],
     ["vesica", 10.0, 5, -18, 0.2, -0.18],
+    ["chakra", 9.8, -10, -20, 0.24, 0.08],
     ["egg", 9.6, -25, 18, 0.18, -0.1],
     ["sri", 9.4, -31, -19, 0.17, 0.14],
     ["flower", 9.4, 31, 20, 0.17, -0.12],
@@ -206,7 +227,15 @@ export function createCitySpiritualVisuals(scene) {
   };
   const flowerTex = flowerTexture();
   const windowTex = sacredWindowTexture();
-  const angelTex = angelTexture();
+  const angelMural = [
+    ["111", 3.65, "rgba(232,252,255,0.9)"],
+    ["222", 4.55, "rgba(0,229,255,0.86)"],
+    ["333", 5.45, "rgba(191,162,255,0.88)"],
+    ["444", 6.35, "rgba(255,222,142,0.86)"],
+    ["555", 7.25, "rgba(232,252,255,0.86)"],
+    ["777", 8.15, "rgba(0,229,255,0.82)"],
+    ["888", 9.05, "rgba(255,222,142,0.82)"],
+  ];
   const moonTex = moonTexture();
   const waveTex = waveTexture();
   const panelOpacity = isMobile ? 0.24 : 0.36;
@@ -216,7 +245,9 @@ export function createCitySpiritualVisuals(scene) {
   addWallVisual(decal(windowTex, 5.4, 3.2, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.18 : 0.28), 34);
   addWallVisual(decal(windowTex, 5.4, 3.2, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.18 : 0.28), 34);
   addWallVisual(decal(windowTex, 5.8, 3.4, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.16 : 0.26), 40);
-  addWallVisual(decal(angelTex, 7.2, 3.2, [-37.12, 6.7, -4], [0, Math.PI / 2, 0], isMobile ? 0.24 : 0.34), 36);
+  angelMural.forEach(([num, y, color]) => {
+    addWallVisual(decal(angelNumberTexture(num, color), 1.65, 0.62, [-37.14, y, -4], [0, Math.PI / 2, 0], isMobile ? 0.28 : 0.42), 36);
+  });
   addWallVisual(decal(moonTex, 5.8, 1.65, [37.12, 6.6, 5.5], [0, -Math.PI / 2, 0], isMobile ? 0.24 : 0.34), 34);
   addWallVisual(decal(waveTex, 6.2, 2.4, [37.12, 5.8, -27], [0, -Math.PI / 2, 0], isMobile ? 0.22 : 0.32), 38);
   const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.08 : 0.12, depthWrite: false, side: DoubleSide });
