@@ -470,6 +470,160 @@ export default function createCitySkyline(scene) {
     return panel;
   }
 
+  function makeCanvasTexture(w, h, draw) {
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    draw(ctx, w, h);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = LinearFilter;
+    tex.magFilter = LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  function makeLightCodePanel(text, color = "#00E5FF", glow = "rgba(0,229,255,0.72)", wide = false) {
+    const tex = makeCanvasTexture(wide ? 768 : 512, 160, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const bg = ctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, "rgba(4,8,22,0.18)");
+      bg.addColorStop(1, "rgba(20,8,42,0.24)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = glow;
+      ctx.globalAlpha = 0.58;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(8, 8, w - 16, h - 16);
+      ctx.globalAlpha = 1;
+      let size = wide ? 46 : 52;
+      do {
+        ctx.font = `900 ${size}px Syne, Inter, sans-serif`;
+        size -= 2;
+      } while (ctx.measureText(text).width > w - 52 && size > 22);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = color;
+      ctx.fillText(text, w / 2, h / 2 + 2);
+      ctx.shadowBlur = 5;
+      ctx.fillText(text, w / 2, h / 2 + 2);
+    });
+    return new Mesh(new PlaneGeometry(wide ? 5.2 : 3.2, 0.9), new MeshBasicMaterial({ map: tex, transparent: true, opacity: isMobileSkyline ? 0.62 : 0.78, depthWrite: false, side: THREE.DoubleSide }));
+  }
+
+  function makeVerticalCodePanel(lines, color = "#A078FF", glow = "rgba(160,120,255,0.72)") {
+    const tex = makeCanvasTexture(160, 640, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(4,8,24,0.18)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = glow;
+      ctx.lineWidth = 4;
+      ctx.strokeRect(10, 10, w - 20, h - 20);
+      ctx.font = "900 42px Syne, Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = color;
+      lines.forEach((line, i) => ctx.fillText(line, w / 2, 74 + i * 82));
+    });
+    return new Mesh(new PlaneGeometry(1.1, 5.2), new MeshBasicMaterial({ map: tex, transparent: true, opacity: isMobileSkyline ? 0.48 : 0.66, depthWrite: false, side: THREE.DoubleSide }));
+  }
+
+  function makeSacredPanel(kind, color = "#00E5FF", glow = "rgba(0,229,255,0.7)") {
+    const tex = makeCanvasTexture(512, 512, (ctx, w, h) => {
+      const cx = w / 2, cy = h / 2, r = w * 0.31;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 5;
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = 20;
+      const circle = (x, y, rr) => { ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.stroke(); };
+      const line = (a, b, c, d) => { ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); };
+      if (kind === "metatron") {
+        const pts = [[cx, cy]];
+        for (let i = 0; i < 6; i++) pts.push([cx + Math.cos(i * Math.PI / 3) * r * 0.72, cy + Math.sin(i * Math.PI / 3) * r * 0.72]);
+        pts.forEach(([x, y]) => circle(x, y, 28));
+        for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) line(pts[i][0], pts[i][1], pts[j][0], pts[j][1]);
+      } else if (kind === "sri") {
+        for (let i = 0; i < 6; i++) { const rr = r * (0.34 + i * 0.1); ctx.beginPath(); for (let p = 0; p < 3; p++) { const a = -Math.PI / 2 + p * Math.PI * 2 / 3 + (i % 2 ? Math.PI : 0); const x = cx + Math.cos(a) * rr; const y = cy + Math.sin(a) * rr; p ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); ctx.stroke(); }
+        circle(cx, cy, r * 1.02);
+      } else if (kind === "torus") {
+        for (let i = 0; i < 7; i++) { ctx.beginPath(); ctx.ellipse(cx, cy, r * 0.92, r * 0.22, i * Math.PI / 7, 0, Math.PI * 2); ctx.stroke(); }
+        circle(cx, cy, r * 0.82);
+      } else if (kind === "seed") {
+        circle(cx, cy, r * 0.34); for (let i = 0; i < 6; i++) circle(cx + Math.cos(i * Math.PI / 3) * r * 0.34, cy + Math.sin(i * Math.PI / 3) * r * 0.34, r * 0.34); circle(cx, cy, r * 0.9);
+      } else {
+        for (let i = 0; i < 2; i++) for (let p = 0; p < 6; p++) circle(cx + Math.cos(p * Math.PI / 3) * r * 0.22 * (i + 1), cy + Math.sin(p * Math.PI / 3) * r * 0.22 * (i + 1), r * 0.28);
+        circle(cx, cy, r * 0.98);
+      }
+    });
+    return new Mesh(new PlaneGeometry(1.8, 1.8), new MeshBasicMaterial({ map: tex, transparent: true, opacity: isMobileSkyline ? 0.42 : 0.58, depthWrite: false, side: THREE.DoubleSide }));
+  }
+
+  function makeChakraMeter() {
+    const colors = ["#FF3B30", "#FF8A00", "#FFD84D", "#42F587", "#00D9FF", "#5B7CFF", "#A855F7"];
+    const tex = makeCanvasTexture(128, 640, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      colors.forEach((c, i) => {
+        const y = h - 56 - i * 78;
+        ctx.shadowColor = c; ctx.shadowBlur = 18; ctx.fillStyle = c;
+        ctx.fillRect(34, y, 60, 46);
+        ctx.strokeStyle = "rgba(255,255,255,0.42)"; ctx.strokeRect(29, y - 5, 70, 56);
+      });
+    });
+    return new Mesh(new PlaneGeometry(0.75, 4.8), new MeshBasicMaterial({ map: tex, transparent: true, opacity: isMobileSkyline ? 0.46 : 0.64, depthWrite: false, side: THREE.DoubleSide }));
+  }
+
+  function placeFacade(mesh, side, x, y, z) {
+    mesh.position.set(x, y, z);
+    if (side === "east") mesh.rotation.y = -Math.PI / 2;
+    if (side === "west") mesh.rotation.y = Math.PI / 2;
+    scene.add(mesh);
+  }
+
+  function placeSkylineLightCodes() {
+    const W = W_FACE_X + 0.02, E = E_FACE_X - 0.02, N = -37.1;
+    const wisdom = [
+      [makeLightCodePanel("AS ABOVE SO BELOW", "#E9F8FF", "rgba(0,229,255,0.7)", true), "north", -28, 12.4, N],
+      [makeLightCodePanel("EVERYTHING VIBRATES", "#FFDFA5", "rgba(255,216,120,0.62)", true), "north", 8, 15.8, N],
+      [makeLightCodePanel("MIND SHAPES REALITY", "#A8EFFF", "rgba(0,180,255,0.7)", true), "west", W, 10.4, -26],
+      [makeLightCodePanel("CAUSE CREATES EFFECT", "#C9B2FF", "rgba(170,120,255,0.68)", true), "east", E, 9.6, -23],
+      [makeLightCodePanel("INNER WORLD = OUTER WORLD", "#E9F8FF", "rgba(0,229,255,0.58)", true), "north", -12, 18.6, N],
+    ];
+    wisdom.forEach(([mesh, side, x, y, z]) => placeFacade(mesh, side, x, y, z));
+
+    [["369", -36, 8.8], ["432", -20, 11.3], ["528", -4, 9.8], ["639", 12, 12.1], ["741", 24, 9.5], ["852", 36, 8.7], ["963", 0, 16.4]].forEach(([code, x, y], i) => {
+      placeFacade(makeLightCodePanel(code, i % 2 ? "#FFDFA5" : "#00E5FF", i % 2 ? "rgba(255,216,120,0.62)" : "rgba(0,229,255,0.7)"), "north", x, y, N);
+    });
+
+    placeFacade(makeVerticalCodePanel(["111", "222", "333", "444", "555"], "#C9B2FF", "rgba(170,120,255,0.72)"), "west", W, 10.7, -14);
+    placeFacade(makeVerticalCodePanel(["333", "444", "555", "777", "888"], "#9AF7FF", "rgba(0,229,255,0.7)"), "east", E, 10.5, -11);
+
+    [
+      ["FREQUENCY ONLINE", "east", E, 12.8, -29], ["TIMELINE SYNC", "west", W, 12.7, -32],
+      ["AURA FIELD STABLE", "north", 28, 13.8, N], ["SOURCE SIGNAL", "east", E, 8.2, 1],
+      ["QUANTUM FOCUS", "west", W, 8.6, 4], ["HIGHER SELF MODE", "north", -32, 9.6, N],
+    ].forEach(([txt, side, x, y, z], i) => placeFacade(makeLightCodePanel(txt, i % 2 ? "#FF7AD9" : "#A8EFFF", i % 2 ? "rgba(255,80,195,0.58)" : "rgba(0,229,255,0.62)", true), side, x, y, z));
+
+    [["flower", "north", -16, 14.4, N], ["metatron", "north", 16, 13.4, N], ["sri", "west", W, 14.2, -5], ["seed", "east", E, 13.4, -5], ["torus", "north", 32, 11.8, N]].forEach(([kind, side, x, y, z], i) => {
+      placeFacade(makeSacredPanel(kind, i % 2 ? "#C9B2FF" : "#00E5FF", i % 2 ? "rgba(170,120,255,0.65)" : "rgba(0,229,255,0.65)"), side, x, y, z);
+    });
+
+    placeFacade(makeChakraMeter(), "north", -24, 8.5, N);
+    placeFacade(makeChakraMeter(), "east", E, 8.3, 5);
+
+    placeFacade(makeVerticalCodePanel(["NEW MOON", "FULL MOON", "SOLAR", "LUNAR", "COSMIC"], "#E9F8FF", "rgba(0,229,255,0.58)"), "north", 6, 9.2, N);
+
+    [["ALIGN", -40, 5.6], ["FLOW", -18, 6.7], ["RISE", -2, 7.4], ["RECEIVE", 20, 6.4], ["AWAKEN", 34, 6.8]].forEach(([txt, x, y], i) => {
+      placeFacade(makeLightCodePanel(txt, i % 2 ? "#FFDFA5" : "#9AF7FF"), "north", x, y, N);
+    });
+    [["TRANSMUTE", "west", W, 6.4, -20], ["HARMONIZE", "east", E, 6.8, -17], ["ACTIVATE", "west", W, 6.2, 9], ["BECOME", "east", E, 6.2, 9]].forEach(([txt, side, x, y, z]) => placeFacade(makeLightCodePanel(txt, "#C9B2FF"), side, x, y, z));
+  }
+
   // ── NEON BUILDING SIGNS — eye-level storefront placement ───────
   // Stage is at x=0, z=-32. East wall x=+38, West wall x=-38.
   // Signs sit at y=2.25 — right above the 2.0 storefront floor / awning.
@@ -518,6 +672,8 @@ export default function createCitySkyline(scene) {
   eEnd.position.set(E_FACE_X, SIGN_Y, 7);
   eEnd.rotation.y = -Math.PI / 2;
   scene.add(eEnd);
+
+  placeSkylineLightCodes();
 
   scene.add(buildings);
 
