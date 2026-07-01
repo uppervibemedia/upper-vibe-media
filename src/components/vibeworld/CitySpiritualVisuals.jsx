@@ -83,6 +83,22 @@ function textTexture(text) {
   }, 512, 128);
 }
 
+function affirmationHologram(text, x, y, z, baseOpacity) {
+  const holder = new Group();
+  holder.position.set(x, y, z);
+  holder.userData.isAffirmationHologram = true;
+  holder.userData.baseOpacity = baseOpacity;
+  const tex = textTexture(text);
+  [0, Math.PI].forEach((ry) => {
+    const side = new Mesh(new PlaneGeometry(4.5, 1.12), new MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.FrontSide }));
+    side.rotation.y = ry;
+    side.position.z = ry === 0 ? 0.012 : -0.012;
+    side.renderOrder = 6;
+    holder.add(side);
+  });
+  return holder;
+}
+
 function addGridLine(group, a, b, mat) {
   const dx = b.x - a.x, dz = b.z - a.z, len = Math.sqrt(dx * dx + dz * dz);
   const line = new Mesh(new PlaneGeometry(len, 0.16), mat);
@@ -99,7 +115,7 @@ export function createCitySpiritualVisuals(scene) {
   group.add(decal(flowerTexture(), 5.6, 3.2, [-17.8, 5.4, -35.85], rotSouth, isMobile ? 0.5 : 0.68));
   group.add(decal(flowerTexture(), 4.8, 2.8, [35.85, 5.2, -12], rotWest, isMobile ? 0.42 : 0.6));
   group.add(decal(sacredWindowTexture(), 6, 4, [17, 6.2, -35.82], rotSouth, isMobile ? 0.34 : 0.5));
-  group.add(decal(angelTexture(), 7.2, 3.8, [-35.86, 5.8, -14], rotEast, isMobile ? 0.4 : 0.58));
+  group.add(decal(angelTexture(), 7.2, 3.8, [-35.86, 5.8, -14], rotWest, isMobile ? 0.4 : 0.58));
   group.add(decal(moonTexture(), 6.2, 2.4, [9, 7.2, -35.84], rotSouth, isMobile ? 0.42 : 0.62));
   group.add(decal(waveTexture(), 6.4, 3.0, [35.86, 4.8, 4], rotWest, isMobile ? 0.38 : 0.58));
   group.add(decal(waveTexture(), 5.4, 2.6, [-26, 4.2, -35.85], rotSouth, isMobile ? 0.34 : 0.52));
@@ -112,7 +128,7 @@ export function createCitySpiritualVisuals(scene) {
   [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
 
   const affirmations = [["Protect Your Peace", -9, 1.7, -18], ["Energy Leads", 9, 1.7, -15], ["Become The Frequency", -20, 1.9, -4], ["Calm Is Power", 15, 1.8, 8], ["Focus Is Currency", -10, 1.8, 7], ["Your Energy Opens Doors", 22, 1.9, -23]];
-  group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = decal(textTexture(text), 4.5, 1.12, [x, y, z], [0, 0, 0], 0); h.userData.isAffirmationHologram = true; h.userData.baseOpacity = isMobile ? 0.58 : 0.76; group.add(h); return h; });
+  group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.58 : 0.76); group.add(h); return h; });
 
   scene.add(group); scene.userData.citySpiritualVisuals = group;
 }
@@ -123,7 +139,8 @@ export function animateCitySpiritualVisuals(scene, t, px, pz) {
   group.userData.affirmations.forEach((h) => {
     const dx = h.position.x - px, dz = h.position.z - pz, d2 = dx * dx + dz * dz;
     const near = d2 < 16 * 16;
+    const opacity = near ? h.userData.baseOpacity * (0.82 + Math.sin(t * 1.1) * 0.08) : 0;
     h.visible = near;
-    h.material.opacity = near ? h.userData.baseOpacity * (0.82 + Math.sin(t * 1.1) * 0.08) : 0;
+    h.children.forEach((side) => { side.material.opacity = opacity; });
   });
 }
