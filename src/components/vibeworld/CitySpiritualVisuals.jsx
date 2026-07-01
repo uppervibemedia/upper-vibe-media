@@ -191,7 +191,7 @@ function affirmationHologram(text, x, y, z, baseOpacity) {
 
 function addGridLine(group, a, b, mat) {
   const dx = b.x - a.x, dz = b.z - a.z, len = Math.sqrt(dx * dx + dz * dz);
-  const line = new Mesh(new PlaneGeometry(len, 0.16), mat);
+  const line = new Mesh(new PlaneGeometry(len, mat.userData.lineWidth || 0.18), mat);
   line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(dz, dx);
   line.position.set((a.x + b.x) / 2, 0.018, (a.z + b.z) / 2);
   line.renderOrder = 2; group.add(line);
@@ -258,8 +258,14 @@ export function createCitySpiritualVisuals(scene) {
   ].forEach(([text, width, pos, rot]) => {
     addWallVisual(decal(textTexture(text), width, 0.62, pos, rot, signOpacity), 28);
   });
-  const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.07 : 0.11, depthWrite: false, side: DoubleSide });
-  floorSymbols.forEach(([, , x, z]) => addGridLine(group, { x: 0, z: -6 }, { x, z }, gridMat));
+  const gridGlowMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.13 : 0.2, depthWrite: false, side: DoubleSide });
+  gridGlowMat.userData.lineWidth = isMobile ? 0.28 : 0.36;
+  const gridCoreMat = new MeshBasicMaterial({ color: new Color("#FFD36E"), transparent: true, opacity: isMobile ? 0.09 : 0.14, depthWrite: false, side: DoubleSide });
+  gridCoreMat.userData.lineWidth = isMobile ? 0.09 : 0.12;
+  floorSymbols.forEach(([, , x, z]) => {
+    addGridLine(group, { x: 0, z: -6 }, { x, z }, gridGlowMat);
+    addGridLine(group, { x: 0, z: -6 }, { x, z }, gridCoreMat);
+  });
   const crystalMat = new MeshBasicMaterial({ color: new Color("#BFA2FF"), transparent: true, opacity: isMobile ? 0.32 : 0.48, depthWrite: false });
   [[-28, 12.8, -37.5], [12, 14.4, -37.5], [37.5, 11.2, -17]].forEach(([x, y, z]) => {
     const crystal = new Group();
