@@ -184,7 +184,7 @@ export function createCitySpiritualVisuals(scene) {
   const floorSymbols = [
     ["torus", 11.6, 22, 1.5, 0.34, 0.04],
     ["seed", 11.2, 22, -13.5, 0.32, -0.12],
-    ["tree", 10.8, -9, 5.5, 0.3, 0.16],
+    ["tree", 10.8, -8, 4, 0.3, 0.16],
     ["metatron", 11.4, -24, 3, 0.22, 0.12],
     ["vesica", 10.0, 5, -18, 0.2, -0.18],
     ["egg", 9.6, -25, 18, 0.18, -0.1],
@@ -196,6 +196,46 @@ export function createCitySpiritualVisuals(scene) {
     group.add(sym);
     return sym;
   });
+
+  const wallVisuals = [];
+  const addWallVisual = (visual, range = 42) => {
+    visual.userData.baseOpacity = visual.material?.opacity ?? 1;
+    visual.userData.visualRange = isMobile ? Math.min(range, 32) : range;
+    group.add(visual);
+    wallVisuals.push(visual);
+  };
+  const flowerTex = flowerTexture();
+  const windowTex = sacredWindowTexture();
+  const angelTex = angelTexture();
+  const moonTex = moonTexture();
+  const waveTex = waveTexture();
+  const panelOpacity = isMobile ? 0.24 : 0.36;
+  addWallVisual(decal(flowerTex, 4.6, 4.6, [-37.08, 6.2, -25], [0, Math.PI / 2, 0], panelOpacity), 38);
+  addWallVisual(decal(flowerTex, 4.3, 4.3, [37.08, 6.1, -12], [0, -Math.PI / 2, 0], panelOpacity), 38);
+  addWallVisual(decal(flowerTex, 4.8, 4.8, [14, 7.6, -37.08], [0, 0, 0], isMobile ? 0.22 : 0.34), 44);
+  addWallVisual(decal(windowTex, 5.4, 3.2, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.18 : 0.28), 34);
+  addWallVisual(decal(windowTex, 5.4, 3.2, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.18 : 0.28), 34);
+  addWallVisual(decal(windowTex, 5.8, 3.4, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.16 : 0.26), 40);
+  addWallVisual(decal(angelTex, 7.2, 3.2, [-37.12, 6.7, -4], [0, Math.PI / 2, 0], isMobile ? 0.24 : 0.34), 36);
+  addWallVisual(decal(moonTex, 5.8, 1.65, [37.12, 6.6, 5.5], [0, -Math.PI / 2, 0], isMobile ? 0.24 : 0.34), 34);
+  addWallVisual(decal(waveTex, 6.2, 2.4, [37.12, 5.8, -27], [0, -Math.PI / 2, 0], isMobile ? 0.22 : 0.32), 38);
+  const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.08 : 0.12, depthWrite: false, side: DoubleSide });
+  [[{ x: 0, z: -6 }, { x: 22, z: 1.5 }], [{ x: 0, z: -6 }, { x: -8, z: 4 }], [{ x: 0, z: -6 }, { x: 5, z: -18 }], [{ x: 0, z: -6 }, { x: -24, z: 3 }]].forEach(([a, b]) => addGridLine(group, a, b, gridMat));
+  const crystalMat = new MeshBasicMaterial({ color: new Color("#BFA2FF"), transparent: true, opacity: isMobile ? 0.32 : 0.48, depthWrite: false });
+  [[-28, 12.8, -37.5], [12, 14.4, -37.5], [37.5, 11.2, -17]].forEach(([x, y, z]) => {
+    const crystal = new Group();
+    crystal.position.set(x, y, z);
+    crystal.userData.visualRange = isMobile ? 30 : 44;
+    [[0, 0], [0.32, 0.18], [-0.28, 0.16]].forEach(([ox, oz], i) => {
+      const c = new Mesh(new ConeGeometry(0.22 - i * 0.035, 0.85 - i * 0.1, 5), crystalMat);
+      c.position.set(ox, 0, oz);
+      c.rotation.y = i * 0.7;
+      crystal.add(c);
+    });
+    group.add(crystal);
+    wallVisuals.push(crystal);
+  });
+  group.userData.wallVisuals = wallVisuals;
 
   const words = ["ALIGN", "RECEIVE", "TRUST", "FLOW", "CALM", "FOCUS", "ACTIVATE", "I AM", "BECOME", "HARMONIZE", "ENERGY FIRST", "STAY ALIGNED", "I AM READY", "HIGHER SELF", "ABUNDANCE FLOWS", "CLARITY NOW"];
   const spots = [[-9, 1.9, -18], [9, 1.9, -15], [-20, 2.2, -4], [17, 2.1, 9.5], [-7, 2.25, 10.5], [22, 2.2, -23], [-28, 2.3, 2], [27, 2.3, -2], [0, 2.1, -21], [-13, 2.35, 3], [12, 2.25, 2], [-24, 2.35, 13], [24, 2.35, -8]];
@@ -219,5 +259,10 @@ export function animateCitySpiritualVisuals(scene, t, px, pz) {
     const opacity = near ? h.userData.baseOpacity * (0.82 + Math.sin(t * 1.1 + h.userData.phase) * 0.08) : 0;
     h.visible = near;
     h.children.forEach((side) => { side.material.opacity = opacity; });
+  });
+  (group.userData.wallVisuals || []).forEach((visual) => {
+    const dx = visual.position.x - px, dz = visual.position.z - pz;
+    const range = visual.userData.visualRange || 38;
+    visual.visible = dx * dx + dz * dz < range * range;
   });
 }
