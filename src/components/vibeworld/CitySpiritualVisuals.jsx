@@ -178,33 +178,6 @@ function addGridLine(group, a, b, mat) {
 export function createCitySpiritualVisuals(scene) {
   const group = new Group(); group.name = "citySpiritualVisuals";
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const rotSouth = [0, 0, 0], rotNorth = [0, Math.PI, 0], rotEast = [0, -Math.PI / 2, 0], rotWest = [0, Math.PI / 2, 0];
-
-  group.add(decal(flowerTexture(), 5.6, 3.2, [-17.8, 5.4, -35.85], rotSouth, isMobile ? 0.38 : 0.52));
-  group.add(decal(moonTexture(), 6.2, 2.4, [9, 7.2, -35.84], rotSouth, isMobile ? 0.34 : 0.48));
-
-  const powerGridSymbol = groundDecal(groundSymbolTexture("metatron", ""), 13.5, 22, -3, isMobile ? 0.46 : 0.66, 0.12);
-  powerGridSymbol.name = "powerGridSymbol";
-  powerGridSymbol.material.userData.baseOpacity = isMobile ? 0.46 : 0.66;
-  group.userData.powerGridSymbolMat = powerGridSymbol.material;
-  group.add(powerGridSymbol);
-
-  const zoneSymbolSize = 7.2;
-  const zoneSymbolOpacity = isMobile ? 0.38 : 0.58;
-  [
-    ["egg", -6, -27, 0.22, 1.0],
-    ["flower", -27, -20, -0.16, 0.96],
-    ["seed", 27, -15, 0.2, 0.96],
-    ["chakra", -18, -8.5, 0.32, 1.0],
-    ["metatron", -30, 9.5, 0.02, 1.0],
-    ["pentagon", 30, -30, -0.22, 0.86],
-    ["pentagram", -31, -2, 0.12, 0.86],
-  ].forEach(([kind, x, z, rot, boost]) => {
-    group.add(groundDecal(groundSymbolTexture(kind, ""), zoneSymbolSize, x, z, zoneSymbolOpacity * boost, rot));
-  });
-
-  const crystalMat = new MeshBasicMaterial({ color: new Color("#A078FF"), transparent: true, opacity: isMobile ? 0.42 : 0.62, depthWrite: false });
-  [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
 
   const affirmations = [["Protect Your Peace", -9, 1.9, -18], ["Energy Leads", 9, 1.9, -15], ["Become The Frequency", -20, 2.2, -4], ["Calm Is Power", 17, 2.1, 9.5], ["Focus Is Currency", -7, 2.25, 10.5], ["Your Energy Opens Doors", 22, 2.2, -23]];
   group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.58 : 0.76); group.add(h); return h; });
@@ -215,11 +188,6 @@ export function createCitySpiritualVisuals(scene) {
 export function animateCitySpiritualVisuals(scene, t, px, pz) {
   const group = scene.userData.citySpiritualVisuals;
   if (!group?.userData?.affirmations) return;
-  const powerGridSymbolMat = group.userData.powerGridSymbolMat;
-  if (powerGridSymbolMat) {
-    const base = powerGridSymbolMat.userData.baseOpacity || 0.56;
-    powerGridSymbolMat.opacity = base * (0.78 + Math.sin(t * 1.4) * 0.12);
-  }
   group.userData.affirmations.forEach((h) => {
     const dx = h.position.x - px, dz = h.position.z - pz, d2 = dx * dx + dz * dz;
     const near = d2 < 16 * 16;

@@ -154,14 +154,6 @@ export function createSacredGeometryNetwork(scene, mode) {
   const group = new Group();
   group.name = `sacredGeometryNetwork_${mode}`;
   group.userData = { mode, nodes: [], lines: [], flowDots: [] };
-  const y = mode === "beach" ? 0.046 : 0.034;
-  const nodes = mode === "beach" ? BEACH_NODES : CITY_NODES;
-  nodes.forEach((node, i) => addNode(group, { ...node, phase: i * 0.6, rot: (i % 3 - 1) * 0.16 }, y));
-
-  const center = nodes[0];
-  for (let i = 1; i < nodes.length; i++) addConnection(group, center, nodes[i], y, i % 3 === 0 ? "#B58CFF" : i % 3 === 1 ? "#7DEBFF" : "#FFD36E");
-  for (let i = 1; i < nodes.length; i++) addConnection(group, nodes[i], nodes[i === nodes.length - 1 ? 1 : i + 1], y, i % 2 ? "#7DEBFF" : "#B58CFF");
-
   scene.add(group);
   scene.userData.sacredGeometryNetwork = group;
 }

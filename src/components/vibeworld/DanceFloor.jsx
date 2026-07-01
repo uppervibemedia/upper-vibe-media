@@ -126,7 +126,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   });
 
   const flowerFloor = new Mesh(
-    new CircleGeometry(PLAZA_R - 0.55, isMobile ? 72 : 112),
+    new CircleGeometry(1.55, isMobile ? 48 : 72),
     patternMat,
   );
   flowerFloor.rotation.x = -Math.PI / 2;
@@ -153,17 +153,11 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
     color: new Color("#00E5FF"),
     depthWrite: false,
     transparent: true,
-    opacity: isMobile ? 0.26 : 0.34,
+    opacity: 0,
     side: THREE.DoubleSide,
   });
-  const outerRing = new Mesh(new RingGeometry(PLAZA_R - 0.95, PLAZA_R - 0.78, isMobile ? 72 : 112), outerMat);
-  outerRing.rotation.x = -Math.PI / 2;
-  outerRing.position.set(PLAZA_X, 0.012, PLAZA_Z);
-  outerRing.renderOrder = 3;
-  outerRing.name = "flowerOfLifeOuterGlow";
-  scene.add(outerRing);
 
-  scene.userData.danceFloorMats = [patternMat, centerMat, outerMat];
+  scene.userData.danceFloorMats = [patternMat, centerMat];
   scene.userData._danceFloorTiles = [];
   scene.userData._danceRings = [];
   scene.userData._danceSweeps = [];
