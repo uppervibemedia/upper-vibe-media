@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
 import AcademyVideoPlayer from "./AcademyVideoPlayer";
 import { usePlayer } from "@/context/PlayerContext";
-import { resumeMyVibe, resumeUpperVibeRadio } from "@/lib/radioAudioManager";
+import { getState as getRadioAudioState, pauseMyVibe, pauseUpperVibeRadio, resumeMyVibe, resumeUpperVibeRadio } from "@/lib/radioAudioManager";
 
 const TOPIC_TAGS = ["Sacred Geometry", "Frequency", "Nervous System", "Manifestation", "Mindset", "Music Energy", "Confidence", "Focus", "Emotional Reset"];
 
@@ -61,13 +61,42 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
   const [progress, setProgress] = useState(() => getProgress());
   const playerCtx = usePlayer();
   const heldGlobalAudioRef = useRef(null);
+  const openRef = useRef(false);
+
+  const pauseGlobalForAcademy = () => {
+    window.__uvcAcademyHoldsGlobalAudio = true;
+    const audio = playerCtx?.audioRef?.current;
+    const radioState = getRadioAudioState();
+    const musicWasPlaying = !!playerCtx?.isPlaying || (!!audio && !audio.paused && !audio.ended);
+    const radioWasPlaying = !!radioState?.isPlaying;
+
+    if (!heldGlobalAudioRef.current) {
+      heldGlobalAudioRef.current = {
+        musicWasPlaying,
+        radioWasPlaying,
+        radioMode: radioState?.activeMode || null,
+      };
+    }
+
+    if (radioState?.activeMode === "myVibeRadio") pauseMyVibe();
+    if (radioState?.activeMode === "upperVibeRadio") pauseUpperVibeRadio();
+
+    if (audio && !audio.paused) {
+      if (audio.currentTime > 0) playerCtx?.savePosition?.(audio.currentTime);
+      audio.pause();
+      playerCtx?.safePause?.(audio, "academy-open");
+    }
+    playerCtx?.setIsPlaying?.(false);
+  };
 
   const handleAcademyGlobalPaused = (snapshot) => {
-    heldGlobalAudioRef.current = snapshot;
+    if (!heldGlobalAudioRef.current) heldGlobalAudioRef.current = snapshot;
   };
 
   const resumeHeldGlobalAudio = () => {
     const snapshot = heldGlobalAudioRef.current;
+    heldGlobalAudioRef.current = null;
+    window.__uvcAcademyHoldsGlobalAudio = false;
     if (!snapshot) return;
     if (snapshot.radioWasPlaying) {
       if (snapshot.radioMode === "myVibeRadio") resumeMyVibe();
@@ -75,7 +104,6 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
     } else if (snapshot.musicWasPlaying && playerCtx?.audioRef?.current) {
       playerCtx.safePlay?.(playerCtx.audioRef.current, "academy-exit");
     }
-    heldGlobalAudioRef.current = null;
   };
 
   const handleCloseAcademy = () => {
@@ -102,12 +130,26 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
   const watchUrl = toWatchUrl(currentLesson);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      openRef.current = false;
+      return;
+    }
+    if (!openRef.current) {
+      openRef.current = true;
+      pauseGlobalForAcademy();
+    }
     setView(initialView || "overview");
     setRewardMessage("");
     setProgress(getProgress());
     if (config.city && (initialView === "videos" || initialView === "daily")) loadVideos(initialView);
   }, [open, initialView, config.city]);
+
+  useEffect(() => {
+    if (!open) return;
+    pauseGlobalForAcademy();
+    const id = setInterval(pauseGlobalForAcademy, 1000);
+    return () => clearInterval(id);
+  }, [open, playerCtx?.isPlaying]);
 
   const loadVideos = async (targetView = "videos") => {
     setView(targetView);

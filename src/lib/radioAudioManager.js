@@ -30,6 +30,10 @@ function getAudio() {
   return _audio;
 }
 
+function academyHoldsAudio() {
+  return typeof window !== "undefined" && window.__uvcAcademyHoldsGlobalAudio;
+}
+
 // ── State ──────────────────────────────────────────────────────────────────────
 let _state = {
   activeMode: null,          // "upperVibeRadio" | "myVibeRadio" | null
@@ -219,6 +223,11 @@ function _scheduleReconnect() {
  */
 export function playUpperVibeRadio() {
   console.log("[RAM] playUpperVibeRadio | current mode:", _state.activeMode);
+  if (academyHoldsAudio()) {
+    console.log("[RAM] playUpperVibeRadio blocked — Vibe Academy is active");
+    pauseUpperVibeRadio();
+    return;
+  }
 
   // Already playing live — nothing to do
   const audio = getAudio();
@@ -275,6 +284,11 @@ export function pauseUpperVibeRadio() {
 
 export function resumeUpperVibeRadio() {
   if (_state.activeMode !== "upperVibeRadio") return;
+  if (academyHoldsAudio()) {
+    console.log("[RAM] resumeUpperVibeRadio blocked — Vibe Academy is active");
+    pauseUpperVibeRadio();
+    return;
+  }
   console.log("[RAM] resumeUpperVibeRadio");
   const audio = getAudio();
   _setState({ intendedToPlay: true, audioStatus: "loading" });
@@ -368,6 +382,11 @@ function _sameAudioUrl(loadedUrl, trackUrl) {
 }
 
 export function recoverMyVibeRadioPlayback(track = _state.currentTrack || _state.lastTrack) {
+  if (academyHoldsAudio()) {
+    console.log("[RAM][MyVibe] recovery blocked — Vibe Academy is active");
+    pauseMyVibe();
+    return;
+  }
   if (!track?.audio_url) {
     console.warn("[RAM][MyVibe] recovery blocked — missing audio_url for:", track?.title);
     _setState({ isPlaying: false, intendedToPlay: false, audioStatus: "error", lastError: "Track file unavailable." });
@@ -445,6 +464,11 @@ export function recoverMyVibeRadioPlayback(track = _state.currentTrack || _state
  * This prevents songs from restarting when navigating between pages.
  */
 export function playMyVibeTrack(track) {
+  if (academyHoldsAudio()) {
+    console.log("[RAM] playMyVibeTrack blocked — Vibe Academy is active");
+    pauseMyVibe();
+    return;
+  }
   if (!track?.audio_url) {
     console.warn("[RAM] playMyVibeTrack — no audio_url for:", track?.title);
     if (_onMyVibeError) _onMyVibeError(track);
@@ -542,6 +566,11 @@ export function pauseMyVibe() {
 
 export function resumeMyVibe() {
   if (_state.activeMode !== "myVibeRadio") return;
+  if (academyHoldsAudio()) {
+    console.log("[RAM] resumeMyVibe blocked — Vibe Academy is active");
+    pauseMyVibe();
+    return;
+  }
   console.log("[RAM] resumeMyVibe | pos:", getAudio().currentTime.toFixed(2));
   recoverMyVibeRadioPlayback(_state.currentTrack || _state.lastTrack);
 }
@@ -563,6 +592,11 @@ export function saveMyVibePosition() {
  */
 export function restoreMyVibePosition(savedTime) {
   if (_state.activeMode !== "myVibeRadio") return;
+  if (academyHoldsAudio()) {
+    console.log("[RAM] restoreMyVibePosition blocked — Vibe Academy is active");
+    pauseMyVibe();
+    return;
+  }
   const audio = getAudio();
   if (savedTime > 0 && isFinite(savedTime)) {
     console.log("[RAM] restoreMyVibePosition:", savedTime.toFixed(2));

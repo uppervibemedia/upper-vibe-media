@@ -553,6 +553,10 @@ export function PlayerProvider({ children }) {
   // ── CORE: safePlay (goes through op queue) ────────────────────────────────
   const safePlay = useCallback(async (audio, reason) => {
     if (!audio) return;
+    if (window.__uvcAcademyHoldsGlobalAudio) {
+      console.log("[Player] safePlay blocked — Vibe Academy is active | reason:", reason);
+      return;
+    }
     return opQueueRef.current.push(async () => {
       const src = audio.src || loadedSrcRef.current;
       if (!src) {
@@ -689,6 +693,13 @@ export function PlayerProvider({ children }) {
         "| paused:", audio?.paused, "| rate:", audio?.playbackRate);
       debounce("play", (intent) => {
         if (intent === "play" && audioRef.current) {
+          if (window.__uvcAcademyHoldsGlobalAudio) {
+            console.log("[Player] lockscreen play blocked — Vibe Academy is active");
+            safePause(audioRef.current, "academy-lockscreen-block");
+            setIsPlaying(false);
+            setMediaSessionState(false);
+            return;
+          }
           enforceRate(audioRef.current);
           safePlay(audioRef.current, "lockscreen-play");
           setIsPlaying(true);
@@ -979,6 +990,13 @@ export function PlayerProvider({ children }) {
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    if (window.__uvcAcademyHoldsGlobalAudio) {
+      console.log("[Player] togglePlay blocked — Vibe Academy is active");
+      safePause(audio, "academy-toggle-block");
+      setIsPlaying(false);
+      setMediaSessionState(false);
+      return;
+    }
     // Wire Web Audio graph for visualiser — inside user gesture (iOS-safe).
     // Reset failure state so a real gesture always gets a retry.
     resetAnalyserDisabled();
@@ -1063,6 +1081,13 @@ export function PlayerProvider({ children }) {
         title: track?.title,
         fields: track ? AUDIO_URL_FIELDS.filter((field) => !!track[field]) : [],
       });
+      return;
+    }
+    if (window.__uvcAcademyHoldsGlobalAudio) {
+      console.log("[Player] playTrack blocked — Vibe Academy is active");
+      safePause(audio, "academy-playtrack-block");
+      setIsPlaying(false);
+      setMediaSessionState(false);
       return;
     }
 
