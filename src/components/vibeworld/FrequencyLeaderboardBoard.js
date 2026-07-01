@@ -181,7 +181,7 @@ export function animateFrequencyLeaderboardBoard(scene, t) {
   const group = scene.userData.frequencyLeaderboardBoard;
   if (!group) return;
   if (!group.userData.nextLeaderboardRefresh || t > group.userData.nextLeaderboardRefresh) {
-    group.userData.nextLeaderboardRefresh = t + 10;
+    group.userData.nextLeaderboardRefresh = t + 60;
     refreshLeaderboard(group);
   }
   const pulse = 0.54 + Math.sin(t * 1.15) * 0.14;

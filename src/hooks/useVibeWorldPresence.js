@@ -14,12 +14,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
-const POSITION_MS = 120;       // Moving users broadcast at ~8–10Hz, skipped when unchanged
-const HEARTBEAT_MS = 10_000;   // Full heartbeat every 10s
-const STALE_MS = 24_000;       // Mark as offline if no heartbeat for 24s
-const BATCH_MS = 80;           // Batch incoming subscribe events briefly
-const POS_THRESHOLD = 0.08;    // Small movement delta before sending
-const ROT_THRESHOLD = 0.04;    // Small facing delta before sending
+const POSITION_MS = 500;       // Moving users broadcast at 2Hz; remote interpolation smooths between updates
+const HEARTBEAT_MS = 30_000;   // Full heartbeat every 30s to avoid rate limits
+const STALE_MS = 75_000;       // Mark as offline after missed heartbeats
+const BATCH_MS = 120;          // Batch incoming subscribe events briefly
+const POS_THRESHOLD = 0.25;    // Meaningful movement delta before sending
+const ROT_THRESHOLD = 0.08;    // Meaningful facing delta before sending
 
 function worldKeyForZone(zone) {
   const value = String(zone || "").toLowerCase();
@@ -296,25 +296,11 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
 
   useEffect(() => {
     if (!user?.id) return;
-    sendPosition();
-    heartbeat();
     usersMapRef.current = Object.fromEntries(
       Object.entries(usersMapRef.current).filter(([, u]) => worldKeyForZone(u.current_zone) === localWorldRef.current)
     );
     setActiveUsers(Object.values(usersMapRef.current));
-    (async () => {
-      try {
-        const cutoff = new Date(Date.now() - STALE_MS).toISOString();
-        const users = await base44.entities.VibeWorldPresence.filter({ is_online: true, last_heartbeat: { $gte: cutoff } });
-        const map = {};
-        users.forEach((u) => {
-          if (u.user_id !== user.id && worldKeyForZone(u.current_zone) === localWorldRef.current) map[u.user_id] = u;
-        });
-        usersMapRef.current = map;
-        if (mountedRef.current) setActiveUsers(Object.values(map));
-      } catch {}
-    })();
-  }, [user?.id, currentZone, sendPosition, heartbeat]);
+  }, [user?.id, currentZone]);
 
   // ── Real-time entity subscription (replaces polling) ─────────────────────
   useEffect(() => {
