@@ -103,6 +103,27 @@ function groundSymbolTexture(kind, label = "") {
       for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.ellipse(cx, cy, maxR * 0.78, maxR * 0.22, a, 0, Math.PI * 2); ctx.stroke(); }
     } else if (kind === "chakra") {
       circle(cx, cy, maxR * 0.72); for (let i = 0; i < 7; i++) circle(cx + Math.cos(i * Math.PI * 2 / 7) * maxR * 0.46, cy + Math.sin(i * Math.PI * 2 / 7) * maxR * 0.46, 24);
+    } else if (kind === "vesica") {
+      circle(cx - maxR * 0.18, cy, maxR * 0.43); circle(cx + maxR * 0.18, cy, maxR * 0.43); circle(cx, cy, maxR * 0.7);
+    } else if (kind === "seed") {
+      circle(cx, cy, maxR * 0.22); for (let i = 0; i < 6; i++) circle(cx + Math.cos(i * Math.PI / 3) * maxR * 0.22, cy + Math.sin(i * Math.PI / 3) * maxR * 0.22, maxR * 0.22); circle(cx, cy, maxR * 0.55);
+    } else if (kind === "flower") {
+      for (let r = 1; r <= 2; r++) for (let i = 0; i < 6; i++) circle(cx + Math.cos(i * Math.PI / 3) * maxR * 0.19 * r, cy + Math.sin(i * Math.PI / 3) * maxR * 0.19 * r, maxR * 0.2); circle(cx, cy, maxR * 0.68);
+    } else if (kind === "tree") {
+      const pts = [[0,-0.52],[-0.23,-0.28],[0.23,-0.28],[-0.34,-0.02],[0,-0.02],[0.34,-0.02],[-0.23,0.24],[0.23,0.24],[0,0.5]].map(([x,y]) => [cx + x * maxR, cy + y * maxR]);
+      pts.forEach(([x, y]) => circle(x, y, 16));
+      [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7],[6,8],[7,8]].forEach(([a,b]) => line(pts[a][0], pts[a][1], pts[b][0], pts[b][1]));
+      circle(cx, cy, maxR * 0.72);
+    } else if (kind === "egg") {
+      const pts = []; for (let i = 0; i < 8; i++) pts.push([cx + Math.cos(i * Math.PI / 4) * maxR * 0.3, cy + Math.sin(i * Math.PI / 4) * maxR * 0.3]);
+      pts.forEach(([x, y]) => circle(x, y, maxR * 0.18)); circle(cx, cy, maxR * 0.62);
+    } else if (kind === "fruit") {
+      for (let i = 0; i < 12; i++) circle(cx + Math.cos(i * Math.PI * 2 / 12) * maxR * 0.42, cy + Math.sin(i * Math.PI * 2 / 12) * maxR * 0.42, maxR * 0.16); circle(cx, cy, maxR * 0.74);
+    } else if (kind === "pentagram") {
+      const pts = []; for (let i = 0; i < 5; i++) pts.push([cx + Math.cos(-Math.PI / 2 + i * Math.PI * 2 / 5) * maxR * 0.62, cy + Math.sin(-Math.PI / 2 + i * Math.PI * 2 / 5) * maxR * 0.62]);
+      [0,2,4,1,3,0].forEach((idx, i, arr) => { if (i) line(pts[arr[i-1]][0], pts[arr[i-1]][1], pts[idx][0], pts[idx][1]); }); circle(cx, cy, maxR * 0.7);
+    } else if (kind === "pentagon") {
+      for (let scale of [0.34, 0.56, 0.76]) { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; const px = cx + Math.cos(a) * maxR * scale; const py = cy + Math.sin(a) * maxR * scale; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath(); ctx.stroke(); }
     } else if (kind === "hex") {
       for (let x = 90; x < w - 60; x += 76) for (let y = 90; y < h - 60; y += 66) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; const px = x + Math.cos(a) * 25; const py = y + Math.sin(a) * 25; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath(); ctx.stroke(); }
     } else {
@@ -171,6 +192,14 @@ export function createCitySpiritualVisuals(scene) {
   group.add(groundDecal(groundSymbolTexture("hex", "777"), 3.2, 12, -17, groundOpacity * 0.72, -0.2));
   group.add(groundDecal(groundSymbolTexture("rings", "FLOW"), 3.6, 10.5, 3.5, groundOpacity * 0.7, 0.2));
   group.add(groundDecal(groundSymbolTexture("sri", "I AM"), 4.2, -18, 16, groundOpacity * 0.76, 0.12));
+  group.add(groundDecal(groundSymbolTexture("vesica", ""), 4.0, 30, -8, groundOpacity * 0.66, 0.35));
+  group.add(groundDecal(groundSymbolTexture("seed", ""), 4.4, 27, -30, groundOpacity * 0.72, -0.2));
+  group.add(groundDecal(groundSymbolTexture("flower", ""), 4.8, -30, -24, groundOpacity * 0.7, 0.18));
+  group.add(groundDecal(groundSymbolTexture("tree", ""), 4.7, -32, -2, groundOpacity * 0.72, -0.35));
+  group.add(groundDecal(groundSymbolTexture("egg", ""), 3.9, -5, -28, groundOpacity * 0.64, 0.5));
+  group.add(groundDecal(groundSymbolTexture("fruit", ""), 4.2, 28, 6, groundOpacity * 0.68, -0.1));
+  group.add(groundDecal(groundSymbolTexture("pentagram", ""), 3.8, 17, -2, groundOpacity * 0.58, 0.28));
+  group.add(groundDecal(groundSymbolTexture("pentagon", ""), 3.7, -18, 0, groundOpacity * 0.56, -0.4));
 
   const crystalMat = new MeshBasicMaterial({ color: new Color("#A078FF"), transparent: true, opacity: isMobile ? 0.42 : 0.62, depthWrite: false });
   [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
