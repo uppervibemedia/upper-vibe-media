@@ -13,8 +13,8 @@ export const JUKEBOX_POS = { x: PLAZA_X + 9.8, z: PLAZA_Z + 0.5 };
 export const JUKEBOX_INTERACT_RADIUS = 7.0;
 export const DANCE_FLOOR_RADIUS = 5.4;
 
-// Scale multiplier — 50% larger than original (1.0 * 1.5 * 1.5)
-const SCALE = 2.25;
+// Scale multiplier — temporary 30% smaller performance layout
+const SCALE = 1.575;
 
 // Angle from booth toward dance floor center
 // group.rotation.y = FACE_ANGLE makes the local +Z axis point toward the dance floor
@@ -282,9 +282,9 @@ export function createJukebox(scene) {
   nowPlayingTex.colorSpace = THREE.SRGBColorSpace;
   const nowPlayingMat = new THREE.SpriteMaterial({ map: nowPlayingTex, transparent: true, depthWrite: false, depthTest: false });
   const nowPlayingSprite = new THREE.Sprite(nowPlayingMat);
-  nowPlayingSprite.scale.set(4.8, 1.1, 1);
-  // Position just above the LIVE DJ holo sign (group is scaled 1.5×, holo at y=2.0 local → ~3.0 world + booth offset)
-  nowPlayingSprite.position.set(JUKEBOX_POS.x, 4.0, JUKEBOX_POS.z);
+  nowPlayingSprite.scale.set(3.36, 0.77, 1);
+  // Position just above the smaller LIVE DJ booth.
+  nowPlayingSprite.position.set(JUKEBOX_POS.x, 3.25, JUKEBOX_POS.z);
   nowPlayingSprite.renderOrder = 999;
   nowPlayingSprite.name = "djNowPlaying";
   scene.add(nowPlayingSprite);
