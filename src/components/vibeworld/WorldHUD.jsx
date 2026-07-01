@@ -853,7 +853,7 @@ export default function WorldHUD({
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setAcademyOpen(true); onMobileModalChange?.(true); }}
+              onClick={() => { hapticTap(); window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "academy" } })); setAcademyOpen(true); onMobileModalChange?.(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#7C3AED,#00D4F0)",

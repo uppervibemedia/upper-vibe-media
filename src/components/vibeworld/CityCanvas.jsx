@@ -534,7 +534,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, equippedAuraColor = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -2008,16 +2008,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   useEffect(() => {
     const controller = avatarRef.current;
     if (!controller) return;
+    const auraKey = equippedAura ? `${equippedAura}:${equippedAuraColor || ""}` : null;
     const prev = prevEquippedAuraRef.current;
-    if (equippedAura !== prev) {
-      prevEquippedAuraRef.current = equippedAura;
+    if (auraKey !== prev) {
+      prevEquippedAuraRef.current = auraKey;
       if (equippedAura) {
-        bindAura(controller, equippedAura);
+        bindAura(controller, equippedAura, equippedAuraColor || null);
       } else {
         unbindAura(controller);
       }
     }
-  }, [equippedAura]);
+  }, [equippedAura, equippedAuraColor]);
 
   // Keyboard
   useEffect(() => {

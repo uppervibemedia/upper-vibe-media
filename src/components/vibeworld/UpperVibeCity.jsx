@@ -57,6 +57,7 @@ import BeachPortalTransition from "@/components/vibeworld/BeachPortalTransition"
 import TransportConfirmModal from "@/components/vibeworld/TransportConfirmModal";
 import BeachQuestHUD from "@/components/vibeworld/BeachQuestHUD";
 import BeachActivityHUD from "@/components/vibeworld/BeachActivityHUD";
+import DailyCityEngagement from "@/components/vibeworld/DailyCityEngagement";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -113,6 +114,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [equippedNameplate, setEquippedNameplate] = useState(null);
   const [equippedBadge, setEquippedBadge] = useState(null);
   const [equippedClothing, setEquippedClothing] = useState(null);
+  const [dailyIntentionAura, setDailyIntentionAura] = useState(null);
 
   // Item id to hex color for aura — keep minimal, full set in AuraGlow
   const auraColors = {
@@ -1096,6 +1098,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setFerrisRiding(false);
     setNearJukebox(false);
     if (target === "beach") {
+      window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "beach_visit" } }));
       setWorldSpawn({ x: 6, z: 16, rot: Math.PI / 2 });
       setPlayerPos({ x: 6, z: 16, rot: Math.PI / 2, animState: "idle" });
       prevPosRef.current = { x: 6, z: 16, rot: Math.PI / 2 };
@@ -1144,10 +1147,26 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           isMobile={isMobile}
           mobileLayout={mobileLayout}
         />
+        <DailyCityEngagement
+          userId={user?.id}
+          isMobile={isMobile}
+          mobileLayout={mobileLayout}
+          worldMode={worldMode}
+          playerPos={playerPos}
+          isDancing={isDancing}
+          stageWatching={stageWatching}
+          domeOpen={domeFullscreenOpen}
+          ferrisRiding={ferrisRiding}
+          onSetIntentionAura={(aura) => {
+            setDailyIntentionAura(aura);
+            setAuraActive(true);
+          }}
+        />
         <CityCanvas
         worldMode={worldMode}
-        auraActive={auraActive}
-        equippedAura={equippedAura}
+        auraActive={auraActive || !!dailyIntentionAura}
+        equippedAura={dailyIntentionAura?.itemId || equippedAura}
+        equippedAuraColor={dailyIntentionAura?.color || equippedAuraColor}
         spawnOverride={worldSpawn || (returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null)}
           moveTarget={domeExitTarget}
           onLoaded={() => {

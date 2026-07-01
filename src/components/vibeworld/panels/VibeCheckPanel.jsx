@@ -213,6 +213,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     setResultStreak(newStreak);
     setSaving(false);
     setPhase("result");
+    window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "vibecheck" } }));
 
     // Try to save in background — show non-blocking warning if it fails
     if (user) {

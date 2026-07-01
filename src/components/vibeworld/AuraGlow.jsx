@@ -12,6 +12,14 @@ const AURA_COLORS = {
   shop_glow_starter: "#00AADD",
   shop_glow_purple:  "#9B4FFF",
   shop_glow_gold:    "#FFD700",
+  daily_intention_peace: "#4CC9FF",
+  daily_intention_focus: "#F8FAFC",
+  daily_intention_abundance: "#FFD36E",
+  daily_intention_confidence: "#FF7A3D",
+  daily_intention_love: "#FF6EC7",
+  daily_intention_creativity: "#A078FF",
+  daily_intention_healing: "#4ADE80",
+  streak_glow_14: "#BFA2FF",
   default:           "#00AADD",
 };
 
