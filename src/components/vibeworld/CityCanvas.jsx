@@ -89,13 +89,9 @@ const CAM_LOOK_Y_LS = 1.35;   // look at avatar upper chest / head
 const FOV_PORTRAIT  = 52;     // default portrait FOV
 const FOV_LANDSCAPE = 60;     // wider FOV in landscape feels immersive
 
-// Tree collisions — radius 0.6 per tree
+// No decorative object collision blockers — movement should only be limited by world edges.
 const TREE_R = 0.5;
-const COLLISION_BOXES = [
-  ...TREE_POSITIONS.map(([tx, tz]) => [tx, tz, TREE_R, TREE_R]),
-  [CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, 5.3, 5.3],
-  [22, 12.25, 3.9, 3.9],
-];
+const COLLISION_BOXES = [];
 
 // ─── UTILITIES ────────────────────────────────────────────────
 function getCityQuality() {
@@ -874,7 +870,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         lastTimeRef.current = now;
         if (dt > 0.1) dt = 0.1; // Keep FPS tracking honest after tab resumes
         if (dt <= 0) dt = 0.016;
-        const moveDt = Math.min(dt, 0.033); // movement/turning never consumes lag spikes
+        const moveDt = Math.min(dt, 0.075); // keep movement close to real time during frame drops
 
         // ── Adaptive quality + TV Mode pixel ratio control ──
         if (!quality._fpsSamples) quality._fpsSamples = [];
@@ -1004,8 +1000,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         const isMoving = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08;
-        const smoothMovementMode = isMobileRef.current && worldModeRef.current === "city";
-        let prioritizeMovement = smoothMovementMode && (isMoving || userTouchingCamRef.current);
+        const smoothMovementMode = isMobileRef.current;
+        let prioritizeMovement = isMoving || userTouchingCamRef.current;
          if (Math.abs(inputStrafe) > 0.08 && Math.abs(inputFwd) < 0.08) hasAnyInput = true;
 
          // ─── MOVEMENT (GTA 5 style) ───────────────────────────────────
@@ -1091,7 +1087,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Apply velocity
         const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
-        prioritizeMovement = smoothMovementMode && (isMoving || speed > 0.05 || userTouchingCamRef.current);
+        prioritizeMovement = isMoving || speed > 0.05 || userTouchingCamRef.current;
         px += vel.x * moveDt;
         pz += vel.z * moveDt;
 
@@ -1384,7 +1380,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const waveT = t * waveSpeed;
 
         // Mobile: static ocean — no vertex animation at all
-        const skipOcean = scene.userData._oceanStatic || (isMob && frameRef.current % 3 !== 0);
+        const skipOcean = scene.userData._oceanStatic || (prioritizeMovement && frameRef.current % 4 !== 0) || (isMob && frameRef.current % 3 !== 0);
         if (oceanMesh && origArr && !skipOcean) {
           const pos = oceanMesh.geometry.attributes.position;
           const arr = pos.array;
@@ -1544,7 +1540,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // Signs/particles: cached arrays avoid scanning the whole scene every frame.
-        const updateSigns = !isMob || frameRef.current % 8 === 0;
+        const updateSigns = prioritizeMovement ? frameRef.current % 16 === 0 : (!isMob || frameRef.current % 8 === 0);
         if (updateSigns) {
           const signs = scene.userData._neonSigns || [];
           for (const child of signs) {
@@ -1562,11 +1558,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.lookAt(camera.position);
           }
         }
-        if (!isMob || frameRef.current % 3 === 0) animateSacredGeometryNetwork(scene, t, audioBeat);
-        if (worldModeRef.current === "city" && (!isMob || frameRef.current % 8 === 0)) animateCitySpiritualVisuals(scene, t, px, pz);
+        if (!prioritizeMovement && (!isMob || frameRef.current % 3 === 0)) animateSacredGeometryNetwork(scene, t, audioBeat);
+        if (worldModeRef.current === "city" && !prioritizeMovement && (!isMob || frameRef.current % 8 === 0)) animateCitySpiritualVisuals(scene, t, px, pz);
         // Beach animations: lightweight shoreline in City; full Zen Beach only in Beach World.
         if (worldModeRef.current === "beach") {
-          if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
+          if (prioritizeMovement ? frameRef.current % 10 === 0 : (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateZenBeach(scene, t, audioBeat);
           const waterfallStreams = scene.userData.beachWaterfallStreams || [];
           if (waterfallStreams.length && (!mobileQuality || frameRef.current % (lowQuality ? 6 : 3) === 0)) {
             for (const wf of waterfallStreams) {
@@ -1582,8 +1578,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               }
             }
           }
-          if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachActivities(scene, t, audioBeat);
-          if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachFrequencyCove(scene, t, audioBeat);
+          if (!prioritizeMovement && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateBeachActivities(scene, t, audioBeat);
+          if (!prioritizeMovement && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateBeachFrequencyCove(scene, t, audioBeat);
         } else if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 12 : 6) === 0) {
           animateSimpleCityShoreline(scene, t);
         }
@@ -1612,11 +1608,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
         const crystalGate = tvSmooth
           ? (crystalDist < 25 || scene.userData.crystalZone?.activated)
-          : (!mobileQuality || crystalDist < 28 || frameRef.current % (lowQuality ? 10 : 4) === 0);
+          : (!prioritizeMovement && (!mobileQuality || crystalDist < 28 || frameRef.current % (lowQuality ? 10 : 4) === 0));
         if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth || lowQuality);
         const jukeboxUpdateFrame = danceDist < 15 ? true : danceDist < 24 ? frameRef.current % (mobileQuality ? 4 : 3) === 0 : frameRef.current % (mobileQuality ? 18 : 10) === 0;
-        if (worldModeRef.current === "city" && jukeboxUpdateFrame) animateJukebox(scene, t, audioBeat, dancePerfTier);
-        if (scene.userData.shopGroup && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 3) === 0)) animateShop(scene.userData.shopGroup, t, audioBeat);
+        if (worldModeRef.current === "city" && !prioritizeMovement && jukeboxUpdateFrame) animateJukebox(scene, t, audioBeat, dancePerfTier);
+        if (scene.userData.shopGroup && !prioritizeMovement && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 3) === 0)) animateShop(scene.userData.shopGroup, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
         if (hbRidingRef.current && avatarEntryRef.current && !avatarEntryRef.current._hbBoard) {
@@ -1696,8 +1692,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // During stage fullscreen/watch (locked): hide all planets.
         scene.userData._hidePlanets = lockedRef.current;
         scene.userData._ferrisRiding = ferrisRidingRef.current;
-        if (!prioritizeMovement || frameRef.current % 2 === 0) animateCosmicSky(scene, camera, t, dt);
-        if (worldModeRef.current === "city") tickAddOns(scene, t);
+        if (!prioritizeMovement || frameRef.current % 3 === 0) animateCosmicSky(scene, camera, t, dt);
+        if (worldModeRef.current === "city" && (!prioritizeMovement || frameRef.current % 3 === 0)) tickAddOns(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
@@ -1905,7 +1901,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           prioritizingMovement: prioritizeMovement,
           raycastsPerFrame: 0,
           collisionChecksPerFrame: worldModeRef.current === "city" ? COLLISION_BOXES.length + 4 : 4,
-          zoneChecksPerSecond: smoothMovementMode ? 8 : 12,
+          zoneChecksPerSecond: prioritizeMovement ? 4 : 12,
           remoteAvatarTick: prioritizeMovement ? "half-rate" : "full-rate",
         };
 
