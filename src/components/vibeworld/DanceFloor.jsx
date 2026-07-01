@@ -126,7 +126,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   });
 
   const flowerFloor = new Mesh(
-    new CircleGeometry(1.55, isMobile ? 48 : 72),
+    new CircleGeometry(PLAZA_R * 0.82, isMobile ? 64 : 96),
     patternMat,
   );
   flowerFloor.rotation.x = -Math.PI / 2;
@@ -142,7 +142,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
     opacity: isMobile ? 0.34 : 0.42,
     side: THREE.DoubleSide,
   });
-  const centerRing = new Mesh(new RingGeometry(0.82, 1.02, isMobile ? 48 : 72), centerMat);
+  const centerRing = new Mesh(new RingGeometry(1.3, 1.62, isMobile ? 64 : 96), centerMat);
   centerRing.rotation.x = -Math.PI / 2;
   centerRing.position.set(PLAZA_X, 0.011, PLAZA_Z);
   centerRing.renderOrder = 3;
