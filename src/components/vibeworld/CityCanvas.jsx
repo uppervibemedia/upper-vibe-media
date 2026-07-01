@@ -139,7 +139,7 @@ const STREAM_ZONES = [
   { key: "music_library", names: ["musicLibrary"], x: 22, z: -20, keepVisible: true },
   { key: "visualizer", names: ["visualizerDome", "domePortalGlow"], x: -13, z: 10, keepVisible: true },
   { key: "vibe_check", names: ["dailyVibeCheck", "vibeMirrorGroup"], x: -16, z: -13, keepVisible: true },
-  { key: "leaderboard", names: ["frequencyLeaderboardBoard"], x: -31, z: -7, keepVisible: true },
+  { key: "leaderboard", names: ["frequencyLeaderboardBoard"], x: -13, z: 17, keepVisible: true },
   { key: "academy", names: ["upperVibeAcademy", "academyEntrance"], x: -28, z: 5, keepVisible: true },
   { key: "crystal", names: ["crystalZone"], x: CRYSTAL_ZONE_X, z: CRYSTAL_ZONE_Z, keepVisible: true },
   { key: "ferris", names: ["ferrisWheel"], x: WHEEL_X, z: WHEEL_Z, keepVisible: true },

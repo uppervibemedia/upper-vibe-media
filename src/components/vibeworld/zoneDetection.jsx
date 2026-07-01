@@ -43,7 +43,7 @@ const ZONES = {
   leaderboard: {
     name: "Frequency Leaderboard",
     id: "leaderboard",
-    cx: -31, cz: -7, radius: 5,
+    cx: -13, cz: 17, radius: 4.5,
     icon: "Trophy",
   },
   zenbeach: {
