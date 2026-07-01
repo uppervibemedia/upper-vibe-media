@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X, GraduationCap, Sparkles, Brain, Music4, Sun, Wallet, PlayCircle, BookOpen, CheckCircle2, ArrowLeft } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
 import AcademyVideoPlayer from "./AcademyVideoPlayer";
+import { usePlayer } from "@/context/PlayerContext";
+import { resumeMyVibe, resumeUpperVibeRadio } from "@/lib/radioAudioManager";
 
 const TOPIC_TAGS = ["Sacred Geometry", "Frequency", "Nervous System", "Manifestation", "Mindset", "Music Energy", "Confidence", "Focus", "Emotional Reset"];
 
@@ -57,6 +59,29 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [rewardMessage, setRewardMessage] = useState("");
   const [progress, setProgress] = useState(() => getProgress());
+  const playerCtx = usePlayer();
+  const heldGlobalAudioRef = useRef(null);
+
+  const handleAcademyGlobalPaused = (snapshot) => {
+    heldGlobalAudioRef.current = snapshot;
+  };
+
+  const resumeHeldGlobalAudio = () => {
+    const snapshot = heldGlobalAudioRef.current;
+    if (!snapshot) return;
+    if (snapshot.radioWasPlaying) {
+      if (snapshot.radioMode === "myVibeRadio") resumeMyVibe();
+      if (snapshot.radioMode === "upperVibeRadio") resumeUpperVibeRadio();
+    } else if (snapshot.musicWasPlaying && playerCtx?.audioRef?.current) {
+      playerCtx.safePlay?.(playerCtx.audioRef.current, "academy-exit");
+    }
+    heldGlobalAudioRef.current = null;
+  };
+
+  const handleCloseAcademy = () => {
+    onClose?.();
+    setTimeout(resumeHeldGlobalAudio, 80);
+  };
 
   const config = useMemo(() => {
     const city = mode === "city";
@@ -159,7 +184,7 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${config.accent}18`, border: `1px solid ${config.accent}38` }}><GraduationCap className="w-4 h-4" style={{ color: config.accent }} /></div>
           <div className="min-w-0"><h3 className="font-heading font-black text-white text-base leading-tight">{config.title}</h3><p className="text-[10px] text-white/35 truncate">{config.subtitle}</p></div>
         </div>
-        <button onTouchStart={(e) => e.stopPropagation()} onClick={onClose} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10" style={{ color: "rgba(255,255,255,0.6)", minWidth: 44, minHeight: 44, touchAction: "manipulation" }}><X className="w-5 h-5" /></button>
+        <button onTouchStart={(e) => e.stopPropagation()} onClick={handleCloseAcademy} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10" style={{ color: "rgba(255,255,255,0.6)", minWidth: 44, minHeight: 44, touchAction: "manipulation" }}><X className="w-5 h-5" /></button>
       </div>
 
       {view === "daily" ? (
@@ -190,7 +215,8 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
           config={config}
           isMobile={isMobile}
           onBackToAcademy={() => setView("overview")}
-          onExitAcademy={onClose}
+          onExitAcademy={handleCloseAcademy}
+          onGlobalPaused={handleAcademyGlobalPaused}
         />
       ) : view === "progress" ? (
         <div className="flex-1 overflow-y-auto p-5">
@@ -219,7 +245,7 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
 
       <div className="flex-shrink-0 px-4 py-3 border-t border-white/5 flex flex-wrap items-center justify-center gap-2">
         {view !== "overview" && <button onClick={() => setView("overview")} className="px-5 py-2 rounded-full font-black text-[10px] tracking-wider" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.65)", minHeight: 44, touchAction: "manipulation" }}>Back To Academy</button>}
-        <button onClick={onClose} className="px-5 py-2 rounded-full font-black text-[10px] tracking-wider" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)", minHeight: 44, touchAction: "manipulation" }}>Return To City / Exit</button>
+        <button onClick={handleCloseAcademy} className="px-5 py-2 rounded-full font-black text-[10px] tracking-wider" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)", minHeight: 44, touchAction: "manipulation" }}>Return To City / Exit</button>
       </div>
     </div>
   );

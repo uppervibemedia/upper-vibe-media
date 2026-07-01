@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, ListVideo, Maximize2, Minimize2, Pause, Play, Volume2, VolumeX, X } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
-import { getState as getRadioAudioState, pauseMyVibe, pauseUpperVibeRadio, resumeMyVibe, resumeUpperVibeRadio } from "@/lib/radioAudioManager";
+import { getState as getRadioAudioState, pauseMyVibe, pauseUpperVibeRadio } from "@/lib/radioAudioManager";
 
 function controlledEmbedUrl(url) {
   if (!url) return "";
@@ -42,6 +42,7 @@ export default function AcademyVideoPlayer({
   isMobile,
   onBackToAcademy,
   onExitAcademy,
+  onGlobalPaused,
 }) {
   const iframeRef = useRef(null);
   const { isPlaying, audioRef, safePause, safePlay, setIsPlaying, savePosition } = usePlayer();
@@ -75,6 +76,11 @@ export default function AcademyVideoPlayer({
       musicWasPlayingRef.current = !!isPlaying || audioPlaying;
       radioWasPlayingRef.current = !!radioState?.isPlaying;
       radioModeRef.current = radioState?.activeMode || null;
+      onGlobalPaused?.({
+        musicWasPlaying: musicWasPlayingRef.current,
+        radioWasPlaying: radioWasPlayingRef.current,
+        radioMode: radioModeRef.current,
+      });
       youtubeSessionActiveRef.current = true;
     }
     if (radioState?.isPlaying) {
@@ -87,19 +93,7 @@ export default function AcademyVideoPlayer({
       setIsPlaying?.(false);
       safePause?.(audio, "academy-video-playing");
     }
-  }, [audioRef, isPlaying, safePause, savePosition, setIsPlaying]);
-
-  const resumeGlobalIfNeeded = useCallback(() => {
-    if (!youtubeSessionActiveRef.current) return;
-    if (radioWasPlayingRef.current) {
-      if (radioModeRef.current === "myVibeRadio") resumeMyVibe();
-      if (radioModeRef.current === "upperVibeRadio") resumeUpperVibeRadio();
-      return;
-    }
-    if (musicWasPlayingRef.current && audioRef?.current) {
-      safePlay?.(audioRef.current, "academy-video-exit");
-    }
-  }, [audioRef, safePlay]);
+  }, [audioRef, isPlaying, safePause, savePosition, setIsPlaying, onGlobalPaused]);
 
   const pauseVideo = useCallback(() => {
     sendCommand("pauseVideo");
@@ -108,14 +102,13 @@ export default function AcademyVideoPlayer({
 
   const leaveVideoExperience = useCallback(() => {
     pauseVideo();
-    if (!openedExternalRef.current) resumeGlobalIfNeeded();
     openedExternalRef.current = false;
     youtubeSessionActiveRef.current = false;
     musicWasPlayingRef.current = false;
     radioWasPlayingRef.current = false;
     radioModeRef.current = null;
     setVideoState("paused");
-  }, [pauseVideo, resumeGlobalIfNeeded]);
+  }, [pauseVideo]);
 
   useEffect(() => {
     const onMessage = (event) => {
