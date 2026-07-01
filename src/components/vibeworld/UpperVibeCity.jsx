@@ -59,6 +59,7 @@ import BeachQuestHUD from "@/components/vibeworld/BeachQuestHUD";
 import BeachActivityHUD from "@/components/vibeworld/BeachActivityHUD";
 import DailyCityEngagement from "@/components/vibeworld/DailyCityEngagement";
 import SacredLearningLayer from "@/components/vibeworld/SacredLearningLayer";
+import CommunityEnergyDisplay from "@/components/vibeworld/CommunityEnergyDisplay";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -1173,6 +1174,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           mobileLayout={mobileLayout}
           hidden={stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
           userId={user?.id}
+        />
+        <CommunityEnergyDisplay
+          activeUsers={activeUsers}
+          isMobile={isMobile}
+          mobileLayout={mobileLayout}
+          hidden={worldMode !== "city" || stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
         />
         <CityCanvas
         worldMode={worldMode}

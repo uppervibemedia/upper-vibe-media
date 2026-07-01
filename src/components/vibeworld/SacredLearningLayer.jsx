@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, CheckCircle2, Sparkles, X, Zap } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
 
 const DAILY_WISDOM = [
@@ -241,6 +242,13 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
       setActivationStarted(null);
       window.__uvcChargingSacredSymbol = null;
       window.__uvcActiveSacredSymbol = { id: candidate.id, x: candidate.x, z: candidate.z, kind: candidate.kind, startedAt: performance.now() * 0.001, active: true };
+      base44.entities.SacredSymbolActivation.create({
+        user_id: userId || "guest",
+        symbol_id: candidate.id,
+        symbol_title: candidate.title,
+        activated_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
+      }).catch(() => {});
       window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "sacred_symbol_activated", symbolId: candidate.id } }));
     }, remaining);
     return () => clearTimeout(t);

@@ -1,0 +1,44 @@
+{
+  "name": "SacredSymbolActivation",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User who activated the symbol"
+    },
+    "symbol_id": {
+      "type": "string",
+      "description": "Sacred symbol identifier"
+    },
+    "symbol_title": {
+      "type": "string",
+      "description": "Readable symbol name"
+    },
+    "activated_at": {
+      "type": "string",
+      "description": "ISO timestamp when activated"
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "ISO timestamp for active community display window"
+    }
+  },
+  "required": [
+    "user_id",
+    "symbol_id",
+    "activated_at",
+    "expires_at"
+  ],
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
