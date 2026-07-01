@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/AuthContext";
 import {
   getTodaysQuestions,
   calcVibeScoreFromAnswers,
+  calcVibeCategoryScoresFromAnswers,
+  deriveVibeCategoryScoresFromScore,
   vibeCategory,
   vibeMessage,
   CORE_QUESTIONS,
@@ -44,28 +46,11 @@ function ScoreMeter({ value, color, size = 144 }) {
 }
 
 function computeCategories(mood, moodScore) {
-  const base = moodScore || 50;
-  const variation = (m) => Math.max(5, Math.min(95, base + (Math.sin(m * 2.3) * 15) + (Math.cos(m * 1.7) * 10)));
-  return {
-    safety: Math.round(variation(1)), clarity: Math.round(variation(2)),
-    consistency: Math.round(variation(3)), gratitude: Math.round(variation(4)),
-    rest: Math.round(variation(5)), action: Math.round(variation(6)),
-  };
+  return deriveVibeCategoryScoresFromScore(moodScore || 50);
 }
 
-const STATUS_LEVELS = [
-  { min: 0, label: "Needs Reset", color: "#F87171" },
-  { min: 30, label: "Rebuilding", color: "#FB923C" },
-  { min: 50, label: "Steady", color: "#FBBF24" },
-  { min: 70, label: "Locked In", color: "#4ADE80" },
-  { min: 85, label: "Peak Vibe", color: "#00E5FF" },
-];
-
 function getStatus(score) {
-  for (let i = STATUS_LEVELS.length - 1; i >= 0; i--) {
-    if (score >= STATUS_LEVELS[i].min) return STATUS_LEVELS[i];
-  }
-  return STATUS_LEVELS[0];
+  return vibeCategory(score);
 }
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -110,6 +95,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
 
   // Result state
   const [resultScore, setResultScore] = useState(null);
+  const [resultCategories, setResultCategories] = useState(null);
   const [resultStreak, setResultStreak] = useState(0);
 
   // Stable refs to avoid dependency churn
@@ -129,13 +115,12 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
       const dates = [...new Set(all.map((c) => c.check_in_date))];
       const streak = calcStreak(dates, !!latest);
 
-      const categories = latest
-        ? computeCategories(latest.mood, latest.mood_score)
-        : computeCategories("neutral", 50);
+      const latestScore = latest?.vibe_score || latest?.mood_score || 50;
+      const categories = latest?.category_scores || computeCategories(latest?.mood, latestScore);
 
       setData({
-        score: latest?.vibe_score || latest?.mood_score || 50,
-        status: getStatus(latest?.vibe_score || latest?.mood_score || 50),
+        score: latestScore,
+        status: getStatus(latestScore),
         streak,
         yesterdayScore: yesterday?.vibe_score || yesterday?.mood_score || null,
         categories,
@@ -169,6 +154,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     setQIndex(0);
     setAnswers([]);
     setResultScore(null);
+    setResultCategories(null);
     setSaving(false);
     setSubmitError(null);
     fetchData();
@@ -204,12 +190,14 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     // Calculate score immediately — always show result even if save fails
     const currentStreak = data?.streak ?? 0;
     const ss = streakToScore(currentStreak);
-    const score = calcVibeScoreFromAnswers(finalAnswers, ss, !!data?.yesterdayScore);
+    const categoryScores = calcVibeCategoryScoresFromAnswers(finalAnswers);
+    const score = calcVibeScoreFromAnswers(finalAnswers);
     const newStreak = currentStreak + 1;
     const cat = vibeCategory(score);
 
     // Show result immediately — don't block on network
     setResultScore(score);
+    setResultCategories(categoryScores);
     setResultStreak(newStreak);
     setSaving(false);
     setPhase("result");
@@ -226,6 +214,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
           mood_score: score,
           streak_days: newStreak,
           vibe_score: score,
+          category_scores: categoryScores,
         });
         base44.analytics.track({ eventName: "vibe_check_submitted", properties: { vibe_score: score, mood: cat.moodTag } });
       } catch (e) {
@@ -242,6 +231,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
   const status = getStatus(score);
   const cat = vibeCategory(score);
   const streak = resultStreak || data?.streak || 0;
+  const displayCategories = resultCategories || data?.categories || deriveVibeCategoryScoresFromScore(score);
 
   const currentQ = questions[qIndex];
   const totalQ = questions.length;
@@ -401,7 +391,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
             <div className="mt-5">
               <p className="text-[10px] font-black tracking-wider text-white/30 uppercase mb-3">Energy Breakdown</p>
               <div className="space-y-2.5">
-                {Object.entries(data?.categories || computeCategories("neutral", 50)).map(([key, value]) => (
+                {Object.entries(displayCategories).map(([key, value]) => (
                   <div key={key} className="flex items-center gap-3">
                     <span className="text-[10px] font-bold text-white/40 w-20 text-right flex-shrink-0">{CATEGORY_LABELS[key] || key}</span>
                     <div className="flex-1 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
@@ -468,7 +458,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
             <div>
               <p className="text-[10px] font-black tracking-wider text-white/30 uppercase mb-3">Energy Breakdown</p>
               <div className="space-y-2.5">
-                {Object.entries(data.categories).map(([key, value]) => (
+                {Object.entries(displayCategories).map(([key, value]) => (
                   <div key={key} className="flex items-center gap-3">
                     <span className="text-[10px] font-bold text-white/40 w-20 text-right flex-shrink-0">{CATEGORY_LABELS[key] || key}</span>
                     <div className="flex-1 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
@@ -536,11 +526,11 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
           <button
             onTouchStart={(e) => e.stopPropagation()}
             onClick={() => { hapticTap(); setFullReport(true); }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:bg-white/10 active:scale-95"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
             style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.6)",
+              background: "rgba(0,229,255,0.10)",
+              border: "1px solid rgba(0,229,255,0.30)",
+              color: "#DFFBFF",
               minHeight: 48,
               touchAction: "manipulation",
               pointerEvents: "auto",
@@ -551,8 +541,8 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
           <button
             onTouchStart={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="w-full py-2.5 text-[10px] font-bold text-white/20 tracking-wider uppercase"
-            style={{ minHeight: 44, touchAction: "manipulation", pointerEvents: "auto" }}>
+            className="w-full py-3 rounded-xl text-[10px] font-black tracking-wider uppercase transition-all active:scale-95"
+            style={{ minHeight: 44, touchAction: "manipulation", pointerEvents: "auto", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.72)" }}>
             Close
           </button>
         </div>
@@ -595,7 +585,8 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                             background: s >= 70 ? "linear-gradient(180deg,#4ADE80,#4ADE8044)" : s >= 50 ? "linear-gradient(180deg,#FBBF24,#FBBF2444)" : "linear-gradient(180deg,#F87171,#F8717144)",
                             minHeight: 4,
                           }} />
-                        <span className="text-[8px] text-white/25 mt-1">{s}</span>
+                        <span className="text-[8px] text-white/55 mt-1 font-black">{s}</span>
+                        <span className="text-[7px] text-white/28 mt-0.5">{String(h.check_in_date || "").slice(5)}</span>
                       </div>
                     );
                   })}
@@ -629,7 +620,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
               <div>
                 <p className="text-[10px] font-black tracking-wider text-white/30 uppercase mb-3">Energy Breakdown</p>
                 <div className="space-y-2.5">
-                  {Object.entries(data.categories).map(([key, value]) => (
+                  {Object.entries(displayCategories).map(([key, value]) => (
                     <div key={key} className="flex items-center gap-3">
                       <span className="text-[10px] font-bold text-white/40 w-20 text-right flex-shrink-0">{CATEGORY_LABELS[key] || key}</span>
                       <div className="flex-1 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>

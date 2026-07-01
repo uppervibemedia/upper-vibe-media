@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Flame, Sparkles, ArrowRight, Lock, Check, ChevronDown, ChevronUp, Trophy, Crown } from "lucide-react";
+import { vibeCategory } from "@/lib/vibeCheckQuestions";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 export function SectionCard({ children, centered = false, className = "" }) {
@@ -57,10 +58,7 @@ export function BreakdownRow({ label, emoji, value, weight, rtPrimary, score, su
 
 // ── Score label ───────────────────────────────────────────────────────────────
 export function scoreLabel(score) {
-  if (score <= 39) return { label: "Reset Needed", color: "#F87171" };   // red
-  if (score <= 64) return { label: "Stabilizing",  color: "#FB923C" };   // orange
-  if (score <= 84) return { label: "Aligned",       color: "#FBBF24" };   // gold/yellow
-  return              { label: "Locked In",          color: "#4ADE80" };   // electric green (elite only)
+  return vibeCategory(score);
 }
 
 // ── Streak levels ─────────────────────────────────────────────────────────────

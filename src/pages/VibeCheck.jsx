@@ -15,6 +15,7 @@ import VibeFrequencyRecs from "@/components/vibecheck/VibeFrequencyRecs";
 import {
   getTodaysQuestions,
   calcVibeScoreFromAnswers,
+  calcVibeCategoryScoresFromAnswers,
   vibeCategory,
   vibeMessage,
 } from "@/lib/vibeCheckQuestions";
@@ -167,10 +168,11 @@ export default function VibeCheck() {
     if (!user || saving) return;
     setSaving(true);
     const ss = streakToScore(streak);
-    const score = calcVibeScoreFromAnswers(finalAnswers, ss, yesterdayCompleted);
+    const categoryScores = calcVibeCategoryScoresFromAnswers(finalAnswers);
+    const score = calcVibeScoreFromAnswers(finalAnswers);
     const newStreak = streak + 1;
-    // Derive overall mood from score
-    const moodId = score <= 34 ? "low_energy" : score <= 59 ? "neutral" : score <= 79 ? "intentional" : "high_vibe";
+    // Derive overall mood from the shared score level
+    const moodId = vibeCategory(score).moodTag;
     try {
       const record = await base44.entities.VibeCheckIn.create({
         user_id: user.id,
@@ -180,6 +182,7 @@ export default function VibeCheck() {
         mood_score: score,
         streak_days: newStreak,
         vibe_score: score,
+        category_scores: categoryScores,
       });
       setTodayCheckIn(record);
       setAllCheckIns((prev) => [record, ...prev]);

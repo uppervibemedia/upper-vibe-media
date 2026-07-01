@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, ListVideo, Maximize2, Minimize2, Pause, Play, Volume2, VolumeX, X } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
+import { getState as getRadioAudioState, pauseMyVibe, pauseUpperVibeRadio, resumeMyVibe, resumeUpperVibeRadio } from "@/lib/radioAudioManager";
 
 function controlledEmbedUrl(url) {
   if (!url) return "";
@@ -46,6 +47,8 @@ export default function AcademyVideoPlayer({
   const { isPlaying, audioRef, safePause, safePlay, setIsPlaying, savePosition } = usePlayer();
   const youtubeSessionActiveRef = useRef(false);
   const musicWasPlayingRef = useRef(false);
+  const radioWasPlayingRef = useRef(false);
+  const radioModeRef = useRef(null);
   const openedExternalRef = useRef(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [playlistOpen, setPlaylistOpen] = useState(false);
@@ -66,10 +69,17 @@ export default function AcademyVideoPlayer({
 
   const pauseGlobalForYoutube = useCallback(() => {
     const audio = audioRef?.current;
+    const radioState = getRadioAudioState();
     if (!youtubeSessionActiveRef.current) {
       const audioPlaying = !!audio && !audio.paused && !audio.ended;
       musicWasPlayingRef.current = !!isPlaying || audioPlaying;
+      radioWasPlayingRef.current = !!radioState?.isPlaying;
+      radioModeRef.current = radioState?.activeMode || null;
       youtubeSessionActiveRef.current = true;
+    }
+    if (radioState?.isPlaying) {
+      if (radioState.activeMode === "myVibeRadio") pauseMyVibe();
+      if (radioState.activeMode === "upperVibeRadio") pauseUpperVibeRadio();
     }
     if (audio && !audio.paused) {
       if (audio.currentTime > 0) savePosition?.(audio.currentTime);
@@ -80,8 +90,14 @@ export default function AcademyVideoPlayer({
   }, [audioRef, isPlaying, safePause, savePosition, setIsPlaying]);
 
   const resumeGlobalIfNeeded = useCallback(() => {
-    if (youtubeSessionActiveRef.current && musicWasPlayingRef.current && audioRef?.current) {
-      safePlay?.(audioRef.current, "academy-video-muted-or-exit");
+    if (!youtubeSessionActiveRef.current) return;
+    if (radioWasPlayingRef.current) {
+      if (radioModeRef.current === "myVibeRadio") resumeMyVibe();
+      if (radioModeRef.current === "upperVibeRadio") resumeUpperVibeRadio();
+      return;
+    }
+    if (musicWasPlayingRef.current && audioRef?.current) {
+      safePlay?.(audioRef.current, "academy-video-exit");
     }
   }, [audioRef, safePlay]);
 
@@ -96,6 +112,8 @@ export default function AcademyVideoPlayer({
     openedExternalRef.current = false;
     youtubeSessionActiveRef.current = false;
     musicWasPlayingRef.current = false;
+    radioWasPlayingRef.current = false;
+    radioModeRef.current = null;
     setVideoState("paused");
   }, [pauseVideo, resumeGlobalIfNeeded]);
 
@@ -163,7 +181,6 @@ export default function AcademyVideoPlayer({
     } else {
       sendCommand("mute");
       setMuted(true);
-      resumeGlobalIfNeeded();
     }
   };
 
@@ -247,7 +264,7 @@ export default function AcademyVideoPlayer({
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setPlaylistOpen((v) => !v)} className="flex items-center gap-2 px-3 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.34)", color: "#DFFBFF", minHeight: 42 }}><ListVideo className="w-3.5 h-3.5" /> Playlist</button>
-            <button onClick={exitFullscreen} className="flex items-center gap-2 px-3 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,211,110,0.12)", border: "1px solid rgba(237,184,74,0.34)", color: "#FFF4C8", minHeight: 42 }}><Minimize2 className="w-3.5 h-3.5" /> Exit Full Screen</button>
+            <button onClick={exitFullscreen} className="flex items-center gap-2 px-3 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,211,110,0.12)", border: "1px solid rgba(237,184,74,0.34)", color: "#FFF4C8", minHeight: 42 }}><Minimize2 className="w-3.5 h-3.5" /> Exit Big Screen</button>
             <button onClick={exitAcademy} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.72)" }}><X className="w-4 h-4" /></button>
           </div>
         </div>
@@ -269,6 +286,9 @@ export default function AcademyVideoPlayer({
             <>
               <iframe ref={iframeRef} key={customEmbedUrl} src={customEmbedUrl} title={currentLesson?.title || "Academy Lesson"} className="w-full h-full" style={{ border: 0, pointerEvents: "none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" onLoad={handleIframeLoad} onError={() => setEmbedIssue(true)} />
               <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.18), transparent 30%, rgba(0,0,0,0.58))" }} />
+              {!fullscreen && (
+                <button onClick={enterFullscreen} className="absolute top-3 right-3 z-10 pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-2xl font-black text-[11px] tracking-wider uppercase transition-all active:scale-95" style={{ background: "linear-gradient(135deg,#00E5FF,#FFD36E)", color: "#020712", boxShadow: "0 0 24px rgba(0,229,255,0.38)", minHeight: 48 }}><Maximize2 className="w-4 h-4" /> Big Screen</button>
+              )}
               {videoState !== "playing" && (
                 <button onClick={playVideo} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto w-16 h-16 rounded-full flex items-center justify-center transition-all active:scale-95" style={{ background: "linear-gradient(135deg,#00E5FF,#FFD36E)", color: "#020712", boxShadow: "0 0 28px rgba(0,229,255,0.35)" }}>
                   <Play className="w-7 h-7 ml-1" fill="currentColor" />
@@ -282,7 +302,7 @@ export default function AcademyVideoPlayer({
                     <input type="range" min="0" max="100" value={progress} onChange={(e) => seekTo(e.target.value)} className="w-full accent-cyan-300" />
                     <div className="flex items-center justify-between text-[9px] text-white/45 font-bold"><span>{formatTime(currentTime)}</span><span>{duration ? formatTime(duration) : "--:--"}</span></div>
                   </div>
-                  <button onClick={enterFullscreen} className="hidden sm:flex w-10 h-10 rounded-full items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.78)" }}><Maximize2 className="w-4 h-4" /></button>
+                  {!fullscreen && <button onClick={enterFullscreen} className="flex items-center gap-2 px-3 h-10 rounded-full font-black text-[10px] uppercase tracking-wider" style={{ background: "rgba(255,211,110,0.16)", border: "1px solid rgba(255,211,110,0.38)", color: "#FFF4C8" }}><Maximize2 className="w-4 h-4" /> Big Screen</button>}
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] text-white/55 font-bold truncate">Lesson {currentIndex + 1}: {currentLesson?.title || "Upper Vibe Academy"}</p>
@@ -304,7 +324,7 @@ export default function AcademyVideoPlayer({
                 <h4 className="font-heading font-black text-white text-lg mt-1 leading-tight">{currentLesson?.title || "Upper Vibe Academy"}</h4>
                 {currentLesson?.description && <p className="text-xs text-white/42 mt-2 leading-relaxed">{currentLesson.description}</p>}
               </div>
-              <button onClick={enterFullscreen} className="flex items-center gap-2 px-4 py-2 rounded-full font-black text-[10px] tracking-wider" style={{ background: "linear-gradient(135deg, rgba(0,229,255,0.18), rgba(237,184,74,0.14))", border: "1px solid rgba(0,229,255,0.38)", color: "#DFFBFF", minHeight: 44 }}><Maximize2 className="w-3.5 h-3.5" /> Full Screen</button>
+              <button onClick={enterFullscreen} className="flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[12px] tracking-wider uppercase" style={{ background: "linear-gradient(135deg,#00E5FF,#FFD36E)", border: "1px solid rgba(255,211,110,0.5)", color: "#020712", minHeight: 52, boxShadow: "0 0 24px rgba(0,229,255,0.28)" }}><Maximize2 className="w-4 h-4" /> Big Screen</button>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-4">
               <button disabled={currentIndex <= 0} onClick={goPrevious} className="flex items-center gap-1 px-4 py-2 rounded-full font-black text-[10px] disabled:opacity-35" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff" }}><ChevronLeft className="w-3 h-3" /> Previous</button>
