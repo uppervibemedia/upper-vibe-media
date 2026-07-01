@@ -23,7 +23,6 @@ import { buildVisualizerDomeZone } from "./city-engine/zones/VisualizerDomeZone"
 import { buildDailyVibeCheckZone } from "./city-engine/zones/DailyVibeCheckZone";
 import { buildVibeAcademyZone }    from "./city-engine/zones/VibeAcademyZone";
 import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
-import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 import { createBeachWorld, createTransportPad, CITY_BEACH_PAD, BEACH_RETURN_PAD } from "./BeachWorldBuilder.jsx";
 import { createSimpleCityShoreline, animateSimpleCityShoreline } from "./SimpleCityShoreline.jsx";
 import { animateBeachActivities } from "./BeachActivities.jsx";
@@ -714,7 +713,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
-  // Launch is handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE)
   // Init scene — runs once only
   useEffect(() => {
     if (initializedRef.current) return;
@@ -908,7 +906,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         let rot = avatarRotRef.current;
         const vel = velocityRef.current;
 
-        const jumpEnabled = personalHoverboardActiveRef.current && hbRidingRef.current && !ferrisRidingRef.current && !lockedRef.current && !window.__lr_flying;
+        const jumpEnabled = personalHoverboardActiveRef.current && hbRidingRef.current && !ferrisRidingRef.current && !lockedRef.current;
         const jumpGrounded = hoverboardJumpOffsetRef.current <= 0.001 && !hoverboardJumpingRef.current;
         if (pendingHoverboardJumpRef.current) {
           if (jumpEnabled && jumpGrounded && t - lastHoverboardJumpTimeRef.current >= HOVERBOARD_JUMP_COOLDOWN) {
@@ -1131,7 +1129,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ── Optional launch arc bridge; city launch/orb gameplay is currently disabled for performance. ──
         const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
         if (!beachActivityStateRef.current) {
-          py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current;
+          py = SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current;
         }
 
         avatarRotRef.current = rot;
@@ -1691,6 +1689,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
 
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
+        scene.userData._playerX = px;
         scene.userData._playerZ = pz;
         scene.userData._camPitch = camPitchSmoothRef.current; // pass live pitch for planet compensation
         scene.userData._camYaw   = camYawSmoothRef.current;   // pass live yaw for facing-direction fade
@@ -1699,10 +1698,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         scene.userData._hidePlanets = lockedRef.current;
         scene.userData._ferrisRiding = ferrisRidingRef.current;
         if (!prioritizeMovement || frameRef.current % 2 === 0) animateCosmicSky(scene, camera, t, dt);
-        // LaunchRide bridge — passes avatar position + state into add-ons
-        MOVEMENT_BRIDGE.px = px; MOVEMENT_BRIDGE.py = py; MOVEMENT_BRIDGE.pz = pz;
-        MOVEMENT_BRIDGE.hbRiding = hbRidingRef.current;
-        MOVEMENT_BRIDGE.dt_ = moveDt;
         if (worldModeRef.current === "city") tickAddOns(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────

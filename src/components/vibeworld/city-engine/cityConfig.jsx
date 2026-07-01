@@ -25,8 +25,6 @@ export const ZONES = {
   vibeAcademy:     { label: "Vibe Academy",        x: -28, z: 10,  tag: "academy" },
   crystalZone:     { label: "Crystal Zone",        x: -28, z: 9,   tag: "crystal" },
   zenBeach:        { label: "Zen Beach",           x: -11, z: 22,  tag: "beach" },
-  hoverboardRun:   { label: "Hoverboard Run",      x: 18,  z: 28,  tag: "hoverboard" },
-  vibeLaunchZone:  { label: "Vibe Launch Zone",    x: 0,   z: 4,   tag: "launch" },
   ferrisWheel:     { label: "Ferris Wheel",        x: 0,   z: 24,  tag: "ferris" },
   upperVibeShop:   { label: "Upper Vibe Shop",     x: 22,  z: 12.25, tag: "shop" },
 };
@@ -44,8 +42,6 @@ export const ZONE_COLORS = {
   academy:     "#7C3AED",
   crystal:     "#AA66FF",
   beach:       "#00E5FF",
-  hoverboard:  "#00E5FF",
-  launch:      "#00E5FF",
   ferris:      "#FFD700",
   shop:        "#FFC060",
 };
@@ -67,32 +63,6 @@ export const SHOP = {
   currencyLabel: "Vibe Coins",
   panelWidth: 400,
 };
-
-// ═══════════════════════════════════════════════════════════════════
-// LAUNCH PADS — future placement config (not yet connected)
-// ═══════════════════════════════════════════════════════════════════
-// When the Launch Pad feature is built, these positions will be
-// passed directly to the new LaunchPad component(s).
-// For now they are 100% inert — defined here so they're ready to use.
-export const LAUNCH_PADS = {
-  "pad-lounge":   { x: -10, z: -24, hint: "Plaza–Lounge corridor" },
-  "pad-library":  { x: 14,  z: -24, hint: "Library corridor" },
-  "pad-academy":  { x: -26, z: -4,  hint: "Academy approach" },
-  "pad-crystal":  { x: 18,  z: -7,  hint: "Plaza–Crystal corridor" },
-};
-
-// ═══════════════════════════════════════════════════════════════════
-// VIBE COINS — sky/fetch coin placement config (not yet connected)
-// ═══════════════════════════════════════════════════════════════════
-// Coins float in the sky above the city. Defined as inert config
-// for the future VibeCoin component.
-export const VIBE_COINS = [
-  { id: "token-music",  x: 0,   y: 10, z: -26, label: "Music" },
-  { id: "token-beach",  x: 0,   y: 10, z: 26,  label: "Beach" },
-  { id: "token-lounge", x: -22, y: 10, z: -26, label: "Lounge" },
-  { id: "token-dome",   x: -13, y: 10, z: 10,  label: "Visualizer" },
-  { id: "token-ferris",  x: 0,  y: 12, z: 24,  label: "Ferris" },
-];
 
 // ═══════════════════════════════════════════════════════════════════
 // CITY PERIMETER (read-only reference for new features)

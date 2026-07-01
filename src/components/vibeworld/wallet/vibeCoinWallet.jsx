@@ -23,7 +23,7 @@
  *   spendCoins(userId, amount, source, sourceId) → deducts, returns { success, balance }
  *
  * HARD RULE:
- *   Spawn, refresh, enter, equip, unequip, zones, hoverboards, launch pads,
+ *   Spawn, refresh, enter, equip, unequip, zones, hoverboards,
  *   closing UI, out-of-bounds respawn — NONE of these touch wallet balance.
  */
 

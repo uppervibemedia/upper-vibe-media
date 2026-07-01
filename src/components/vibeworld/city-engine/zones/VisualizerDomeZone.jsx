@@ -4,7 +4,7 @@
  * neon edge lighting, soft entrance light spill — all lightweight, iPhone-safe.
  *
  * Position: (-13, 10) — Academy-row south layout, clear of paths, Shop,
- * Crystal Zone, Zen Beach, and Launch Pads.
+ * Crystal Zone and Zen Beach.
  */
 import * as THREE from "three";
 import { createZoneSign } from "../../ZoneSign";

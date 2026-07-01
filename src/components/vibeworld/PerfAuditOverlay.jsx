@@ -30,7 +30,6 @@ const ZONES = [
   { id: "vibe_check",      name: "Daily Vibe Check",   x: -16, z: -13, r:  6 },
   { id: "crystal_zone",    name: "Crystal Zone",       x:  28, z:  -7, r:  7 },
   { id: "vibe_academy",    name: "Vibe Academy",       x: -28, z:   5, r:  7 },
-  { id: "vibe_launch",     name: "Vibe Launch Zone",   x:   0, z:   4, r:  8 },
   { id: "neon_surf_beach", name: "Neon Surf Beach",    x:  18, z:  22, r: 12 },
   { id: "zen_beach",       name: "Zen Beach",          x: -20, z:  22, r:  8 },
   { id: "ferris_wheel",    name: "Ferris Wheel",       x:  22, z:   5, r:  9 },
@@ -90,7 +89,6 @@ function estimateActiveAnimations(scene, extras = {}) {
   if (scene.userData.crystalZone) count += extras.nearCrystal ? 3 : 1;
   if (scene.userData.neonAmbients && !extras.tvSmooth) count += mobile ? 1 : 2;
   if (scene.userData._upperVibeShop) count += 1;
-  if (scene.userData._launchPad_lounge) count += 2;
   if (scene.userData.ferrisWheel) count += extras.nearFerris || extras.ferrisRiding ? 2 : 0;
   if (scene.userData.stageScreen && !extras.stageWatching) count += mobile ? 1 : 2;
   return count;

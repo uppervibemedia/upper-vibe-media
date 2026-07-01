@@ -49,6 +49,7 @@ import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 import PersonalHoverboardHUD from "@/components/vibeworld/PersonalHoverboardHUD";
 import FPSMonitor from "@/components/vibeworld/FPSMonitor";
+import CleanupDebugOverlay from "@/components/vibeworld/CleanupDebugOverlay";
 
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
@@ -104,7 +105,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
-  // City launch pad/orb gameplay is temporarily disabled for performance.
   // ── Personal hoverboard: owned item, equipped from Inventory only ───────
   const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
   const [equippedBoard, setEquippedBoard] = useState(null);
@@ -1469,7 +1469,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </>
       )}
 
-      {/* City launch pad/orb gameplay temporarily disabled for performance */}
       {/* Crystal Zone is now a decorative landmark — no UI/interaction */}
 
       {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}
@@ -1610,6 +1609,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}
       <FPSMonitor sceneRef={rendererRef} remoteUserCount={userCount} />
+
+      <CleanupDebugOverlay />
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
       <MobileDebugOverlay
