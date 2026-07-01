@@ -63,10 +63,11 @@ export default function AcademyVideoPlayer({
       if (typeof data === "string") {
         try { data = JSON.parse(data); } catch { return; }
       }
-      if (data?.event === "onError" || data?.info?.errorCode || data?.info?.playerState === -1 && data?.info?.errorCode) {
+      const info = data?.info;
+      if (data?.event === "onError" || (info && typeof info === "object" && info.errorCode)) {
         setEmbedIssue(true);
       }
-      const playerState = typeof data?.info === "object" ? data.info.playerState : data?.info;
+      const playerState = info && typeof info === "object" ? info.playerState : info;
       if ((data?.event === "onStateChange" || data?.event === "infoDelivery") && playerState === 1) {
         pauseGlobalForYoutube();
       }
