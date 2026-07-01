@@ -182,10 +182,9 @@ export function createCitySpiritualVisuals(scene) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   const floorSymbols = [
-    ["metatron", 8.4, -24, 3, 0.28, 0.12],
-    ["seed", 7.4, 23, 3, 0.26, -0.1],
-    ["tree", 6.8, -7, 15, 0.24, 0.16],
-    ["vesica", 6.8, 15, -15, 0.24, -0.18],
+    ["metatron", 11.8, -24, 3, 0.24, 0.12],
+    ["tree", 9.5, -7, 15, 0.22, 0.16],
+    ["vesica", 9.5, 15, -15, 0.22, -0.18],
   ];
   group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot]) => {
     const sym = groundDecal(groundSymbolTexture(kind), size, x, z, isMobile ? opacity * 0.78 : opacity, rot);
@@ -193,11 +192,11 @@ export function createCitySpiritualVisuals(scene) {
     return sym;
   });
 
-  const words = ["ALIGN", "RECEIVE", "TRUST", "FLOW", "CALM", "ACTIVATE", "I AM", "BECOME", "HARMONIZE", "ENERGY FIRST", "HIGHER SELF", "STAY ALIGNED"];
-  const spots = [[-9, 1.9, -18], [9, 1.9, -15], [-20, 2.2, -4], [17, 2.1, 9.5], [-7, 2.25, 10.5], [22, 2.2, -23], [-28, 2.3, 2], [27, 2.3, -2], [0, 2.1, -21]];
+  const words = ["ALIGN", "RECEIVE", "TRUST", "FLOW", "CALM", "FOCUS", "ACTIVATE", "I AM", "BECOME", "HARMONIZE", "ENERGY FIRST", "STAY ALIGNED", "I AM READY", "HIGHER SELF", "ABUNDANCE FLOWS", "CLARITY NOW"];
+  const spots = [[-9, 1.9, -18], [9, 1.9, -15], [-20, 2.2, -4], [17, 2.1, 9.5], [-7, 2.25, 10.5], [22, 2.2, -23], [-28, 2.3, 2], [27, 2.3, -2], [0, 2.1, -21], [-13, 2.35, 3], [12, 2.25, 2], [-24, 2.35, 13], [24, 2.35, -8]];
   const shuffledWords = [...words].sort(() => Math.random() - 0.5);
   const shuffledSpots = [...spots].sort(() => Math.random() - 0.5);
-  const count = isMobile ? 5 : 7;
+  const count = isMobile ? 7 : 9;
   const affirmations = shuffledSpots.slice(0, count).map((spot, i) => [shuffledWords[i % shuffledWords.length], ...spot]);
   group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.56 : 0.74); group.add(h); return h; });
 
