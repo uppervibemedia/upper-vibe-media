@@ -370,7 +370,7 @@ export function animateCitySpiritualVisuals(scene, t, px, pz, camera) {
   });
 
   const active = window.__uvcActiveSacredSymbol;
-  const activeLive = active && t < active.until;
+  const activeLive = active && active.active === true;
   (group.userData.groundSymbols || []).forEach((sym) => {
     const base = sym.userData.baseOpacity || 0.2;
     const isActive = activeLive && sym.userData.symbolId === active.id;
