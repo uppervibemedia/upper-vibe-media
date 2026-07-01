@@ -106,6 +106,7 @@ export function buildMusicStageZone(scene) {
   frontWash.position.set(0, 2.5, -29); stage.add(frontWash);
 
   scene.add(stage);
-  // Stage label — just above the screen, centered on screen face
-  createZoneSign(scene, 0, 7.4, -34.0, "MUSIC  STAGE", "#00D4F0");
+  // Stage label — larger and lifted above the screen, centered on screen face
+  const stageSign = createZoneSign(scene, 0, 8.0, -34.0, "MUSIC  STAGE", "#00D4F0");
+  if (stageSign) stageSign.scale.setScalar(1.5);
 }

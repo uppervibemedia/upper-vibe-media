@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, Flame, Sparkles, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { claimRewardCooldown } from "@/lib/rewardCooldown";
+import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
 
 const INTENTIONS = [
   { id: "peace", label: "Peace", color: "#4CC9FF", itemId: "daily_intention_peace" },
@@ -104,10 +104,16 @@ function storageKey(userId) {
   return `uvc_daily_city_${userId || "guest"}`;
 }
 
+function hasQuestLock(saved) {
+  if (!saved?.questRewardClaimed || !saved?.questCompletedAt) return false;
+  return Date.now() - new Date(saved.questCompletedAt).getTime() < 24 * 60 * 60 * 1000;
+}
+
 function buildDaily(userId) {
   const date = todayKey();
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(storageKey(userId)) || "null"); } catch {}
+  if (hasQuestLock(saved)) return saved;
   if (saved?.date === date) return saved;
   const streak = saved?.date && isYesterday(saved.date) ? (saved.streak || 0) + 1 : 1;
   return {
@@ -120,6 +126,7 @@ function buildDaily(userId) {
     loginRewardClaimed: false,
     streakRewardClaimed: false,
     questRewardClaimed: false,
+    questCompletedAt: null,
     milestoneRewards: {},
     symbolActivations: {},
     welcomeDismissed: false,
@@ -158,11 +165,15 @@ export default function DailyCityEngagement({
     try { localStorage.setItem(storageKey(userId), JSON.stringify(daily)); } catch {}
   }, [daily, userId]);
 
+  useEffect(() => {
+    if (daily?.questRewardClaimed && hasQuestLock(daily)) setMessage(REWARD_SAVED_MESSAGE);
+  }, [daily?.questRewardClaimed, daily?.questCompletedAt]);
+
   const grantCoins = useCallback(async (amount, reason) => {
     if (!amount) return false;
     const claim = await claimRewardCooldown(userId, `city:${reason}`);
     if (!claim.allowed) {
-      setMessage(claim.message || "Reward already claimed. Come back in 24 hours.");
+      setMessage(claim.message || REWARD_SAVED_MESSAGE);
       return false;
     }
     window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
@@ -218,6 +229,7 @@ export default function DailyCityEngagement({
     const allDone = next.quest.every((id) => next.completed[id]);
     if (allDone && !next.questRewardClaimed) {
       next.questRewardClaimed = true;
+      next.questCompletedAt = new Date().toISOString();
       rewards.push([50, "daily_city_quest"]);
       if (event.id === "abundance") rewards.push([5, "abundance_event_bonus"]);
       changed = true;
@@ -227,7 +239,7 @@ export default function DailyCityEngagement({
     saveNext(next);
     rewards.forEach(([amount, reason]) => grantCoins(amount, reason));
     if (rewards.some(([, reason]) => reason === "daily_city_quest")) {
-      setMessage("Daily City Quest Complete — +50 Vibe Coins");
+      setMessage(REWARD_SAVED_MESSAGE);
     }
   }, [event.id, grantCoins, saveNext]);
 

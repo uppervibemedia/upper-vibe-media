@@ -176,4 +176,5 @@ export function createZoneSign(scene, x, y, z, text, colorHex) {
   group.position.set(x, y, z);
   group.userData = { isNeonSign: true, colorHex };
   scene.add(group);
+  return group;
 }

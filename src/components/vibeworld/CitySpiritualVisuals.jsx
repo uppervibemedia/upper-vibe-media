@@ -230,11 +230,17 @@ export function createCitySpiritualVisuals(scene) {
     ["egg", 9.6, -25, 18, 0.18, -0.1],
     ["sri", 9.4, -31, -19, 0.17, 0.14],
     ["flower", 9.4, 31, 20, 0.17, -0.12],
+    ["metatron", 6.2, -10.5, -27.5, 0.2, 0.08, "stage_metatron"],
+    ["seed", 6.0, 10.5, -27.5, 0.2, -0.08, "stage_seed"],
+    ["vesica", 5.7, -16, -31, 0.18, 0.12, "stage_vesica"],
+    ["torus", 5.7, 16, -31, 0.18, -0.12, "stage_torus"],
+    ["egg", 5.5, -6.5, -24.5, 0.18, 0.16, "stage_merkaba"],
+    ["hex", 5.5, 6.5, -24.5, 0.18, -0.16, "stage_hex"],
   ];
-  group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot]) => {
+  group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot, id]) => {
     const baseOpacity = isMobile ? opacity * 0.78 : opacity;
     const sym = groundDecal(groundSymbolTexture(kind), size, x, z, baseOpacity, rot);
-    sym.userData.symbolId = kind;
+    sym.userData.symbolId = id || kind;
     sym.userData.baseOpacity = baseOpacity;
     sym.userData.baseScale = 1;
     group.add(sym);
@@ -262,13 +268,13 @@ export function createCitySpiritualVisuals(scene) {
     ["888", 9.05, "rgba(255,222,142,0.82)"],
   ];
   const panelOpacity = isMobile ? 0.24 : 0.34;
-  addWallVisual(decal(flowerTex, 2.35, 2.35, [-37.08, 6.2, -25], [0, Math.PI / 2, 0], panelOpacity), 38, true);
-  addWallVisual(decal(flowerTex, 2.25, 2.25, [37.08, 6.1, -12], [0, -Math.PI / 2, 0], panelOpacity), 38, true);
-  addWallVisual(decal(flowerTex, 2.45, 2.45, [14, 7.6, -37.08], [0, 0, 0], isMobile ? 0.22 : 0.32), 44, true);
-  addWallVisual(decal(flowerTex, 2.05, 2.05, [-30, 5.9, -37.08], [0, 0, 0], isMobile ? 0.2 : 0.28), 38, true);
-  addWallVisual(decal(windowTex, 3.0, 1.75, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
-  addWallVisual(decal(windowTex, 3.0, 1.75, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
-  addWallVisual(decal(windowTex, 3.15, 1.85, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.16 : 0.23), 40, true);
+  addWallVisual(decal(flowerTex, 1.72, 1.72, [-37.04, 6.2, -22], [0, Math.PI / 2, 0], panelOpacity), 38, true);
+  addWallVisual(decal(flowerTex, 1.68, 1.68, [37.04, 6.1, -14], [0, -Math.PI / 2, 0], panelOpacity), 38, true);
+  addWallVisual(decal(flowerTex, 1.82, 1.82, [12, 7.6, -37.04], [0, 0, 0], isMobile ? 0.22 : 0.32), 44, true);
+  addWallVisual(decal(flowerTex, 1.62, 1.62, [-25, 5.9, -37.04], [0, 0, 0], isMobile ? 0.2 : 0.28), 38, true);
+  addWallVisual(decal(windowTex, 2.35, 1.35, [-37.05, 9.2, -10], [0, Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
+  addWallVisual(decal(windowTex, 2.35, 1.35, [37.05, 9.2, -23], [0, -Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
+  addWallVisual(decal(windowTex, 2.55, 1.48, [-16, 9.4, -37.05], [0, 0, 0], isMobile ? 0.16 : 0.23), 40, true);
   angelMural.forEach(([num, y, color]) => {
     addWallVisual(decal(angelNumberTexture(num, color), 1.02, 0.38, [-37.14, y, -4], [0, Math.PI / 2, 0], isMobile ? 0.24 : 0.36), 36);
   });
@@ -330,17 +336,28 @@ export function createCitySpiritualVisuals(scene) {
   scene.add(group); scene.userData.citySpiritualVisuals = group;
 }
 
-export function animateCitySpiritualVisuals(scene, t, px, pz) {
+export function animateCitySpiritualVisuals(scene, t, px, pz, camera) {
   const group = scene.userData.citySpiritualVisuals;
   if (!group?.userData?.affirmations) return;
+  const viewDir = group.userData._viewDir || (group.userData._viewDir = new THREE.Vector3());
+  if (camera) camera.getWorldDirection(viewDir);
+  viewDir.y = 0;
+  if (viewDir.lengthSq() > 0) viewDir.normalize();
+  let inViewShown = 0;
   group.userData.affirmations.forEach((h) => {
     const dx = h.position.x - px, dz = h.position.z - pz, d2 = dx * dx + dz * dz;
+    const dist = Math.sqrt(d2) || 0.001;
+    const dot = camera ? ((dx / dist) * viewDir.x + (dz / dist) * viewDir.z) : 0;
     const near = d2 < 18 * 18;
+    const inView = !near && dot > 0.68 && d2 < 34 * 34 && inViewShown < 4;
+    if (inView) inViewShown += 1;
+    const visible = near || inView;
     h.position.y = h.userData.baseY + Math.sin(t * 0.75 + h.userData.phase) * 0.08;
     h.rotation.y = Math.sin(t * 0.18 + h.userData.phase) * 0.12;
-    const opacity = near ? h.userData.baseOpacity * (0.82 + Math.sin(t * 1.1 + h.userData.phase) * 0.08) : 0;
-    h.visible = near;
-    h.children.forEach((side) => { side.material.opacity = opacity; });
+    const strength = near ? 0.9 : Math.max(0.34, dot * 0.62);
+    const opacity = visible ? h.userData.baseOpacity * strength * (0.82 + Math.sin(t * 1.1 + h.userData.phase) * 0.08) : 0;
+    h.visible = visible || h.children.some((side) => side.material.opacity > 0.02);
+    h.children.forEach((side) => { side.material.opacity += (opacity - side.material.opacity) * 0.18; });
   });
   (group.userData.wallVisuals || []).forEach((visual) => {
     if (visual.userData.alwaysVisible) {

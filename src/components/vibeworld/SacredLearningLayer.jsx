@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, CheckCircle2, Sparkles, X, Zap } from "lucide-react";
-import { claimRewardCooldown } from "@/lib/rewardCooldown";
+import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
 
 const DAILY_WISDOM = [
   "Your nervous system is part of your manifestation. A regulated state helps you make clearer choices.",
@@ -13,15 +13,21 @@ const DAILY_WISDOM = [
 ];
 
 const SYMBOLS = [
-  { id: "torus", title: "Torus Field", kind: "torus", x: 22, z: 1.5, r: 5.8, teaching: "What you give energy to returns through your field. Choose your loop wisely.", action: "Name one loop you are ready to upgrade today." },
-  { id: "seed", title: "Seed of Life", kind: "seed", x: 22, z: -13.5, r: 5.6, teaching: "Every result begins as a seed. Choose the thought you keep watering.", action: "Pick one thought that supports your next move." },
-  { id: "tree", title: "Energy First", kind: "tree", x: -8, z: 4, r: 5.4, teaching: "Your state changes how you move, speak, create, and decide.", action: "Choose one state you want to embody today." },
-  { id: "metatron", title: "Metatron’s Cube", kind: "metatron", x: -24, z: 3, r: 5.7, teaching: "Structure gives energy direction. Focus turns potential into form.", action: "Choose one priority before you take action." },
-  { id: "vesica", title: "Vesica Piscis", kind: "vesica", x: 5, z: -18, r: 5, teaching: "New realities form where two worlds meet: who you are and who you are becoming.", action: "Take one action from your future-self identity." },
-  { id: "chakra", title: "Calm Is Power", kind: "chakra", x: -7.5, z: -21.5, r: 4.3, teaching: "A regulated nervous system helps you respond instead of react.", action: "Take one slow breath before your next decision." },
-  { id: "egg", title: "Merkaba Motion", kind: "egg", x: -25, z: 18, r: 4.8, teaching: "Your energy moves with your attention. Align your direction before you accelerate.", action: "Point your attention at the outcome you actually want." },
-  { id: "sri", title: "Sri Yantra", kind: "sri", x: -31, z: -19, r: 4.7, teaching: "Desire needs direction. Focus turns scattered energy into a clear signal.", action: "Write one clean intention in your mind." },
-  { id: "flower", title: "Flower of Life", kind: "flower", x: 31, z: 20, r: 4.7, teaching: "All things are connected. What you repeat becomes the pattern you live inside.", action: "Repeat one habit that supports your highest pattern." },
+  { id: "torus", title: "Torus Field", kind: "torus", x: 22, z: 1.5, r: 3.25, teaching: "What you give energy to returns through your field. Choose your loop wisely.", action: "Name one loop you are ready to upgrade today." },
+  { id: "seed", title: "Seed of Life", kind: "seed", x: 22, z: -13.5, r: 3.15, teaching: "Every result begins as a seed. Choose the thought you keep watering.", action: "Pick one thought that supports your next move." },
+  { id: "tree", title: "Energy First", kind: "tree", x: -8, z: 4, r: 3.05, teaching: "Your state changes how you move, speak, create, and decide.", action: "Choose one state you want to embody today." },
+  { id: "metatron", title: "Metatron’s Cube", kind: "metatron", x: -24, z: 3, r: 3.2, teaching: "Structure gives energy direction. Focus turns potential into form.", action: "Choose one priority before you take action." },
+  { id: "vesica", title: "Vesica Piscis", kind: "vesica", x: 5, z: -18, r: 2.85, teaching: "New realities form where two worlds meet: who you are and who you are becoming.", action: "Take one action from your future-self identity." },
+  { id: "chakra", title: "Calm Is Power", kind: "chakra", x: -7.5, z: -21.5, r: 2.55, teaching: "A regulated nervous system helps you respond instead of react.", action: "Take one slow breath before your next decision." },
+  { id: "egg", title: "Merkaba Motion", kind: "egg", x: -25, z: 18, r: 2.8, teaching: "Your energy moves with your attention. Align your direction before you accelerate.", action: "Point your attention at the outcome you actually want." },
+  { id: "sri", title: "Sri Yantra", kind: "sri", x: -31, z: -19, r: 2.75, teaching: "Desire needs direction. Focus turns scattered energy into a clear signal.", action: "Write one clean intention in your mind." },
+  { id: "flower", title: "Flower of Life", kind: "flower", x: 31, z: 20, r: 2.75, teaching: "All things are connected. What you repeat becomes the pattern you live inside.", action: "Repeat one habit that supports your highest pattern." },
+  { id: "stage_metatron", title: "Stage Metatron’s Cube", kind: "metatron", x: -10.5, z: -27.5, r: 2.15, teaching: "Structure gives stage energy direction.", action: "Choose one sound or thought to focus on." },
+  { id: "stage_seed", title: "Stage Seed of Life", kind: "seed", x: 10.5, z: -27.5, r: 2.15, teaching: "A new sound can plant a new state.", action: "Let one rhythm reset your energy." },
+  { id: "stage_vesica", title: "Stage Vesica Piscis", kind: "vesica", x: -16, z: -31, r: 2.0, teaching: "Music opens the doorway between feeling and action.", action: "Notice what the song invites you to become." },
+  { id: "stage_torus", title: "Stage Torus Field", kind: "torus", x: 16, z: -31, r: 2.0, teaching: "The energy you bring to sound returns through your body.", action: "Receive the frequency with intention." },
+  { id: "stage_merkaba", title: "Stage Merkaba", kind: "egg", x: -6.5, z: -24.5, r: 1.95, teaching: "Aligned motion moves energy upward.", action: "Point your attention toward elevation." },
+  { id: "stage_hex", title: "Stage Hex Geometry", kind: "hex", x: 6.5, z: -24.5, r: 1.95, teaching: "Patterns make sound feel stable and alive.", action: "Find the pattern inside the beat." },
 ];
 
 const SYMBOL_LESSONS = {
@@ -97,6 +103,8 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
   const [activationStarted, setActivationStarted] = useState(null);
   const [holdTick, setHoldTick] = useState(0);
   const cooldownRef = useRef({});
+  const settleTimerRef = useRef(null);
+  const lastPosRef = useRef(null);
   const activatedTodayRef = useRef(getRewardedSymbols());
   const wisdom = useMemo(() => dailyPick(DAILY_WISDOM, "wisdom"), []);
 
@@ -114,31 +122,51 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
   }, []);
 
   useEffect(() => {
+    const clearSettle = () => {
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    };
+
     if (!playerPos || worldMode !== "city" || hidden) {
+      clearSettle();
       setNearZone(null);
       setCandidate(null);
       setActivationStarted(null);
       return;
     }
 
+    const now = performance.now();
     const zone = ZONE_LESSONS.find((z) => (playerPos.x - z.x) ** 2 + (playerPos.z - z.z) ** 2 < z.r ** 2) || null;
     setNearZone(zone);
 
+    const last = lastPosRef.current;
+    const moveDist = last ? Math.hypot(playerPos.x - last.x, playerPos.z - last.z) : 0;
+    lastPosRef.current = { x: playerPos.x, z: playerPos.z, t: now };
+    const isMoving = moveDist > 0.12;
     const symbol = SYMBOLS.find((s) => (playerPos.x - s.x) ** 2 + (playerPos.z - s.z) ** 2 < s.r ** 2) || null;
-    const now = performance.now();
-    if (!symbol) {
-      setCandidate(null);
+
+    if (!symbol || isMoving) {
+      clearSettle();
+      setCandidate(symbol || null);
       setActivationStarted(null);
       return;
     }
+
     if (cooldownRef.current[symbol.id] && cooldownRef.current[symbol.id] > now) {
+      clearSettle();
       setCandidate(symbol);
       setActivationStarted(null);
       return;
     }
+
     setCandidate((current) => current?.id === symbol.id ? current : symbol);
-    setActivationStarted((current) => current && candidate?.id === symbol.id ? current : now);
-  }, [playerPos?.x, playerPos?.z, worldMode, hidden, candidate?.id]);
+    if (!activationStarted && !settleTimerRef.current) {
+      settleTimerRef.current = setTimeout(() => {
+        settleTimerRef.current = null;
+        setActivationStarted(performance.now());
+      }, 550);
+    }
+  }, [playerPos?.x, playerPos?.z, worldMode, hidden, activationStarted]);
 
   useEffect(() => {
     if (!activationStarted) return;
@@ -163,7 +191,7 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
         grantVibeCoins(candidate.id, claim.claimedAt);
       }
       const dailyLesson = getDailySymbolLesson(candidate);
-      setActiveCard({ ...candidate, teaching: dailyLesson.teaching, action: dailyLesson.action, reward: firstToday, alreadyActivated: !firstToday, cooldownMessage: claim.message, isSymbol: true });
+      setActiveCard({ ...candidate, teaching: dailyLesson.teaching, action: dailyLesson.action, reward: firstToday, alreadyActivated: !firstToday, cooldownMessage: claim.message || REWARD_SAVED_MESSAGE, isSymbol: true });
       setActivationStarted(null);
       window.__uvcActiveSacredSymbol = { id: candidate.id, x: candidate.x, z: candidate.z, kind: candidate.kind, startedAt: performance.now() * 0.001, until: performance.now() * 0.001 + 6 };
       window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "sacred_symbol_activated", symbolId: candidate.id } }));
@@ -251,15 +279,15 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
             <div className="flex items-start gap-3 p-4">
               <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(0,229,255,0.12)", color: "#00E5FF" }}><Sparkles className="w-4 h-4" /></div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: activeCard.reward ? "#FFD36E" : activeCard.alreadyActivated ? "#C4AAFF" : "#00E5FF" }}>{activeCard.reward ? "+5 Vibe Coins — Symbol Activated" : activeCard.alreadyActivated ? "Already activated today — wisdom available, no repeat reward" : activeCard.zone || "Frequency Lesson"}</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: activeCard.reward ? "#FFD36E" : activeCard.alreadyActivated ? "#C4AAFF" : "#00E5FF" }}>{activeCard.reward ? "+5 Vibe Coins — Symbol Activated" : activeCard.alreadyActivated ? "Daily Reward Saved - come back in 24 hrs" : activeCard.zone || "Frequency Lesson"}</p>
                 <h3 className="font-heading font-black text-white text-base mt-1">{activeCard.title}</h3>
                 <p className="text-[12px] leading-relaxed text-white/66 mt-2">“{activeCard.teaching}”</p>
                 <p className="text-[11px] leading-relaxed mt-2" style={{ color: "#FFD36E" }}><b>Action:</b> {activeCard.action}</p>
               </div>
               <button onClick={() => setActiveCard(null)} className="w-10 h-10 min-w-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)", touchAction: "manipulation" }}><X className="w-4 h-4" /></button>
             </div>
-            {activeCard.reward && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#4ADE80" }}><CheckCircle2 className="w-3 h-3" /> Daily reward saved — no repeat farming today</div>}
-            {activeCard.alreadyActivated && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#C4AAFF" }}><CheckCircle2 className="w-3 h-3" /> {activeCard.cooldownMessage || "Wisdom unlocked. Coins available again tomorrow."}</div>}
+            {activeCard.reward && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#4ADE80" }}><CheckCircle2 className="w-3 h-3" /> Daily Reward Saved - come back in 24 hrs</div>}
+            {activeCard.alreadyActivated && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#C4AAFF" }}><CheckCircle2 className="w-3 h-3" /> {activeCard.cooldownMessage || "Daily Reward Saved - come back in 24 hrs"}</div>}
           </motion.div>
         )}
       </AnimatePresence>
