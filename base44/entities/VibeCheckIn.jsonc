@@ -45,6 +45,30 @@
     "vibe_score": {
       "type": "number",
       "description": "Calculated daily vibe score (0-100)"
+    },
+    "category_scores": {
+      "type": "object",
+      "description": "Weighted Vibe Score category values: safety, clarity, consistency, gratitude, rest, action",
+      "properties": {
+        "safety": {
+          "type": "number"
+        },
+        "clarity": {
+          "type": "number"
+        },
+        "consistency": {
+          "type": "number"
+        },
+        "gratitude": {
+          "type": "number"
+        },
+        "rest": {
+          "type": "number"
+        },
+        "action": {
+          "type": "number"
+        }
+      }
     }
   },
   "required": [
@@ -54,8 +78,10 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}",
       "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
         {
           "user_condition": {
             "role": "admin"
@@ -64,8 +90,10 @@
       ]
     },
     "read": {
-      "created_by_id": "{{user.id}}",
       "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
         {
           "user_condition": {
             "role": "admin"
@@ -74,8 +102,10 @@
       ]
     },
     "update": {
-      "created_by_id": "{{user.id}}",
       "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
         {
           "user_condition": {
             "role": "admin"
@@ -84,8 +114,10 @@
       ]
     },
     "delete": {
-      "created_by_id": "{{user.id}}",
       "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
         {
           "user_condition": {
             "role": "admin"
