@@ -201,7 +201,8 @@ function resolveBeachBounds(px, pz, r, isHoverboarding = false) {
   if (x > 62 - r) x = 62 - r;
   if (x < -62 + r) x = -62 + r;
   if (z < -28 + r) z = -28 + r;
-  const maxZ = isHoverboarding ? 80 : 35 - r;
+  // Normal hoverboard stays on playable beach land; water activities own the ocean.
+  const maxZ = 35 - r;
   if (z > maxZ) z = maxZ;
   return [x, z];
 }
@@ -236,8 +237,9 @@ function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
     if (x < -beachXLimit) x = -beachXLimit;
   }
 
-  // Beach shoreline / ocean boundary — walking stays on sand; hoverboard free-ride can still launch over water.
-  const maxZ = isHoverboarding ? 75 : BEACH_SHORELINE_Z - r;
+  // Beach shoreline / ocean boundary — normal hoverboard stays grounded on city land.
+  // Surf, dive, and future water rides handle water as designed activities.
+  const maxZ = BEACH_SHORELINE_Z - r;
   if (z > maxZ) z = maxZ;
 
   return [x, z];
