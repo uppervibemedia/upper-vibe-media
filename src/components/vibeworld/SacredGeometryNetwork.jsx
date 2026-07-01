@@ -35,7 +35,35 @@ function makeTexture(kind) {
     ctx.stroke();
   };
 
-  if (kind === "circle") {
+  if (kind === "domeSigil") {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowBlur = 9;
+    ctx.strokeStyle = "rgba(220,252,255,0.88)";
+    ctx.lineWidth = 3.2;
+    circle(cx, cy, maxR * 0.76);
+    circle(cx, cy, maxR * 0.55);
+    ctx.strokeStyle = "rgba(0,229,255,0.76)";
+    ctx.lineWidth = 2.4;
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      const x1 = cx + Math.cos(a) * maxR * 0.18;
+      const y1 = cy + Math.sin(a) * maxR * 0.18;
+      const x2 = cx + Math.cos(a) * maxR * 0.72;
+      const y2 = cy + Math.sin(a) * maxR * 0.72;
+      line(x1, y1, x2, y2);
+    }
+    ctx.strokeStyle = "rgba(255,211,110,0.72)";
+    ctx.lineWidth = 2.6;
+    polygon(6, maxR * 0.42, Math.PI / 6);
+    ctx.strokeStyle = "rgba(180,134,255,0.72)";
+    ctx.lineWidth = 2.2;
+    circle(cx - maxR * 0.18, cy, maxR * 0.36);
+    circle(cx + maxR * 0.18, cy, maxR * 0.36);
+    ctx.fillStyle = "rgba(255,255,255,0.78)";
+    ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === "circle") {
     [0.28, 0.48, 0.68].forEach((s) => circle(cx, cy, maxR * s));
   } else if (kind === "vesica") {
     circle(cx - maxR * 0.18, cy, maxR * 0.43); circle(cx + maxR * 0.18, cy, maxR * 0.43); circle(cx, cy, maxR * 0.72);
@@ -132,7 +160,7 @@ const CITY_NODES = [
   { key: "lounge", kind: "flower", x: -22, z: -25, size: 4.8, color: "#B58CFF", opacity: IS_MOBILE ? 0.22 : 0.30 },
   { key: "library", kind: "seed", x: 22, z: -20, size: 4.8, color: "#7DEBFF", opacity: IS_MOBILE ? 0.22 : 0.30 },
   { key: "vibeCheck", kind: "tree", x: -16, z: -13, size: 4.4, color: "#FFD36E", opacity: IS_MOBILE ? 0.20 : 0.28 },
-  { key: "visualizer", kind: "vesica", x: -13, z: 10, size: 7.8, color: "#7DEBFF", opacity: IS_MOBILE ? 0.19 : 0.27 },
+  { key: "visualizer", kind: "domeSigil", x: -13, z: 8.4, size: 6.8, color: "#7DEBFF", opacity: IS_MOBILE ? 0.28 : 0.38 },
   { key: "beachGate", kind: "fruit", x: 12, z: 8, size: 5.8, color: "#FFD36E", opacity: IS_MOBILE ? 0.21 : 0.30 },
   { key: "ferris", kind: "pentagon", x: 29, z: 8, size: 0.1, color: "#B58CFF", opacity: 0 },
   { key: "westSpoke", kind: "circle", x: -30, z: 6, size: 7.8, color: "#A8F8FF", opacity: IS_MOBILE ? 0.19 : 0.27 },

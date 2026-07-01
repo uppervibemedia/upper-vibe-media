@@ -10,11 +10,40 @@ function standard(color) {
 }
 
 function addRock(group, x, z, sx, sy, sz, color = "#8D7863") {
-  const rock = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), standard(color));
-  rock.position.set(x, sy * 0.42, z);
-  rock.scale.set(sx, sy, sz);
-  rock.rotation.set(0.12, x * 0.03, -0.08);
-  group.add(rock);
+  const cluster = new THREE.Group();
+  cluster.position.set(x, 0, z);
+  cluster.rotation.y = (x * 0.037 + z * 0.019) % Math.PI;
+
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(1, 18),
+    basic("#5A4B3D", { transparent: true, opacity: 0.14 })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.scale.set(sx * 1.12, sz * 0.92, 1);
+  shadow.position.y = 0.018;
+  shadow.renderOrder = 4;
+  cluster.add(shadow);
+
+  const palette = [color, "#A08B73", "#6F746B", "#B19A7C"];
+  const pieces = Math.max(1, Math.min(3, Math.round((sx + sz) / 2.4)));
+  for (let i = 0; i < pieces; i++) {
+    const geo = new THREE.DodecahedronGeometry(1, 0);
+    const mat = standard(palette[(Math.abs(Math.round(x + z)) + i) % palette.length]);
+    const rock = new THREE.Mesh(geo, mat);
+    const off = (i - (pieces - 1) / 2) * 0.62;
+    rock.position.set(off * Math.cos(i), sy * (0.34 + i * 0.035), off * Math.sin(i * 1.7));
+    rock.scale.set(sx * (0.72 - i * 0.08), sy * (0.42 + i * 0.04), sz * (0.64 - i * 0.06));
+    rock.rotation.set(0.18 + i * 0.11, x * 0.03 + i * 0.7, -0.08 + z * 0.004);
+    cluster.add(rock);
+  }
+
+  const highlight = new THREE.Mesh(new THREE.DodecahedronGeometry(0.38, 0), standard("#BCA98E"));
+  highlight.position.set(-sx * 0.18, sy * 0.78, -sz * 0.12);
+  highlight.scale.set(sx * 0.28, sy * 0.14, sz * 0.22);
+  highlight.rotation.set(0.4, 0.7, 0.12);
+  cluster.add(highlight);
+
+  group.add(cluster);
 }
 
 function addDune(group, x, z, sx, sz) {
@@ -181,8 +210,8 @@ export function createBeachEdgeDesign(scene) {
   group.add(foamEdge);
 
   [-55, -38, -20, 0, 22, 42, 58].forEach((x, i) => addDune(group, x, -43 + (i % 2), 5.2, 1.4));
-  [-54, -58, -50, 50, 58, 54, -48, 48].forEach((x, i) => addRock(group, x, -22 + (i % 4) * 13, 1.6, 0.8, 1.15, i % 2 ? "#A28B72" : "#7D6E61"));
-  [-50, -36, 34, 50, -18, 18].forEach((x, i) => addRock(group, x, 34 + (i % 2) * 4, 2.0, 0.9, 1.3, "#887968"));
+  [[-56,-22,1.8,0.82,1.25],[-59,-8,1.25,0.58,0.9],[-52,10,1.55,0.72,1.08],[-57,28,1.9,0.86,1.22],[54,-17,1.7,0.78,1.15],[59,-2,1.2,0.56,0.86],[52,16,1.75,0.82,1.18],[58,32,1.45,0.7,1.02]].forEach(([x,z,sx,sy,sz], i) => addRock(group, x, z, sx, sy, sz, i % 2 ? "#A28B72" : "#7D7568"));
+  [[-50,34,2.2,0.92,1.35],[-38,38,1.35,0.62,0.95],[-18,34,1.7,0.74,1.1],[18,36,1.55,0.68,1.0],[36,34,2.15,0.9,1.3],[51,39,1.45,0.66,0.98]].forEach(([x,z,sx,sy,sz]) => addRock(group, x, z, sx, sy, sz, "#887968"));
   addPalmCluster(group, -52, 20, 1.05); addPalmCluster(group, 52, 20, 1.05); addPalmCluster(group, -42, -36, 1.15); addPalmCluster(group, 44, -35, 1.15);
   addPalmCluster(group, -16, -46, 1.25); addPalmCluster(group, 12, -47, 1.2); addPalmCluster(group, 30, -43, 1.08);
   addPalmCluster(group, -58, -4, 0.92); addPalmCluster(group, 58, -6, 0.94);
