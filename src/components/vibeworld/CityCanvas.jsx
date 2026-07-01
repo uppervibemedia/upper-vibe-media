@@ -351,6 +351,7 @@ export function buildPark(scene) {
   buildMusicLibraryZone(scene);
   buildVisualizerDomeZone(scene);
   buildDailyVibeCheckZone(scene);
+  buildVibeAcademyZone(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 8.5.5 CRYSTAL ZONE — old Vibe Academy location

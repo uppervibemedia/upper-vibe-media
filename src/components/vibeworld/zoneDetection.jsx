@@ -53,8 +53,14 @@ const ZONES = {
     icon: "Sun",
   },
   academy: {
-    name: "Vibe Academy Retreat",
+    name: "Main Vibe Academy",
     id: "academy",
+    cx: -28, cz: 10, radius: 7,
+    icon: "GraduationCap",
+  },
+  retreatacademy: {
+    name: "Vibe Retreat Academy",
+    id: "retreatacademy",
     cx: -18, cz: 16, radius: 7,
     icon: "GraduationCap",
   },
@@ -110,7 +116,7 @@ const ZONES = {
 
 export function detectZone(px, pz) {
   const mode = typeof window !== "undefined" ? (window.__uvcWorldMode || "city") : "city";
-  const beachOnly = new Set(["zenbeach", "beach", "academy", "surfzone", "divezone", "coaster", "frequencycove", "bonfirebeach"]);
+  const beachOnly = new Set(["zenbeach", "beach", "retreatacademy", "surfzone", "divezone", "coaster", "frequencycove", "bonfirebeach"]);
   for (const zone of Object.values(ZONES)) {
     if (mode === "beach" && !beachOnly.has(zone.id)) continue;
     if (mode === "city" && beachOnly.has(zone.id)) continue;

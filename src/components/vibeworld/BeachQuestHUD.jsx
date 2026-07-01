@@ -30,7 +30,7 @@ export default function BeachQuestHUD({ worldMode, quest, nearbyActivity, onRela
           <p>{quest.visitedZen ? "✓" : "○"} Visit Zen Beach</p>
           <p>{quest.zenResetComplete ? "✓" : "○"} Complete Zen Reset</p>
           <p>{quest.frequencyComplete ? "✓" : "○"} Enter Frequency Cove</p>
-          <p>{quest.academyComplete ? "✓" : "○"} Complete Vibe Academy Lesson</p>
+          <p>{quest.academyComplete ? "✓" : "○"} Visit Retreat Academy + Complete Beach Reset Lesson</p>
           <p>{quest.relaxedBonfire ? "✓" : "○"} Relax at Bonfire Beach</p>
         </div>
         {quest.completed && <p className="mt-2 text-[9px] font-black text-yellow-300">Reward claimed: +150 ✦</p>}

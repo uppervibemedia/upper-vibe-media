@@ -67,6 +67,7 @@ const ZONE_ICONS = {
   bonfirebeach: Sparkles,
   hoverboard: Sparkles,
   academy: GraduationCap,
+  retreatacademy: GraduationCap,
   ferriswheel: Sparkles,
   shop: Sparkles,
 };
@@ -842,7 +843,7 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "academy" && (
+        {(zone?.id === "academy" || zone?.id === "retreatacademy") && (
           <motion.div
             key="academy-actions"
             initial={{ opacity: 0, y: 10 }}
@@ -853,7 +854,7 @@ export default function WorldHUD({
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "academy" } })); setAcademyOpen(true); onMobileModalChange?.(true); }}
+              onClick={() => { hapticTap(); if (zone?.id === "academy") window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "academy" } })); setAcademyOpen(true); onMobileModalChange?.(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#7C3AED,#00D4F0)",
@@ -865,7 +866,7 @@ export default function WorldHUD({
               }}
             >
               <GraduationCap className="w-3.5 h-3.5" />
-              Enter Vibe Academy
+              {zone?.id === "retreatacademy" ? "Enter Retreat Academy" : "Enter Vibe Academy"}
             </button>
           </motion.div>
         )}
@@ -1039,6 +1040,7 @@ export default function WorldHUD({
         open={academyOpen}
         onClose={() => { setAcademyOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
+        mode={zone?.id === "retreatacademy" ? "beach" : "city"}
       />
 
       {/* ── Ferris Wheel Panel ────────────────────────────────────── */}

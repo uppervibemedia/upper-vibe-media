@@ -143,8 +143,26 @@ export function buildVibeAcademyZone(scene) {
   roofDot.position.set(ACAD_X, 4.3, ACAD_Z);
   academy.add(roofDot);
 
+  // Holographic lesson terminals — main city learning hub
+  [
+    ["DAILY LESSON", -31.4, 12.8, "#00D4F0"],
+    ["SYMBOL LIBRARY", -28, 13.4, "#B58CFF"],
+    ["FREQUENCY LAB", -24.6, 12.8, "#FFD36E"],
+  ].forEach(([label, x, z, color]) => {
+    const panel = new Mesh(
+      new BoxGeometry(1.9, 1.05, 0.08),
+      new MeshBasicMaterial({ color: new Color(color), transparent: true, opacity: 0.28, depthWrite: false })
+    );
+    panel.position.set(x, 1.15, z);
+    panel.rotation.y = Math.PI;
+    panel.renderOrder = 6;
+    academy.add(panel);
+    createZoneSign(scene, x, 2.1, z + 0.12, label, color);
+  });
+
   scene.add(academy);
-  createZoneSign(scene, ACAD_X, 4.6, ACAD_Z, "VIBE  ACADEMY", "#7C3AED");
+  createZoneSign(scene, ACAD_X, 4.6, ACAD_Z, "MAIN  VIBE  ACADEMY", "#7C3AED");
+  createZoneSign(scene, ACAD_X, 2.75, ACAD_Z + 4.4, "RESET  MODE  AT  BEACH", "#00D4F0");
 
   // Academy ambient light
   const academyLight = new PointLight();

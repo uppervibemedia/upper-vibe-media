@@ -98,13 +98,17 @@ export function createBeachAcademyRetreat(scene) {
 
   [[-20.5, 15.2, "#7DD7E8", -0.35], [-18, 13.8, "#D9C27C", 0], [-15.5, 15.2, "#B58CFF", 0.35], [-20.5, 17.8, "#D9C27C", 0.35], [-15.5, 17.8, "#7DD7E8", -0.35]].forEach(([x, z, c, r]) => addMat(group, x, z, c, r));
 
-  addLessonBoard(group, -24.2, 15, "MANIFEST", "#B58CFF", Math.PI / 2);
-  addLessonBoard(group, -11.8, 15, "432 HZ", "#7DEBFF", -Math.PI / 2);
-  addLessonBoard(group, -18, 9.8, "DAILY PRACTICE", "#FFD08A", 0);
+  addLessonBoard(group, -24.2, 15, "BREATH RESET", "#7DEBFF", Math.PI / 2);
+  addLessonBoard(group, -11.8, 15, "OCEAN WISDOM", "#84F0FF", -Math.PI / 2);
+  addLessonBoard(group, -18, 9.8, "REST PRACTICE", "#FFD08A", 0);
 
-  const title = makeLabel("VIBE ACADEMY RETREAT", "#B58CFF", [6.2, 0.92]);
+  const title = makeLabel("VIBE RETREAT ACADEMY", "#7DEBFF", [6.2, 0.92]);
   title.position.set(cx, 3.75, cz - 2.9);
   group.add(title);
+
+  const returnNote = makeLabel("RETURN TO CITY FOR FULL LESSONS", "#FFD08A", [6.8, 0.72]);
+  returnNote.position.set(cx, 2.55, cz + 4.0);
+  group.add(returnNote);
 
   const pathMat = basic("#E8D8B8", { transparent: true, opacity: 0.28 });
   [[-18, 23.2, 3.0, 12, 0], [-25.5, 20.5, 2.4, 12, 0.7], [-8.5, 18.5, 2.2, 11, -0.8]].forEach(([x, z, w, d, rot]) => {
