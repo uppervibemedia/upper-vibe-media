@@ -40,24 +40,54 @@ export default function createCitySkyline(scene) {
   const whiteBody  = mat("#C0C8D8", { roughness: 0.28, metalness: 0.25 });
   const darkSteel  = mat("#667788", { roughness: 0.28, metalness: 0.75 });
 
-  function makeStoreMat(warm) {
-    const m = new MeshBasicMaterial();
-    if (warm) {
-      m.color = new Color(0.9 + Math.random() * 0.1, 0.82 + Math.random() * 0.1, 0.6 + Math.random() * 0.2);
-      m.opacity = 0.65 + Math.random() * 0.3;
-    } else {
-      m.color = new Color(0.76 + Math.random() * 0.14, 0.68 + Math.random() * 0.14, 0.88 + Math.random() * 0.1);
-      m.opacity = 0.5 + Math.random() * 0.4;
-    }
-    m.depthWrite = false;
-    m.transparent = true;
-    return m;
+  const isMobileSkyline = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  const windowMats = {
+    dimWarm: new MeshBasicMaterial({ color: new Color("#D8B981"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.12 : 0.16 }),
+    medWarm: new MeshBasicMaterial({ color: new Color("#E9C98D"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.22 : 0.30 }),
+    brightWarm: new MeshBasicMaterial({ color: new Color("#FFDFA5"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.34 : 0.44 }),
+    dimCool: new MeshBasicMaterial({ color: new Color("#8DB7D8"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.10 : 0.14 }),
+    medCool: new MeshBasicMaterial({ color: new Color("#9DCBEE"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.18 : 0.24 }),
+  };
+
+  const storeMats = {
+    softWarm: new MeshBasicMaterial({ color: new Color("#D0AA72"), depthWrite: false, transparent: true, opacity: 0.18 }),
+    medWarm: new MeshBasicMaterial({ color: new Color("#E2BF82"), depthWrite: false, transparent: true, opacity: 0.28 }),
+    softCool: new MeshBasicMaterial({ color: new Color("#87A8C8"), depthWrite: false, transparent: true, opacity: 0.14 }),
+    medCool: new MeshBasicMaterial({ color: new Color("#9ABDE0"), depthWrite: false, transparent: true, opacity: 0.22 }),
+  };
+
+  function floorMood() {
+    const r = Math.random();
+    if (r < 0.18) return "dark";
+    if (r < 0.52) return "quiet";
+    return "active";
   }
 
-  const neonCyan = new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.9 });
-  const neonPurple = new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.9 });
-  const neonBlue = new MeshBasicMaterial({ color: new Color("#40A0EE"), depthWrite: false, transparent: true, opacity: 0.9 });
-  const floorBand = new MeshBasicMaterial({ color: new Color("#88BBEE"), depthWrite: false, transparent: true, opacity: 0.65 });
+  function chooseWindowMat(mood = "active") {
+    const r = Math.random();
+    const offChance = mood === "dark" ? 0.62 : mood === "quiet" ? 0.34 : 0.20;
+    if (r < offChance) return null;
+    const tier = Math.random();
+    const cool = Math.random() < 0.16;
+    if (tier < 0.50) return cool ? windowMats.dimCool : windowMats.dimWarm;
+    if (tier < 0.88) return cool ? windowMats.medCool : windowMats.medWarm;
+    return windowMats.brightWarm;
+  }
+
+  function chooseStorefrontMat(warm, important = false) {
+    const r = Math.random();
+    if (!important && r < 0.35) return null;
+    if (important && r < 0.12) return null;
+    const medium = important ? r > 0.55 : r > 0.78;
+    if (warm) return medium ? storeMats.medWarm : storeMats.softWarm;
+    return medium ? storeMats.medCool : storeMats.softCool;
+  }
+
+  const neonCyan = new MeshBasicMaterial({ color: new Color("#00B8D4"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.32 : 0.45 });
+  const neonPurple = new MeshBasicMaterial({ color: new Color("#8F5DCC"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.30 : 0.42 });
+  const neonBlue = new MeshBasicMaterial({ color: new Color("#3C76A8"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.28 : 0.40 });
+  const floorBand = new MeshBasicMaterial({ color: new Color("#6F92B8"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.06 : 0.10 });
 
   // ─── Building helpers ───────────────────────────────────────────
   function addSkyscraper(x, z, w, d, h, bodyMat, accentMat, name, rotY = 0) {
@@ -75,20 +105,25 @@ export default function createCitySkyline(scene) {
       g.add(strip);
     }
 
-    const winMat = new MeshBasicMaterial({ color: new Color("#FFF0D0"), depthWrite: false, transparent: true, opacity: 0.75 });
-    const winPurple = new MeshBasicMaterial({ color: new Color("#E4D0FF"), depthWrite: false, transparent: true, opacity: 0.55 });
     const winRows = Math.floor((h - 2.5) / 1.4);
     const winCols = Math.max(1, Math.floor(w / 0.9));
     for (let row = 0; row < winRows; row++) {
       const wy = 2.8 + row * 1.4;
+      const mood = floorMood();
       for (let col = 0; col < winCols; col++) {
-        if (Math.random() > 0.65) continue;
-        const wx = -w * 0.4 + col * (w * 0.8 / Math.max(1, winCols - 1));
-        const wmat = Math.random() > 0.7 ? winPurple : winMat;
-        const sw = new Mesh(new PlaneGeometry(0.3, 0.5), wmat);
-        sw.position.set(wx, wy, d / 2 + 0.03); g.add(sw);
-        const swb = new Mesh(new PlaneGeometry(0.3, 0.5), wmat);
-        swb.position.set(wx, wy, -d / 2 - 0.03); swb.rotation.y = Math.PI; g.add(swb);
+        if ((row + col) % 7 === 0 && mood !== "active") continue;
+        const wmat = chooseWindowMat(mood);
+        if (!wmat) continue;
+        const wx = -w * 0.4 + col * (w * 0.8 / Math.max(1, winCols - 1)) + (Math.random() - 0.5) * 0.05;
+        const sw = new Mesh(new PlaneGeometry(0.26 + Math.random() * 0.06, 0.38 + Math.random() * 0.1), wmat);
+        sw.position.set(wx, wy + (Math.random() - 0.5) * 0.05, d / 2 + 0.03); g.add(sw);
+        if (Math.random() > 0.28) {
+          const backMat = chooseWindowMat(mood);
+          if (backMat) {
+            const swb = new Mesh(new PlaneGeometry(0.26, 0.4), backMat);
+            swb.position.set(wx, wy, -d / 2 - 0.03); swb.rotation.y = Math.PI; g.add(swb);
+          }
+        }
       }
     }
 
@@ -126,13 +161,22 @@ export default function createCitySkyline(scene) {
     const winCount = Math.max(1, Math.floor(w / 1.2));
     for (let ww = 0; ww < winCount; ww++) {
       const wx = -w * 0.38 + ww * (w * 0.76 / Math.max(1, winCount - 1));
-      const sw = new Mesh(new PlaneGeometry(0.55, 1.0), makeStoreMat(ww % 2 === 0));
-      sw.position.set(wx, 1.0, d / 2 + 0.08); g.add(sw);
-      const swb = new Mesh(new PlaneGeometry(0.55, 1.0), makeStoreMat(ww % 2 === 0));
-      swb.position.set(wx, 1.0, -d / 2 - 0.08); swb.rotation.y = Math.PI; g.add(swb);
+      const frontStoreMat = chooseStorefrontMat(ww % 2 === 0);
+      if (frontStoreMat) {
+        const sw = new Mesh(new PlaneGeometry(0.5, 0.85), frontStoreMat);
+        sw.position.set(wx, 1.0, d / 2 + 0.08); g.add(sw);
+      }
+      const backStoreMat = chooseStorefrontMat(ww % 2 === 0);
+      if (backStoreMat) {
+        const swb = new Mesh(new PlaneGeometry(0.5, 0.85), backStoreMat);
+        swb.position.set(wx, 1.0, -d / 2 - 0.08); swb.rotation.y = Math.PI; g.add(swb);
+      }
     }
-    const door = new Mesh(new PlaneGeometry(0.5, 1.5), makeStoreMat(true));
-    door.position.set(0, 0.85, d / 2 + 0.1); g.add(door);
+    const doorMat = chooseStorefrontMat(true, /Gate|Stage|Tower/i.test(name || ""));
+    if (doorMat) {
+      const door = new Mesh(new PlaneGeometry(0.45, 1.25), doorMat);
+      door.position.set(0, 0.8, d / 2 + 0.1); g.add(door);
+    }
     const sidewalk = new Mesh(new BoxGeometry(w + 0.3, 0.04, d + 0.3), whiteBody);
     sidewalk.position.y = 0.02; g.add(sidewalk);
 
@@ -153,13 +197,14 @@ export default function createCitySkyline(scene) {
         const strip = new Mesh(new BoxGeometry(0.04, hPer - 0.2, 0.04), accentMat);
         strip.position.set(cx, y + hPer / 2, cz); g.add(strip);
       }
-      const winMat = new MeshBasicMaterial({ color: new Color("#FFF0D0"), depthWrite: false, transparent: true, opacity: 0.7 });
       const wCols = Math.max(1, Math.floor(w / 0.8));
+      const mood = floorMood();
       for (let col = 0; col < wCols; col++) {
-        if (Math.random() > 0.55) continue;
-        const wx = -w * 0.38 + col * (w * 0.76 / Math.max(1, wCols - 1));
-        const sw = new Mesh(new PlaneGeometry(0.25, 0.45), winMat);
-        sw.position.set(wx, y + hPer / 2, d / 2 + 0.03); g.add(sw);
+        const wmat = chooseWindowMat(mood);
+        if (!wmat) continue;
+        const wx = -w * 0.38 + col * (w * 0.76 / Math.max(1, wCols - 1)) + (Math.random() - 0.5) * 0.04;
+        const sw = new Mesh(new PlaneGeometry(0.22, 0.36), wmat);
+        sw.position.set(wx, y + hPer / 2 + (Math.random() - 0.5) * 0.05, d / 2 + 0.03); g.add(sw);
       }
       const band = new Mesh(new BoxGeometry(w + 0.06, 0.12, d + 0.06), accentMat);
       band.position.y = y + hPer + 0.06; g.add(band);
@@ -173,8 +218,10 @@ export default function createCitySkyline(scene) {
     const bays = Math.max(2, Math.floor(baseW / 1.3));
     for (let b = 0; b < bays; b++) {
       const bx = -baseW * 0.38 + b * (baseW * 0.76 / Math.max(1, bays - 1));
-      const sw = new Mesh(new PlaneGeometry(0.6, 1.1), makeStoreMat(b % 3 !== 2));
-      sw.position.set(bx, 1.1, baseD / 2 + 0.12); g.add(sw);
+      const bayMat = chooseStorefrontMat(b % 3 !== 2, /Gate|Aurora|Vibe/i.test(name || ""));
+      if (!bayMat) continue;
+      const sw = new Mesh(new PlaneGeometry(0.52, 0.9), bayMat);
+      sw.position.set(bx, 1.05, baseD / 2 + 0.12); g.add(sw);
     }
     g.position.set(x, 0, z);
     g.rotation.y = rotY;
@@ -192,16 +239,17 @@ export default function createCitySkyline(scene) {
         const strip = new Mesh(new BoxGeometry(0.04, h - 0.3, 0.04), accentMat);
         strip.position.set(ox + cx, h / 2, cz); g.add(strip);
       }
-      const winMat = new MeshBasicMaterial({ color: new Color("#FFF0D0"), depthWrite: false, transparent: true, opacity: 0.7 });
       const wCols = Math.max(1, Math.floor(w / 0.8));
       const wRows = Math.floor((h - 2.5) / 1.3);
       for (let row = 0; row < wRows; row++) {
         const wy = 2.8 + row * 1.3;
+        const mood = floorMood();
         for (let col = 0; col < wCols; col++) {
-          if (Math.random() > 0.6) continue;
-          const wx = -w * 0.38 + col * (w * 0.76 / Math.max(1, wCols - 1));
-          const sw = new Mesh(new PlaneGeometry(0.25, 0.45), winMat);
-          sw.position.set(ox + wx, wy, d / 2 + 0.03); g.add(sw);
+          const wmat = chooseWindowMat(mood);
+          if (!wmat) continue;
+          const wx = -w * 0.38 + col * (w * 0.76 / Math.max(1, wCols - 1)) + (Math.random() - 0.5) * 0.04;
+          const sw = new Mesh(new PlaneGeometry(0.22, 0.36), wmat);
+          sw.position.set(ox + wx, wy + (Math.random() - 0.5) * 0.05, d / 2 + 0.03); g.add(sw);
         }
       }
       const crown = new Mesh(new BoxGeometry(w + 0.08, 0.12, d + 0.08), accentMat);
@@ -219,7 +267,9 @@ export default function createCitySkyline(scene) {
     const tBays = Math.max(2, Math.floor(baseW / 1.2));
     for (let b = 0; b < tBays; b++) {
       const bx = -baseW * 0.42 + b * (baseW * 0.84 / Math.max(1, tBays - 1));
-      const sw = new Mesh(new PlaneGeometry(0.5, 0.95), makeStoreMat(b % 3 !== 0));
+      const bayMat = chooseStorefrontMat(b % 3 !== 0, /Gate|Twin/i.test(name || ""));
+      if (!bayMat) continue;
+      const sw = new Mesh(new PlaneGeometry(0.45, 0.82), bayMat);
       sw.position.set(bx, 1.0, d / 2 + 0.12); g.add(sw);
     }
     g.position.set(x, 0, z);
@@ -474,13 +524,13 @@ export default function createCitySkyline(scene) {
   // ── Only 4 north-skyline buildings pulsate — spread out, stage center excluded ──
   // x=0 (directly behind stage) stays static. Chosen: x=-28, x=-8, x=12, x=32
   // These are well-spread across the north wall and away from stage center.
-  const pulseNeonCyan   = new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.9 });
-  const pulseNeonPurple = new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.9 });
-  const pulseNeonBlue   = new MeshBasicMaterial({ color: new Color("#40A0EE"), depthWrite: false, transparent: true, opacity: 0.9 });
-  const pulseNeonCyan2  = new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.9 });
+  const pulseNeonCyan   = new MeshBasicMaterial({ color: new Color("#00A6C8"), depthWrite: false, transparent: true, opacity: 0.32 });
+  const pulseNeonPurple = new MeshBasicMaterial({ color: new Color("#8A58C8"), depthWrite: false, transparent: true, opacity: 0.30 });
+  const pulseNeonBlue   = new MeshBasicMaterial({ color: new Color("#3D78A8"), depthWrite: false, transparent: true, opacity: 0.30 });
+  const pulseNeonCyan2  = new MeshBasicMaterial({ color: new Color("#00A6C8"), depthWrite: false, transparent: true, opacity: 0.28 });
 
-  // Expose only these 4 materials for pulsing — everything else stays static
-  scene.userData.neonMats = [pulseNeonCyan, pulseNeonPurple, pulseNeonBlue, pulseNeonCyan2];
+  // Keep skyline accents static and subtle — no per-frame window/building pulse loop.
+  scene.userData.neonMats = [];
 
   // Override accent material on the 4 chosen buildings post-construction
   // Each material targets the corner strips + crown of its specific building group
