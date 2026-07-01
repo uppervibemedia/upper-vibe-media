@@ -11,6 +11,7 @@ import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { createMoonPhaseStagePath } from "./MoonPhasePath";
 import { createFrequencyLeaderboardBoard, animateFrequencyLeaderboardBoard } from "./FrequencyLeaderboardBoard";
+import { createChakraPathSystem, animateChakraPathSystem } from "./ChakraPathSystem.jsx";
 
 import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_ZONE_NODES } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
@@ -362,6 +363,7 @@ export function buildPark(scene) {
   buildDailyVibeCheckZone(scene);
   buildVibeAcademyZone(scene);
   createFrequencyLeaderboardBoard(scene);
+  createChakraPathSystem(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 8.5.5 CRYSTAL ZONE — old Vibe Academy location
@@ -1706,6 +1708,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (!prioritizeMovement || frameRef.current % 3 === 0) animateCosmicSky(scene, camera, t, dt);
         if (worldModeRef.current === "city" && (!prioritizeMovement || frameRef.current % 3 === 0)) tickAddOns(scene, t);
         if (worldModeRef.current === "city" && frameRef.current % (isMob ? 12 : 4) === 0) animateFrequencyLeaderboardBoard(scene, t);
+        if (worldModeRef.current === "city" && (!mobileQuality || frameRef.current % 3 === 0)) animateChakraPathSystem(scene, t, px, pz, mobileQuality);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
