@@ -11,7 +11,8 @@ import {
   deriveVibeCategoryScoresFromScore,
   vibeCategory,
   vibeMessage,
-  CORE_QUESTIONS,
+  buildVibeScoreSummary,
+  consistencyScoreFromStreak,
 } from "@/lib/vibeCheckQuestions";
 
 const CATEGORY_LABELS = {
@@ -39,8 +40,17 @@ function ScoreMeter({ value, color, size = 144 }) {
         <motion.span className="font-heading font-black text-3xl text-white leading-none"
           initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.6, duration: 0.4 }}>{value}</motion.span>
-        <span className="text-[8px] font-black text-white/25 tracking-widest uppercase mt-0.5">VIBE SCORE</span>
+        <span className="text-[8px] font-black text-white/25 tracking-widest uppercase mt-0.5">OVERALL SCORE</span>
       </div>
+    </div>
+  );
+}
+
+function ScoreStat({ label, value, color }) {
+  return (
+    <div className="rounded-2xl px-3 py-2.5 text-center" style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <p className="font-heading font-black text-lg leading-none" style={{ color }}>{value}</p>
+      <p className="text-[9px] text-white/32 font-black uppercase tracking-wider mt-1">{label}</p>
     </div>
   );
 }
@@ -95,6 +105,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
 
   // Result state
   const [resultScore, setResultScore] = useState(null);
+  const [resultSummary, setResultSummary] = useState(null);
   const [resultCategories, setResultCategories] = useState(null);
   const [resultStreak, setResultStreak] = useState(0);
 
@@ -115,14 +126,23 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
       const dates = [...new Set(all.map((c) => c.check_in_date))];
       const streak = calcStreak(dates, !!latest);
 
-      const latestScore = latest?.vibe_score || latest?.mood_score || 50;
-      const categories = latest?.category_scores || computeCategories(latest?.mood, latestScore);
+      const todayScore = latest?.today_score ?? latest?.mood_score ?? latest?.vibe_score ?? 50;
+      const summary = latest ? {
+        todayScore,
+        averageScore: latest.average_score ?? buildVibeScoreSummary({ todayScore, checkIns: all, streak }).averageScore,
+        consistencyScore: latest.consistency_score ?? consistencyScoreFromStreak(streak),
+        overallScore: latest.overall_vibe_score ?? latest.vibe_score ?? buildVibeScoreSummary({ todayScore, checkIns: all, streak }).overallScore,
+      } : buildVibeScoreSummary({ todayScore: 50, checkIns: all, streak });
+      const categories = latest?.category_scores || computeCategories(latest?.mood, summary.todayScore);
 
       setData({
-        score: latestScore,
-        status: getStatus(latestScore),
+        score: summary.overallScore,
+        todayScore: summary.todayScore,
+        averageScore: summary.averageScore,
+        consistencyScore: summary.consistencyScore,
+        status: getStatus(summary.overallScore),
         streak,
-        yesterdayScore: yesterday?.vibe_score || yesterday?.mood_score || null,
+        yesterdayScore: yesterday?.overall_vibe_score ?? yesterday?.vibe_score ?? yesterday?.mood_score ?? null,
         categories,
         mood: latest?.mood || "neutral",
         intention: latest?.intention || "",
@@ -154,6 +174,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     setQIndex(0);
     setAnswers([]);
     setResultScore(null);
+    setResultSummary(null);
     setResultCategories(null);
     setSaving(false);
     setSubmitError(null);
@@ -189,14 +210,16 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     setSubmitError(null);
     // Calculate score immediately — always show result even if save fails
     const currentStreak = data?.streak ?? 0;
-    const ss = streakToScore(currentStreak);
     const categoryScores = calcVibeCategoryScoresFromAnswers(finalAnswers);
-    const score = calcVibeScoreFromAnswers(finalAnswers);
+    const todayScore = calcVibeScoreFromAnswers(finalAnswers);
     const newStreak = currentStreak + 1;
+    const summary = buildVibeScoreSummary({ todayScore, checkIns: history, streak: newStreak });
+    const score = summary.overallScore;
     const cat = vibeCategory(score);
 
     // Show result immediately — don't block on network
     setResultScore(score);
+    setResultSummary(summary);
     setResultCategories(categoryScores);
     setResultStreak(newStreak);
     setSaving(false);
@@ -211,9 +234,13 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
           user_email: user.email,
           check_in_date: todayStr(),
           mood: cat.moodTag,
-          mood_score: score,
+          mood_score: todayScore,
+          today_score: summary.todayScore,
+          average_score: summary.averageScore,
+          consistency_score: summary.consistencyScore,
+          overall_vibe_score: summary.overallScore,
           streak_days: newStreak,
-          vibe_score: score,
+          vibe_score: summary.overallScore,
           category_scores: categoryScores,
         });
         base44.analytics.track({ eventName: "vibe_check_submitted", properties: { vibe_score: score, mood: cat.moodTag } });
@@ -228,6 +255,12 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
 
   const scoreDiff = data?.yesterdayScore != null ? (data?.score || 50) - data.yesterdayScore : null;
   const score = resultScore || data?.score || 50;
+  const scoreSummary = resultSummary || {
+    todayScore: data?.todayScore ?? score,
+    averageScore: data?.averageScore ?? score,
+    consistencyScore: data?.consistencyScore ?? consistencyScoreFromStreak(data?.streak || 0),
+    overallScore: score,
+  };
   const status = getStatus(score);
   const cat = vibeCategory(score);
   const streak = resultStreak || data?.streak || 0;
@@ -325,7 +358,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                 {currentQ.options.map((opt, i) => {
                   const isSelected = selectedScore === opt.score;
                   return (
-                    <motion.button key={i}
+                    <motion.button key={opt.optionId || `${currentQ.id}-${opt.label}`}
                       initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.04 }}
                       onClick={() => handleAnswer(opt.score)}
@@ -371,10 +404,16 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
               <p className="text-white/50 text-sm leading-relaxed max-w-xs text-center">
                 {vibeMessage(score)}
               </p>
+              <div className="grid grid-cols-2 gap-2 w-full mt-5">
+                <ScoreStat label="Today" value={scoreSummary.todayScore} color={cat.color} />
+                <ScoreStat label="Average" value={scoreSummary.averageScore} color="#FBBF24" />
+                <ScoreStat label="Consistency" value={scoreSummary.consistencyScore} color="#00E5FF" />
+                <ScoreStat label="Overall" value={scoreSummary.overallScore} color={cat.color} />
+              </div>
               <div className="flex items-center justify-center gap-5 mt-4">
                 {scoreDiff !== null && (
                   <div className="text-center">
-                    <p className="font-heading font-black text-lg" style={{ color: scoreDiff >= 0 ? "#4ADE80" : "#F87171" }}>
+                    <p className="font-heading font-black text-lg" style={{ color: scoreDiff >= 0 ? "#00E5FF" : "#F87171" }}>
                       {scoreDiff >= 0 ? "+" : ""}{scoreDiff}
                     </p>
                     <p className="text-[10px] text-white/25">vs Yesterday</p>
@@ -396,7 +435,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                     <span className="text-[10px] font-bold text-white/40 w-20 text-right flex-shrink-0">{CATEGORY_LABELS[key] || key}</span>
                     <div className="flex-1 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
                       <div className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${value}%`, background: `linear-gradient(90deg, #00E5FF44, ${value > 60 ? "#4ADE80" : value > 35 ? "#FBBF24" : "#F87171"})` }} />
+                        style={{ width: `${value}%`, background: `linear-gradient(90deg, #00E5FF44, ${value >= 85 ? "#4ADE80" : value >= 60 ? "#FBBF24" : value >= 40 ? "#FB923C" : "#F87171"})` }} />
                     </div>
                     <span className="text-[10px] font-bold text-white/50 w-8 text-left">{value}</span>
                   </div>
@@ -438,20 +477,27 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
               <p className="text-sm font-bold mt-2" style={{ color: status.color }}>{status.label}</p>
               {scoreDiff != null && (
                 <div className="flex items-center gap-1 mt-1">
-                  {scoreDiff > 0 ? <TrendingUp className="w-3.5 h-3.5 text-green-400" /> : scoreDiff < 0 ? <TrendingDown className="w-3.5 h-3.5 text-red-400" /> : null}
-                  <span className={`text-xs font-bold ${scoreDiff > 0 ? "text-green-400" : scoreDiff < 0 ? "text-red-400" : "text-white/30"}`}>
+                  {scoreDiff > 0 ? <TrendingUp className="w-3.5 h-3.5 text-cyan-400" /> : scoreDiff < 0 ? <TrendingDown className="w-3.5 h-3.5 text-red-400" /> : null}
+                  <span className={`text-xs font-bold ${scoreDiff > 0 ? "text-cyan-400" : scoreDiff < 0 ? "text-red-400" : "text-white/30"}`}>
                     {scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff}{scoreDiff === 0 ? " no change" : ` vs yesterday`}
                   </span>
                 </div>
               )}
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <ScoreStat label="Today's Score" value={scoreSummary.todayScore} color={status.color} />
+              <ScoreStat label="Average Score" value={scoreSummary.averageScore} color="#FBBF24" />
+              <ScoreStat label="Consistency" value={scoreSummary.consistencyScore} color="#00E5FF" />
+              <ScoreStat label="Overall Vibe" value={scoreSummary.overallScore} color={status.color} />
+            </div>
+
             <div className="flex items-center gap-3 p-3 rounded-xl"
               style={{ background: "rgba(0,229,255,0.05)", border: "1px solid rgba(0,229,255,0.1)" }}>
               <Zap className="w-5 h-5 text-cyan-400 flex-shrink-0" />
               <div>
-                <p className="text-[11px] font-black tracking-wider text-cyan-400/70 uppercase">Current Streak</p>
-                <p className="text-lg font-heading font-black text-white">{data.streak} {data.streak === 1 ? "day" : "days"}</p>
+                <p className="text-[11px] font-black tracking-wider text-cyan-400/70 uppercase">Current Level</p>
+                <p className="text-lg font-heading font-black text-white">{status.label} · {data.streak} {data.streak === 1 ? "day" : "days"}</p>
               </div>
             </div>
 
@@ -463,7 +509,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                     <span className="text-[10px] font-bold text-white/40 w-20 text-right flex-shrink-0">{CATEGORY_LABELS[key] || key}</span>
                     <div className="flex-1 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
                       <div className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${value}%`, background: `linear-gradient(90deg, #00E5FF44, ${value > 60 ? "#4ADE80" : value > 35 ? "#FBBF24" : "#F87171"})` }} />
+                        style={{ width: `${value}%`, background: `linear-gradient(90deg, #00E5FF44, ${value >= 85 ? "#4ADE80" : value >= 60 ? "#FBBF24" : value >= 40 ? "#FB923C" : "#F87171"})` }} />
                     </div>
                     <span className="text-[10px] font-bold text-white/50 w-8 text-left">{value}</span>
                   </div>
@@ -576,13 +622,13 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                 <div className="flex items-end gap-1.5 h-32 px-1"
                   style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)" }}>
                   {history.map((h, i) => {
-                    const s = h.vibe_score || h.mood_score || 50;
+                    const s = h.overall_vibe_score ?? h.vibe_score ?? h.mood_score ?? 50;
                     return (
                       <div key={i} className="flex-1 flex flex-col items-center justify-end h-full pb-1">
                         <div className="w-full rounded-t transition-all"
                           style={{
                             height: `${Math.max(4, (s / 100) * 100)}%`,
-                            background: s >= 70 ? "linear-gradient(180deg,#4ADE80,#4ADE8044)" : s >= 50 ? "linear-gradient(180deg,#FBBF24,#FBBF2444)" : "linear-gradient(180deg,#F87171,#F8717144)",
+                            background: s >= 85 ? "linear-gradient(180deg,#4ADE80,#4ADE8044)" : s >= 75 ? "linear-gradient(180deg,#00E5FF,#00E5FF44)" : s >= 60 ? "linear-gradient(180deg,#FBBF24,#FBBF2444)" : s >= 40 ? "linear-gradient(180deg,#FB923C,#FB923C44)" : "linear-gradient(180deg,#F87171,#F8717144)",
                             minHeight: 4,
                           }} />
                         <span className="text-[8px] text-white/55 mt-1 font-black">{s}</span>
@@ -595,24 +641,11 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
             )}
 
             {data && (
-              <div className="grid grid-cols-3 gap-2">
-                <div className="p-3 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Activity className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
-                  <p className="text-lg font-heading font-black text-white">{data.score}</p>
-                  <p className="text-[9px] font-bold text-white/25 uppercase">Current</p>
-                </div>
-                <div className="p-3 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Zap className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
-                  <p className="text-lg font-heading font-black text-white">{data.streak}</p>
-                  <p className="text-[9px] font-bold text-white/25 uppercase">Streak</p>
-                </div>
-                <div className="p-3 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  {scoreDiff != null && scoreDiff > 0 ? <TrendingUp className="w-4 h-4 mx-auto mb-1 text-green-400" />
-                    : scoreDiff != null && scoreDiff < 0 ? <TrendingDown className="w-4 h-4 mx-auto mb-1 text-red-400" />
-                    : <BarChart3 className="w-4 h-4 mx-auto mb-1 text-white/30" />}
-                  <p className="text-lg font-heading font-black text-white">{scoreDiff != null ? (scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff) : "-"}</p>
-                  <p className="text-[9px] font-bold text-white/25 uppercase">vs Yest.</p>
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                <ScoreStat label="Today" value={scoreSummary.todayScore} color={status.color} />
+                <ScoreStat label="Average" value={scoreSummary.averageScore} color="#FBBF24" />
+                <ScoreStat label="Consistency" value={scoreSummary.consistencyScore} color="#00E5FF" />
+                <ScoreStat label="Overall" value={scoreSummary.overallScore} color={status.color} />
               </div>
             )}
 
@@ -625,7 +658,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                       <span className="text-[10px] font-bold text-white/40 w-20 text-right flex-shrink-0">{CATEGORY_LABELS[key] || key}</span>
                       <div className="flex-1 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
                         <div className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${value}%`, background: `linear-gradient(90deg, #00E5FF44, ${value > 60 ? "#4ADE80" : value > 35 ? "#FBBF24" : "#F87171"})` }} />
+                          style={{ width: `${value}%`, background: `linear-gradient(90deg, #00E5FF44, ${value >= 85 ? "#4ADE80" : value >= 60 ? "#FBBF24" : value >= 40 ? "#FB923C" : "#F87171"})` }} />
                       </div>
                       <span className="text-[10px] font-bold text-white/50 w-8 text-left">{value}</span>
                     </div>
@@ -635,10 +668,10 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
             )}
 
             {data && scoreDiff != null && (
-              <div className="p-4 rounded-xl" style={{ background: scoreDiff >= 0 ? "rgba(74,222,128,0.05)" : "rgba(248,113,113,0.05)", border: `1px solid ${scoreDiff >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)"}` }}>
+              <div className="p-4 rounded-xl" style={{ background: scoreDiff >= 0 ? "rgba(0,229,255,0.05)" : "rgba(248,113,113,0.05)", border: `1px solid ${scoreDiff >= 0 ? "rgba(0,229,255,0.15)" : "rgba(248,113,113,0.15)"}` }}>
                 <div className="flex items-center gap-2 mb-1">
-                  {scoreDiff >= 0 ? <TrendingUp className="w-4 h-4 text-green-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
-                  <span className="text-sm font-heading font-black" style={{ color: scoreDiff >= 0 ? "#4ADE80" : "#F87171" }}>
+                  {scoreDiff >= 0 ? <TrendingUp className="w-4 h-4 text-cyan-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
+                  <span className="text-sm font-heading font-black" style={{ color: scoreDiff >= 0 ? "#00E5FF" : "#F87171" }}>
                     {scoreDiff >= 0 ? "You're improving!" : "Needs attention"}
                   </span>
                 </div>

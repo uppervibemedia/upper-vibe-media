@@ -27,7 +27,23 @@
     },
     "mood_score": {
       "type": "number",
-      "description": "Numeric score for mood (10-100)"
+      "description": "Today's answer-only Vibe Check score"
+    },
+    "today_score": {
+      "type": "number",
+      "description": "Score based only on today's Vibe Check answers"
+    },
+    "average_score": {
+      "type": "number",
+      "description": "Rolling 7-day average score, or average of available completed days"
+    },
+    "consistency_score": {
+      "type": "number",
+      "description": "Score based on check-in streak consistency"
+    },
+    "overall_vibe_score": {
+      "type": "number",
+      "description": "Overall Vibe Score: today 45%, average 35%, consistency 20%"
     },
     "intention": {
       "type": "string",
@@ -44,7 +60,7 @@
     },
     "vibe_score": {
       "type": "number",
-      "description": "Calculated daily vibe score (0-100)"
+      "description": "Overall daily vibe score (0-100) used across mirror, progress, rewards, and leaderboards"
     },
     "category_scores": {
       "type": "object",

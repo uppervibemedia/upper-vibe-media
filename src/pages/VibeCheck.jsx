@@ -18,6 +18,8 @@ import {
   calcVibeCategoryScoresFromAnswers,
   vibeCategory,
   vibeMessage,
+  buildVibeScoreSummary,
+  consistencyScoreFromStreak,
 } from "@/lib/vibeCheckQuestions";
 
 // ── Streak helpers ────────────────────────────────────────────────────────────
@@ -126,25 +128,25 @@ export default function VibeCheck() {
   }, [user]);
 
   // ── Derived score values (used in result screen) ──────────────────────────
-  const streakScore = streakToScore(streak);
-  const vibeScore = todayCheckIn?.vibe_score ?? calcVibeScoreFromAnswers(answers, streakScore, yesterdayCompleted);
+  const todayAnswerScore = todayCheckIn?.today_score ?? todayCheckIn?.mood_score ?? calcVibeScoreFromAnswers(answers);
+  const scoreSummary = todayCheckIn ? {
+    todayScore: todayAnswerScore,
+    averageScore: todayCheckIn.average_score ?? buildVibeScoreSummary({ todayScore: todayAnswerScore, checkIns: allCheckIns, streak }).averageScore,
+    consistencyScore: todayCheckIn.consistency_score ?? consistencyScoreFromStreak(streak),
+    overallScore: todayCheckIn.overall_vibe_score ?? todayCheckIn.vibe_score ?? buildVibeScoreSummary({ todayScore: todayAnswerScore, checkIns: allCheckIns, streak }).overallScore,
+  } : buildVibeScoreSummary({ todayScore: todayAnswerScore, checkIns: allCheckIns, streak });
+  const vibeScore = scoreSummary.overallScore;
   const cat = vibeCategory(vibeScore);
   const msg = vibeMessage(vibeScore);
 
   // Change from yesterday
   const yesterdayCheckIn = allCheckIns.find((c) => c.check_in_date === yesterdayDateStr());
-  const scoreChange = yesterdayCheckIn?.vibe_score != null
-    ? vibeScore - yesterdayCheckIn.vibe_score
+  const yesterdayOverallScore = yesterdayCheckIn?.overall_vibe_score ?? yesterdayCheckIn?.vibe_score ?? null;
+  const scoreChange = yesterdayOverallScore != null
+    ? vibeScore - yesterdayOverallScore
     : null;
 
-  // Weekly average
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekScores = allCheckIns
-    .filter((c) => c.check_in_date >= weekAgo.toISOString().slice(0, 10) && c.vibe_score != null)
-    .map((c) => c.vibe_score);
-  const weekAvg = weekScores.length >= 3
-    ? Math.round(weekScores.reduce((a, b) => a + b, 0) / weekScores.length)
-    : null;
+  const weekAvg = scoreSummary.averageScore;
 
   // ── Answer a question ─────────────────────────────────────────────────────
   const handleAnswer = (optionScore) => {
@@ -167,10 +169,11 @@ export default function VibeCheck() {
   const submitCheckIn = async (finalAnswers) => {
     if (!user || saving) return;
     setSaving(true);
-    const ss = streakToScore(streak);
     const categoryScores = calcVibeCategoryScoresFromAnswers(finalAnswers);
-    const score = calcVibeScoreFromAnswers(finalAnswers);
+    const todayScore = calcVibeScoreFromAnswers(finalAnswers);
     const newStreak = streak + 1;
+    const summary = buildVibeScoreSummary({ todayScore, checkIns: allCheckIns, streak: newStreak });
+    const score = summary.overallScore;
     // Derive overall mood from the shared score level
     const moodId = vibeCategory(score).moodTag;
     try {
@@ -179,9 +182,13 @@ export default function VibeCheck() {
         user_email: user.email,
         check_in_date: todayStr(),
         mood: moodId,
-        mood_score: score,
+        mood_score: todayScore,
+        today_score: summary.todayScore,
+        average_score: summary.averageScore,
+        consistency_score: summary.consistencyScore,
+        overall_vibe_score: summary.overallScore,
         streak_days: newStreak,
-        vibe_score: score,
+        vibe_score: summary.overallScore,
         category_scores: categoryScores,
       });
       setTodayCheckIn(record);
@@ -401,7 +408,7 @@ export default function VibeCheck() {
                     {currentQ.options.map((opt, i) => {
                       const isSelected = selectedScore === opt.score;
                       return (
-                        <motion.button key={i}
+                        <motion.button key={opt.optionId || `${currentQ.id}-${opt.label}`}
                           initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.04 }}
                           onClick={() => handleAnswer(opt.score)}
@@ -443,7 +450,7 @@ export default function VibeCheck() {
 
                 {/* ── Score Reveal Card ── */}
                 <SectionCard centered>
-                  <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40 mb-4">Today's Vibe Score</p>
+                  <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40 mb-4">Overall Vibe Score</p>
 
                   {/* Score ring */}
                   <ScoreMeter score={vibeScore} color={cat.color} />
@@ -457,12 +464,19 @@ export default function VibeCheck() {
                   {/* Personalized message */}
                   <p className="text-white/55 text-sm leading-relaxed max-w-xs mx-auto">{msg}</p>
 
+                  <div className="grid grid-cols-2 gap-2 mt-5">
+                    <ScoreStat label="Today's Score" value={scoreSummary.todayScore} color={cat.color} />
+                    <ScoreStat label="Average Score" value={scoreSummary.averageScore} color="#FBBF24" />
+                    <ScoreStat label="Consistency" value={scoreSummary.consistencyScore} color="#00E5FF" />
+                    <ScoreStat label="Overall Vibe" value={scoreSummary.overallScore} color={cat.color} />
+                  </div>
+
                   {/* Change from yesterday + weekly avg */}
                   <div className="flex items-center justify-center gap-5 mt-5">
                     {scoreChange !== null && (
                       <div className="text-center">
                         <p className="font-heading font-black text-lg"
-                          style={{ color: scoreChange >= 0 ? "#4ADE80" : "#F87171" }}>
+                          style={{ color: scoreChange >= 0 ? "#00E5FF" : "#F87171" }}>
                           {scoreChange >= 0 ? "+" : ""}{scoreChange}
                         </p>
                         <p className="text-[10px] text-white/30">vs Yesterday</p>
@@ -491,7 +505,7 @@ export default function VibeCheck() {
                 />
 
                 {/* ── Vibe Progress (free) ── */}
-                <VibeTrendCard allCheckIns={allCheckIns} todayScore={vibeScore} rtPrimary={rtPrimary} isPlus={isPlusUser} />
+                <VibeTrendCard allCheckIns={allCheckIns} todayScore={scoreSummary.todayScore} averageScore={scoreSummary.averageScore} overallScore={scoreSummary.overallScore} consistencyScore={scoreSummary.consistencyScore} rtPrimary={rtPrimary} isPlus={isPlusUser} />
 
                 {/* ── Daily Streak ── */}
                 <StreakCard streak={streak} />
@@ -526,6 +540,15 @@ export default function VibeCheck() {
         )}
       </div>
       <Footer />
+    </div>
+  );
+}
+
+function ScoreStat({ label, value, color }) {
+  return (
+    <div className="rounded-2xl px-3 py-2.5 text-center" style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <p className="font-heading font-black text-lg leading-none" style={{ color }}>{value}</p>
+      <p className="text-[9px] text-white/32 font-black uppercase tracking-wider mt-1">{label}</p>
     </div>
   );
 }

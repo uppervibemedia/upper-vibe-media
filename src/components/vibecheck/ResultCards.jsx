@@ -165,30 +165,17 @@ export function StreakCard({ streak }) {
 }
 
 // ── Vibe Trend Card (free — above score breakdown) ────────────────────────────
-export function VibeTrendCard({ allCheckIns, todayScore, rtPrimary, isPlus }) {
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekScores = allCheckIns
-    .filter((c) => c.check_in_date >= weekAgo.toISOString().slice(0, 10) && c.vibe_score != null)
-    .map((c) => c.vibe_score);
-  const weekAvg = weekScores.length >= 3
-    ? Math.round(weekScores.reduce((a, b) => a + b, 0) / weekScores.length)
-    : null;
-
-  const allScores = allCheckIns.map((c) => c.vibe_score).filter((s) => s != null);
-  const bestScore = allScores.length > 0 ? Math.max(...allScores, todayScore) : todayScore;
+export function VibeTrendCard({ todayScore, averageScore, consistencyScore, overallScore, rtPrimary, isPlus }) {
+  const overallInfo = scoreLabel(overallScore ?? todayScore ?? 0);
 
   return (
     <SectionCard>
       <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-4">Vibe Progress</p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <TrendStat label="Today's Score" value={todayScore} color={`rgb(${rtPrimary})`} />
-        <TrendStat
-          label="7-Day Average"
-          value={weekAvg ?? "—"}
-          color="rgba(212,168,67,0.9)"
-          sub={weekAvg == null ? "Need 3+ check-ins" : undefined}
-        />
-        <TrendStat label="Best Score" value={bestScore} color="#4ADE80" />
+        <TrendStat label="Average Score" value={averageScore ?? "—"} color="rgba(212,168,67,0.9)" />
+        <TrendStat label="Consistency" value={consistencyScore ?? "—"} color="#00E5FF" />
+        <TrendStat label="Overall Vibe" value={overallScore ?? todayScore} color={overallInfo.color} sub={overallInfo.label} />
       </div>
     </SectionCard>
   );
@@ -323,7 +310,7 @@ export function VibeHistoryCard({ allCheckIns, streak, longestStreak, rtPrimary,
   const [open, setOpen] = useState(false);
   const sorted = [...allCheckIns].sort((a, b) => (a.check_in_date < b.check_in_date ? 1 : -1));
   const last7 = sorted.slice(0, 7);
-  const bestScore = allCheckIns.length > 0 ? Math.max(...allCheckIns.map((c) => c.vibe_score || 0)) : null;
+  const bestScore = allCheckIns.length > 0 ? Math.max(...allCheckIns.map((c) => c.overall_vibe_score ?? c.vibe_score ?? 0)) : null;
   const hasEnough = allCheckIns.length >= 2;
 
   return (
@@ -353,15 +340,16 @@ export function VibeHistoryCard({ allCheckIns, streak, longestStreak, rtPrimary,
                   <p className="text-[10px] font-bold text-white/25 uppercase tracking-widest mb-2">Last 7 Check-ins</p>
                   <div className="space-y-1.5">
                     {last7.map((c) => {
-                      const info = scoreLabel(c.vibe_score || 0);
+                      const rowScore = c.overall_vibe_score ?? c.vibe_score ?? 0;
+                      const info = scoreLabel(rowScore);
                       return (
                         <div key={c.id} className="flex items-center gap-3 py-1.5 px-3 rounded-xl"
                           style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
                           <span className="text-[10px] text-white/30 w-20 flex-shrink-0">{c.check_in_date}</span>
                           <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                            <div className="h-full rounded-full" style={{ width: `${c.vibe_score}%`, background: info.color }} />
+                            <div className="h-full rounded-full" style={{ width: `${rowScore}%`, background: info.color }} />
                           </div>
-                          <span className="text-xs font-black w-8 text-right" style={{ color: info.color }}>{c.vibe_score}</span>
+                          <span className="text-xs font-black w-8 text-right" style={{ color: info.color }}>{rowScore}</span>
                         </div>
                       );
                     })}
