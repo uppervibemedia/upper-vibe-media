@@ -20,8 +20,10 @@ export default function AcademyVideoPlayer({
   const { isPlaying, audioRef, safePause, safePlay, setIsPlaying, savePosition } = usePlayer();
   const youtubeSessionActiveRef = useRef(false);
   const musicWasPlayingRef = useRef(false);
+  const openedExternalRef = useRef(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [embedIssue, setEmbedIssue] = useState(false);
 
   const pauseGlobalForYoutube = useCallback(() => {
     const audio = audioRef?.current;
@@ -46,9 +48,10 @@ export default function AcademyVideoPlayer({
 
   const leaveVideoExperience = useCallback(() => {
     pauseYoutube();
-    if (youtubeSessionActiveRef.current && musicWasPlayingRef.current && audioRef?.current) {
+    if (!openedExternalRef.current && youtubeSessionActiveRef.current && musicWasPlayingRef.current && audioRef?.current) {
       safePlay?.(audioRef.current, "academy-youtube-exit");
     }
+    openedExternalRef.current = false;
     youtubeSessionActiveRef.current = false;
     musicWasPlayingRef.current = false;
   }, [audioRef, pauseYoutube, safePlay]);
@@ -60,6 +63,9 @@ export default function AcademyVideoPlayer({
       if (typeof data === "string") {
         try { data = JSON.parse(data); } catch { return; }
       }
+      if (data?.event === "onError" || data?.info?.errorCode || data?.info?.playerState === -1 && data?.info?.errorCode) {
+        setEmbedIssue(true);
+      }
       const playerState = typeof data?.info === "object" ? data.info.playerState : data?.info;
       if ((data?.event === "onStateChange" || data?.event === "infoDelivery") && playerState === 1) {
         pauseGlobalForYoutube();
@@ -70,9 +76,19 @@ export default function AcademyVideoPlayer({
   }, [pauseGlobalForYoutube]);
 
   useEffect(() => () => leaveVideoExperience(), [leaveVideoExperience]);
+  useEffect(() => setEmbedIssue(false), [embedUrl]);
+
+  const handleIframeLoad = () => {
+    setEmbedIssue(false);
+    try {
+      iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: "academy-youtube-player" }), "https://www.youtube.com");
+    } catch {}
+  };
 
   const handleWatchYoutube = () => {
+    openedExternalRef.current = true;
     pauseGlobalForYoutube();
+    pauseYoutube();
     if (watchUrl) window.open(watchUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -89,7 +105,6 @@ export default function AcademyVideoPlayer({
   };
 
   const exitFullscreen = () => {
-    leaveVideoExperience();
     setFullscreen(false);
     setPlaylistOpen(false);
   };
@@ -120,7 +135,7 @@ export default function AcademyVideoPlayer({
 
       <div className={fullscreen ? "flex-1 min-h-0 flex flex-col justify-center" : "flex-1 min-w-0 rounded-3xl overflow-hidden"} style={fullscreen ? {} : { background: "rgba(0,0,0,0.45)", border: "1px solid rgba(0,229,255,0.18)" }}>
         <div onPointerDownCapture={pauseGlobalForYoutube} onTouchStart={pauseGlobalForYoutube} className="w-full bg-black flex items-center justify-center mx-auto" style={fullscreen ? { aspectRatio: "16 / 9", width: "min(100%, 177.78vh)", maxHeight: "calc(100dvh - 170px)", borderRadius: isMobile ? 14 : 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" } : { aspectRatio: "16 / 9" }}>
-          {loadingVideos ? <div className="w-6 h-6 border-2 border-cyan-300/20 border-t-cyan-300 rounded-full animate-spin" /> : embedUrl ? <iframe ref={iframeRef} key={embedUrl} src={embedUrl} title={currentLesson?.title || "Academy Lesson"} className="w-full h-full" style={{ border: 0 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /> : <p className="text-white/35 text-sm">No learning videos found yet.</p>}
+          {loadingVideos ? <div className="w-6 h-6 border-2 border-cyan-300/20 border-t-cyan-300 rounded-full animate-spin" /> : embedIssue && watchUrl ? <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-5 text-center"><p className="text-white/72 text-sm font-bold">Video cannot play inside the Academy right now.</p><div className="flex flex-wrap items-center justify-center gap-2"><button onClick={handleWatchYoutube} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,255,255,0.1)", color: "#fff", minHeight: 44 }}>Watch on YouTube <ExternalLink className="w-3 h-3" /></button><button onClick={backToAcademy} className="px-4 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)", minHeight: 44 }}>Back To Academy</button><button onClick={exitAcademy} className="px-4 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.65)", minHeight: 44 }}>Return To City / Exit</button></div></div> : embedUrl ? <iframe ref={iframeRef} key={embedUrl} src={embedUrl} title={currentLesson?.title || "Academy Lesson"} className="w-full h-full" style={{ border: 0 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen onLoad={handleIframeLoad} onError={() => setEmbedIssue(true)} /> : <p className="text-white/35 text-sm">No learning videos found yet.</p>}
         </div>
 
         <div className={fullscreen ? "pt-3 mx-auto w-full" : "p-4"} style={fullscreen ? { width: "min(100%, 177.78vh)" } : {}}>
@@ -133,7 +148,6 @@ export default function AcademyVideoPlayer({
             {!fullscreen && <button onClick={() => setFullscreen(true)} className="flex items-center gap-2 px-4 py-2 rounded-full font-black text-[10px] tracking-wider" style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.28)", color: "#DFFBFF", minHeight: 44 }}><Maximize2 className="w-3.5 h-3.5" /> Full Screen</button>}
           </div>
 
-          {watchUrl && <div className="rounded-2xl p-3 mt-4" style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)" }}><p className="text-xs text-white/55">Video cannot play inside the Academy right now.</p><div className="flex flex-wrap gap-2 mt-2"><button onClick={handleWatchYoutube} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,255,255,0.08)", color: "#fff" }}>Watch on YouTube <ExternalLink className="w-3 h-3" /></button><button onClick={backToAcademy} className="px-4 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.72)" }}>Back To Academy</button><button onClick={exitAcademy} className="px-4 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.62)" }}>Return To City / Exit</button></div></div>}
 
           <div className="flex flex-wrap items-center gap-2 mt-4">
             <button disabled={currentIndex <= 0} onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} className="flex items-center gap-1 px-4 py-2 rounded-full font-black text-[10px] disabled:opacity-35" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", touchAction: "manipulation" }}><ChevronLeft className="w-3 h-3" /> Previous</button>

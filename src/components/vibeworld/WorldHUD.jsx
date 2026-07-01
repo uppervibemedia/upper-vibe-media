@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, X, ShoppingBag,
   Compass, Sparkles, Library, SkipForward,
-  GraduationCap, Bell, Volume2, VolumeX, Waves, Menu,
+  GraduationCap, Bell, Volume2, VolumeX, Waves, Menu, Zap,
 } from "lucide-react";
 // Note: X is kept for potential future use in this file
 
@@ -371,6 +371,28 @@ export default function WorldHUD({
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
+        </button>
+
+        {/* Daily Quest */}
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => { hapticTap(); window.dispatchEvent(new CustomEvent("uvcOpenDailyQuest")); }}
+          className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+          style={{
+            background: "rgba(255,211,110,0.10)",
+            border: "1px solid rgba(255,211,110,0.22)",
+            backdropFilter: "blur(8px)",
+            width: isMobile ? 32 : 36,
+            height: isMobile ? 32 : 36,
+            minWidth: isMobile ? 32 : 36,
+            minHeight: isMobile ? 32 : 36,
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
+          title="Daily Quest"
+          aria-label="Daily Quest"
+        >
+          <Zap style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }} color="#FFD36E" />
         </button>
 
         {/* City Dashboard — quick access while keeping Notifications visible */}

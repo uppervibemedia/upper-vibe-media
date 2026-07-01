@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronDown, Flame, Sparkles, X, Zap } from "lucide-react";
+import { Check, Flame, Sparkles, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
 
@@ -171,6 +171,12 @@ export default function DailyCityEngagement({
     if (daily?.questRewardClaimed && hasQuestLock(daily)) setMessage(REWARD_SAVED_MESSAGE);
   }, [daily?.questRewardClaimed, daily?.questCompletedAt]);
 
+  useEffect(() => {
+    const openDailyQuest = () => setExpanded(true);
+    window.addEventListener("uvcOpenDailyQuest", openDailyQuest);
+    return () => window.removeEventListener("uvcOpenDailyQuest", openDailyQuest);
+  }, []);
+
   const grantCoins = useCallback(async (amount, reason) => {
     if (!amount) return false;
     const claim = await claimRewardCooldown(userId, `city:${reason}`);
@@ -337,6 +343,7 @@ export default function DailyCityEngagement({
   const completedCount = questItems.filter((t) => daily?.completed?.[t.id]).length;
   const intention = INTENTIONS.find((i) => i.id === daily?.intention);
   const top = isMobile && mobileLayout ? mobileLayout.sa.top + 92 : 92;
+  const panelMaxHeight = isMobile && mobileLayout ? `calc(100dvh - ${top + mobileLayout.actionBottom + 12}px)` : "min(70dvh, 560px)";
 
   if (!daily) return null;
 
@@ -350,7 +357,7 @@ export default function DailyCityEngagement({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.96 }}
             className="pointer-events-auto rounded-3xl overflow-hidden"
-            style={{ background: "rgba(5,6,18,0.86)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.45), 0 0 34px rgba(0,229,255,0.12)" }}
+            style={{ maxHeight: panelMaxHeight, overflowY: "auto", background: "rgba(5,6,18,0.86)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.45), 0 0 34px rgba(0,229,255,0.12)" }}
           >
             <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-white/5">
               <div>
@@ -360,8 +367,8 @@ export default function DailyCityEngagement({
                   <span>{daily.questRewardClaimed ? "Quest reward claimed" : "Quest reward unlocks at 3/3"}</span>
                 </div>
               </div>
-              <button onClick={closePanel} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", touchAction: "manipulation" }}>
-                <X className="w-3.5 h-3.5" />
+              <button onClick={closePanel} className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.72)", touchAction: "manipulation" }} aria-label="Close Daily Quest">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -414,19 +421,7 @@ export default function DailyCityEngagement({
               <p className="text-[9px] leading-relaxed text-white/25">Vibe Coins are in-app reward points only and have no real-world cash value. Spend them in Upper Vibe Shop for aura, hoverboard, badge, and nameplate cosmetics.</p>
             </div>
           </motion.div>
-        ) : (
-          <motion.button
-            key="daily-chip"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            onClick={() => setExpanded(true)}
-            className="pointer-events-auto mx-auto flex items-center gap-2 px-3 py-2 rounded-full text-[10px] font-black tracking-wider uppercase"
-            style={{ background: "rgba(5,6,18,0.76)", border: "1px solid rgba(0,229,255,0.18)", color: "rgba(255,255,255,0.62)", backdropFilter: "blur(14px)", touchAction: "manipulation" }}
-          >
-            <Zap className="w-3 h-3" style={{ color: "#FFD36E" }} /> Daily Quest {completedCount}/3{completedCount === 3 ? " Complete" : ""} <ChevronDown className="w-3 h-3" />
-          </motion.button>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );
