@@ -25,22 +25,27 @@ function mat(hexColor, opts = {}) {
 
 function makeLabel(text, colorHex) {
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 96;
+  canvas.width = 768;
+  canvas.height = 128;
   const ctx = canvas.getContext("2d");
   ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 18;
-  ctx.font = "900 28px 'Syne','Inter',sans-serif";
+  ctx.shadowBlur = 16;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  let size = text.length > 22 ? 30 : 34;
+  do {
+    ctx.font = `900 ${size}px 'Syne','Inter',sans-serif`;
+    size -= 1;
+  } while (ctx.measureText(text).width > 680 && size > 22);
   ctx.fillStyle = "#fff";
-  ctx.fillText(text, 256, 48);
-  ctx.fillText(text, 256, 48);
+  ctx.fillText(text, 384, 64);
+  ctx.shadowBlur = 6;
+  ctx.fillText(text, 384, 64);
   const tex = new CanvasTexture(canvas);
   tex.minFilter = LinearFilter;
   tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
-  sprite.scale.set(5.8, 1.1, 1);
+  sprite.scale.set(text.length > 20 ? 7.4 : 6.4, 1.25, 1);
   sprite.renderOrder = 999;
   return sprite;
 }
@@ -65,7 +70,7 @@ export function createTransportPad(scene, { x, z, label, color = "#00E5FF", name
   scene.add(glow);
 
   const sign = makeLabel(label, color);
-  sign.position.set(x, 2.15, z - 1.2);
+  sign.position.set(x, 2.75, z - 1.65);
   sign.userData = { isNeonSign: true };
   scene.add(sign);
 

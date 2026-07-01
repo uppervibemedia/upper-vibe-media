@@ -79,8 +79,19 @@ function waveTexture() {
 
 function textTexture(text) {
   return makeTexture((ctx, w, h) => {
-    ctx.clearRect(0, 0, w, h); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "700 34px Syne, Inter, sans-serif"; ctx.shadowColor = "rgba(0,229,255,0.7)"; ctx.shadowBlur = 18; ctx.fillStyle = "rgba(222,252,255,0.88)"; ctx.fillText(text, w / 2, h / 2);
-  }, 512, 128);
+    ctx.clearRect(0, 0, w, h);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    let size = text.length > 20 ? 26 : text.length > 14 ? 29 : 34;
+    do {
+      ctx.font = `800 ${size}px Syne, Inter, sans-serif`;
+      size -= 1;
+    } while (ctx.measureText(text).width > w - 58 && size > 20);
+    ctx.shadowColor = "rgba(0,229,255,0.72)";
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = "rgba(232,252,255,0.94)";
+    ctx.fillText(text, w / 2, h / 2);
+  }, 640, 128);
 }
 
 function groundSymbolTexture(kind, label = "") {
@@ -147,7 +158,7 @@ function affirmationHologram(text, x, y, z, baseOpacity) {
   holder.userData.baseOpacity = baseOpacity;
   const tex = textTexture(text);
   [0, Math.PI].forEach((ry) => {
-    const side = new Mesh(new PlaneGeometry(4.5, 1.12), new MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.FrontSide }));
+    const side = new Mesh(new PlaneGeometry(text.length > 18 ? 7.2 : text.length > 14 ? 6.2 : 5.2, 1.24), new MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.FrontSide }));
     side.rotation.y = ry;
     side.position.z = ry === 0 ? 0.012 : -0.012;
     side.renderOrder = 6;
@@ -169,11 +180,8 @@ export function createCitySpiritualVisuals(scene) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const rotSouth = [0, 0, 0], rotNorth = [0, Math.PI, 0], rotEast = [0, -Math.PI / 2, 0], rotWest = [0, Math.PI / 2, 0];
 
-  group.add(decal(flowerTexture(), 5.6, 3.2, [-17.8, 5.4, -35.85], rotSouth, isMobile ? 0.5 : 0.68));
-  group.add(decal(flowerTexture(), 4.8, 2.8, [35.85, 5.2, -12], rotWest, isMobile ? 0.42 : 0.6));
-  group.add(decal(sacredWindowTexture(), 6, 4, [17, 6.2, -35.82], rotSouth, isMobile ? 0.34 : 0.5));
-  group.add(decal(angelTexture(), 7.2, 3.8, [-35.86, 5.8, -14], rotWest, isMobile ? 0.4 : 0.58));
-  group.add(decal(moonTexture(), 6.2, 2.4, [9, 7.2, -35.84], rotSouth, isMobile ? 0.42 : 0.62));
+  group.add(decal(flowerTexture(), 5.6, 3.2, [-17.8, 5.4, -35.85], rotSouth, isMobile ? 0.38 : 0.52));
+  group.add(decal(moonTexture(), 6.2, 2.4, [9, 7.2, -35.84], rotSouth, isMobile ? 0.34 : 0.48));
 
   const powerGridSymbol = groundDecal(groundSymbolTexture("metatron", ""), 13.5, 22, -3, isMobile ? 0.46 : 0.66, 0.12);
   powerGridSymbol.name = "powerGridSymbol";
@@ -198,7 +206,7 @@ export function createCitySpiritualVisuals(scene) {
   const crystalMat = new MeshBasicMaterial({ color: new Color("#A078FF"), transparent: true, opacity: isMobile ? 0.42 : 0.62, depthWrite: false });
   [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
 
-  const affirmations = [["Protect Your Peace", -9, 1.7, -18], ["Energy Leads", 9, 1.7, -15], ["Become The Frequency", -20, 1.9, -4], ["Calm Is Power", 15, 1.8, 8], ["Focus Is Currency", -10, 1.8, 7], ["Your Energy Opens Doors", 22, 1.9, -23]];
+  const affirmations = [["Protect Your Peace", -9, 1.9, -18], ["Energy Leads", 9, 1.9, -15], ["Become The Frequency", -20, 2.2, -4], ["Calm Is Power", 17, 2.1, 9.5], ["Focus Is Currency", -7, 2.25, 10.5], ["Your Energy Opens Doors", 22, 2.2, -23]];
   group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.58 : 0.76); group.add(h); return h; });
 
   scene.add(group); scene.userData.citySpiritualVisuals = group;

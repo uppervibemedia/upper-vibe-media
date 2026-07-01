@@ -178,8 +178,8 @@ function addCityBeachPlanet(group) {
 
   const portalLabel = makeShorelineLabel("Enter Upper Vibe Beach");
   portalLabel.name = "cityBeachPlanetPortalLabel";
-  portalLabel.position.set(0, 2.15, 0);
-  portalLabel.scale.set(4.2, 1.0, 1);
+  portalLabel.position.set(0, 4.25, 0);
+  portalLabel.scale.set(5.8, 1.25, 1);
   portalLabel.visible = false;
   planetGroup.add(portalLabel);
 
@@ -251,8 +251,10 @@ export function createSimpleCityShoreline(scene) {
   [-26, -14, 24].forEach((x, i) => addSimplePalm(group, x, i === 1 ? 22 : 24.5, i === 1 ? 0.82 : 0.95));
   const beachPlanet = addCityBeachPlanet(group);
 
-  const label = makeShorelineLabel("Upper Vibe Shoreline");
-  label.position.set(-12, 2.2, 20.5);
+  const label = makeShorelineLabel("Upper Vibe Beach");
+  label.name = "upperVibeBeachSign";
+  label.position.set(-6, 3.05, 25.2);
+  label.scale.set(8.6, 2.05, 1);
   group.add(label);
 
   scene.add(group);

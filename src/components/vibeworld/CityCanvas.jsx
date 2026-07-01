@@ -359,17 +359,6 @@ export function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 8.5.5 CRYSTAL ZONE — old Vibe Academy location
   // ═════════════════════════════════════════════════════════════
-  const crystalPathMat = new MeshBasicMaterial({ color: new Color("#6C3CFF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
-  const crystalPathA = new Mesh(new PlaneGeometry(Math.max(2, Math.abs(CRYSTAL_ZONE_X - 4)), 2.2), crystalPathMat.clone());
-  crystalPathA.rotation.x = -Math.PI / 2;
-  crystalPathA.position.set((CRYSTAL_ZONE_X + 4) / 2, 0.012, CRYSTAL_ZONE_Z);
-  crystalPathA.renderOrder = 1;
-  scene.add(crystalPathA);
-  const crystalPathB = new Mesh(new PlaneGeometry(2.2, Math.max(2, Math.abs(CRYSTAL_ZONE_Z - PLAZA_Z))), crystalPathMat.clone());
-  crystalPathB.rotation.x = -Math.PI / 2;
-  crystalPathB.position.set(4, 0.013, (CRYSTAL_ZONE_Z + PLAZA_Z) / 2);
-  crystalPathB.renderOrder = 1;
-  scene.add(crystalPathB);
   createCrystalZone(scene);
   createNeonSign(scene, CRYSTAL_ZONE_X, 3.2, CRYSTAL_ZONE_Z, "CRYSTAL  ZONE", "#AA66FF");
 
