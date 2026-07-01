@@ -7,6 +7,7 @@ import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, 
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
+import { createMoonPhaseStagePath } from "./MoonPhasePath";
 
 import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
@@ -337,6 +338,7 @@ export function buildPark(scene) {
   scene.add(ringOuter);
   addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R);
   createJukebox(scene);
+  createMoonPhaseStagePath(scene, PLAZA_Z - 2.8, -28);
 
   // ═════════════════════════════════════════════════════════════
   // 3. OPEN CONNECTED FLOOR — clean unified plaza surface
