@@ -182,12 +182,12 @@ export function createCitySpiritualVisuals(scene) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   const floorSymbols = [
+    ["torus", 11.6, 22, 6.5, 0.34, 0.04],
+    ["seed", 11.2, 22, -13.5, 0.32, -0.12],
+    ["tree", 11.2, -13, 15.5, 0.3, 0.16],
     ["metatron", 11.4, -24, 3, 0.22, 0.12],
-    ["tree", 9.8, -7, 15, 0.2, 0.16],
     ["vesica", 10.0, 15, -15, 0.2, -0.18],
-    ["seed", 9.6, 18, 19, 0.18, 0.08],
     ["egg", 9.6, -25, 18, 0.18, -0.1],
-    ["torus", 10.2, 0, 18, 0.18, 0],
     ["sri", 9.4, -31, -19, 0.17, 0.14],
     ["flower", 9.4, 31, -18, 0.17, -0.12],
   ];
