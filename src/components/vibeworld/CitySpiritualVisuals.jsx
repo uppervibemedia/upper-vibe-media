@@ -370,14 +370,18 @@ export function animateCitySpiritualVisuals(scene, t, px, pz, camera) {
   });
 
   const active = window.__uvcActiveSacredSymbol;
+  const charging = window.__uvcChargingSacredSymbol;
   const activeLive = active && active.active === true;
+  const chargeLive = charging && charging.active === true;
+  const surge = activeLive ? active : chargeLive ? charging : null;
   (group.userData.groundSymbols || []).forEach((sym) => {
     const base = sym.userData.baseOpacity || 0.2;
     const isActive = activeLive && sym.userData.symbolId === active.id;
-    if (isActive) {
-      const wave = Math.sin(t * 4.2) * 0.5 + 0.5;
-      sym.material.opacity = Math.min(0.82, base * 2.2 + wave * 0.18);
-      const s = 1.015 + wave * 0.025;
+    const isCharging = chargeLive && sym.userData.symbolId === charging.id;
+    if (isActive || isCharging) {
+      const wave = Math.sin(t * (isActive ? 4.2 : 5.6)) * 0.5 + 0.5;
+      sym.material.opacity = Math.min(isActive ? 0.82 : 0.68, base * (isActive ? 2.2 : 1.75) + wave * (isActive ? 0.18 : 0.24));
+      const s = 1.01 + wave * (isActive ? 0.03 : 0.045);
       sym.scale.set(s, s, 1);
     } else {
       sym.material.opacity += (base - sym.material.opacity) * 0.18;
@@ -387,15 +391,15 @@ export function animateCitySpiritualVisuals(scene, t, px, pz, camera) {
   });
 
   const pulses = group.userData.powerPulses || [];
-  if (activeLive && pulses.length) {
+  if (surge && pulses.length) {
     const crystals = [{ x: -30, z: -10 }, { x: 30, z: -10 }];
-    const target = { x: active.x, z: active.z };
-    const progress = Math.min(1, Math.max(0, (t - active.startedAt) / 2.4));
+    const target = { x: surge.x, z: surge.z };
+    const cycle = ((t - surge.startedAt) % 1.45) / 1.45;
     pulses.forEach((pulse, i) => {
-      const stagger = Math.max(0, Math.min(1, progress - i * 0.08));
+      const stagger = Math.max(0, Math.min(1, cycle - i * 0.12));
       positionPowerPulse(pulse, crystals[i], target, stagger);
-      pulse.visible = stagger > 0 && progress < 1;
-      pulse.material.opacity = pulse.visible ? Math.sin(stagger * Math.PI) * 0.72 : 0;
+      pulse.visible = stagger > 0 && stagger < 1;
+      pulse.material.opacity = pulse.visible ? Math.sin(stagger * Math.PI) * (activeLive ? 0.72 : 0.88) : 0;
     });
   } else {
     pulses.forEach((pulse) => { pulse.visible = false; pulse.material.opacity = 0; });

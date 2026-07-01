@@ -135,6 +135,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
     const resetSymbolState = () => {
       clearSettle();
       window.__uvcActiveSacredSymbol = null;
+      window.__uvcChargingSacredSymbol = null;
       setNearZone(null);
       setCandidate(null);
       setActivationStarted(null);
@@ -165,6 +166,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
 
       if (active?.isSymbol) {
         clearSettle();
+        window.__uvcChargingSacredSymbol = null;
         setCandidate(null);
         setActivationStarted(null);
         if (!symbol || symbol.id !== active.id) {
@@ -179,6 +181,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
       if (!symbol || isMoving) {
         clearSettle();
         window.__uvcActiveSacredSymbol = null;
+        window.__uvcChargingSacredSymbol = null;
         setCandidate(symbol || null);
         setActivationStarted(null);
         return;
@@ -192,6 +195,9 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
       }
 
       setCandidate((current) => current?.id === symbol.id ? current : symbol);
+      if (activationStartedRef.current) {
+        window.__uvcChargingSacredSymbol = { id: symbol.id, x: symbol.x, z: symbol.z, kind: symbol.kind, startedAt: activationStartedRef.current * 0.001, active: true };
+      }
       if (!activationStartedRef.current && !settleTimerRef.current) {
         settleTimerRef.current = setTimeout(() => {
           settleTimerRef.current = null;
@@ -233,6 +239,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
       const dailyLesson = getDailySymbolLesson(candidate);
       setActiveCard({ ...candidate, teaching: dailyLesson.teaching, action: dailyLesson.action, reward: firstToday, alreadyActivated: !firstToday, cooldownMessage: claim.message || REWARD_SAVED_MESSAGE, isSymbol: true });
       setActivationStarted(null);
+      window.__uvcChargingSacredSymbol = null;
       window.__uvcActiveSacredSymbol = { id: candidate.id, x: candidate.x, z: candidate.z, kind: candidate.kind, startedAt: performance.now() * 0.001, active: true };
       window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "sacred_symbol_activated", symbolId: candidate.id } }));
     }, remaining);
@@ -324,7 +331,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
                 <p className="text-[12px] leading-relaxed text-white/66 mt-2">“{activeCard.teaching}”</p>
                 <p className="text-[11px] leading-relaxed mt-2" style={{ color: "#FFD36E" }}><b>Action:</b> {activeCard.action}</p>
               </div>
-              <button onClick={() => { window.__uvcActiveSacredSymbol = null; setActiveCard(null); }} className="w-10 h-10 min-w-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)", touchAction: "manipulation" }}><X className="w-4 h-4" /></button>
+              <button onClick={() => { window.__uvcActiveSacredSymbol = null; window.__uvcChargingSacredSymbol = null; setActiveCard(null); }} className="w-10 h-10 min-w-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)", touchAction: "manipulation" }}><X className="w-4 h-4" /></button>
             </div>
             {activeCard.reward && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#4ADE80" }}><CheckCircle2 className="w-3 h-3" /> Daily Reward Saved - come back in 24 hrs</div>}
             {activeCard.alreadyActivated && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#C4AAFF" }}><CheckCircle2 className="w-3 h-3" /> {activeCard.cooldownMessage || "Daily Reward Saved - come back in 24 hrs"}</div>}
