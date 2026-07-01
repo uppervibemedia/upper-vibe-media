@@ -143,7 +143,7 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
 
   const options = [
     { id: "daily", title: "Daily Lesson", icon: Sun, color: "#00E5FF", copy: "One focused lesson for today with a simple action step." },
-    { id: "videos", title: "Watch Learning Videos", icon: PlayCircle, color: "#B58CFF", copy: "Open the current Upper Vibe Academy video playlist." },
+    { id: "videos", title: "Watch Learning Videos", icon: PlayCircle, color: "#B58CFF", copy: "Fullscreen Academy player with global music auto-pause." },
     { id: "progress", title: "Wisdom Progress", icon: Wallet, color: "#EDB84A", copy: "Track completed lessons, streaks, symbols, and your Academy title." },
   ];
   const completedCount = progress.lessonsCompleted || progress.completedVideoIds?.length || 0;

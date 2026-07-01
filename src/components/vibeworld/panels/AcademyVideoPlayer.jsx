@@ -17,22 +17,26 @@ export default function AcademyVideoPlayer({
   onExitAcademy,
 }) {
   const iframeRef = useRef(null);
-  const { isPlaying, audioRef, safePause, safePlay } = usePlayer();
+  const { isPlaying, audioRef, safePause, safePlay, setIsPlaying, savePosition } = usePlayer();
   const youtubeSessionActiveRef = useRef(false);
   const musicWasPlayingRef = useRef(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [playlistOpen, setPlaylistOpen] = useState(false);
 
   const pauseGlobalForYoutube = useCallback(() => {
+    const audio = audioRef?.current;
     if (!youtubeSessionActiveRef.current) {
-      const audioPlaying = !!audioRef?.current && !audioRef.current.paused && !audioRef.current.ended;
+      const audioPlaying = !!audio && !audio.paused && !audio.ended;
       musicWasPlayingRef.current = !!isPlaying || audioPlaying;
       youtubeSessionActiveRef.current = true;
     }
-    if (audioRef?.current && !audioRef.current.paused) {
-      safePause?.(audioRef.current, "academy-youtube-playing");
+    if (audio && !audio.paused) {
+      if (audio.currentTime > 0) savePosition?.(audio.currentTime);
+      audio.pause();
+      setIsPlaying?.(false);
+      safePause?.(audio, "academy-youtube-playing");
     }
-  }, [audioRef, isPlaying, safePause]);
+  }, [audioRef, isPlaying, safePause, savePosition, setIsPlaying]);
 
   const pauseYoutube = useCallback(() => {
     try {
