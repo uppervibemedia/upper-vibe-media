@@ -9,6 +9,7 @@ import { retintAvatar } from "@/components/vibeworld/AvatarModel";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
+import { resolveStageVisual } from "@/components/vibeworld/stageVisualResolver";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -249,6 +250,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
+  const [stageManualVideoIdx, setStageManualVideoIdx] = useState(null);
   const [stageWatching, setStageWatching] = useState(false);
   const [stageFullScreen, setStageFullScreen] = useState(false);
   // stageMuted: single source of truth for stage audio state.
@@ -769,6 +771,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     suppressExternalPlayer: !stageWatching && !stageFullScreen,
   });
 
+  const activeStageTrack = djTrack || cityTrack || currentTrack || hydratedMyVibeTrack;
+  const manualStageVideo = stageManualVideoIdx !== null ? stageVideos[stageManualVideoIdx] : null;
+  const stageVisual = resolveStageVisual({ activeTrack: activeStageTrack, stageVideos, manualVideo: manualStageVideo });
+
+  useEffect(() => {
+    setStageManualVideoIdx(null);
+  }, [activeStageTrack?.id]);
+
   const handleBeachRelax = useCallback(() => {
     updateBeachQuest((q) => ({ ...q, relaxedBonfire: true }), 0, "bonfire_relax");
     try { navigator?.vibrate?.(15); } catch {}
@@ -833,11 +843,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
-    setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
+    const activeId = stageVisual?.youtube_video_id;
+    const currentIdx = stageManualVideoIdx !== null
+      ? stageManualVideoIdx
+      : Math.max(0, stageVideos.findIndex((video) => video.youtube_video_id === activeId));
+    const nextIdx = (currentIdx + 1) % stageVideos.length;
+    setStageVideoIdx(nextIdx);
+    setStageManualVideoIdx(nextIdx);
   };
 
   const handleStagePlaySong = () => {
-    const video = stageVideos[stageVideoIdx];
+    const video = stageVisual;
     if (!video?.title || !allTracks?.length || !playTrack) return;
     const titleLower = video.title.toLowerCase();
     const match = allTracks.find(
@@ -1080,7 +1096,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     };
   }, [audioRef]);
 
-  // ── Auto-rotate stage video every 60s when user isn't interacting ──
   const handleTransport = useCallback((target) => {
     setTransportPrompt(null);
     setTransportTarget(null);
@@ -1103,21 +1118,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       setWorldMode("city");
     }
   }, []);
-
-  useEffect(() => {
-    if (stageVideos.length <= 1) return;
-    const timer = setInterval(() => {
-      if (worldMode !== "city" || stageWatching || stageFullScreen) return; // User is actively using stage
-      // Don't rotate if user is near the stage (looking at it)
-      const STAGE_X = 0, STAGE_Z = -32;
-      const dx = playerPos.x - STAGE_X;
-      const dz = playerPos.z - STAGE_Z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < 12) return;
-      setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [stageVideos.length, stageWatching, stageFullScreen, playerPos.x, playerPos.z, worldMode]);
 
   return (
     <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#050510" }}>
@@ -1226,7 +1226,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           }}
           isDancing={isDancing}
           activeEmote={activeEmote}
-          stageCanvas={worldMode === "city" && stageWatching ? null : worldMode === "city" ? stageCanvas : null}
+          stageCanvas={worldMode === "city" && stageWatching && stageVisual?.youtube_video_id ? null : worldMode === "city" ? stageCanvas : null}
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}
           audioBeatRef={audioBeatRef}
@@ -1344,7 +1344,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         loading={loading}
         playerPos={playerPos}
         forceOpenPanel={openPanelOnLoad}
-        stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
+        stageVideoTitle={stageVisual?.title || null}
         stageWatching={stageWatching}
         stageFullScreen={stageFullScreen}
         stageVideosCount={stageVideos.length}
@@ -1419,7 +1419,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {worldMode === "city" && !stageWatching && (
         <StageCoverVisualizer
           onReady={(c) => setStageCanvas(c)}
-          video={stageVideos[stageVideoIdx] || null}
+          video={stageVisual}
           audioIntensityRef={audioIntensityRef}
           perfMode={(() => {
             const d = Math.sqrt(playerPos.x * playerPos.x + (playerPos.z + 32) * (playerPos.z + 32));
@@ -1431,15 +1431,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {/* YouTube video + audio embed on stage screen (Watch on Stage mode) */}
       <StageVideoEmbed
         ref={stageEmbedRef}
-        open={stageWatching}
-        video={stageVideos[stageVideoIdx] || null}
+        open={stageWatching && !!stageVisual?.youtube_video_id}
+        video={stageVisual}
         screenPosRef={stageScreenPosRef}
       />
 
       {/* Full-screen stage overlay */}
       <StageFullScreen
         open={stageFullScreen}
-        video={stageVideos[stageVideoIdx] || null}
+        video={stageVisual}
         onClose={handleExitFullScreen}
         onStageExitWatchMode={handleExitWatchMode}
         onStageNextVideo={handleStageNextVideo}
