@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 import { createCitySpiritualVisuals, animateCitySpiritualVisuals } from "./CitySpiritualVisuals";
+import { createSacredGeometryNetwork, animateSacredGeometryNetwork } from "./SacredGeometryNetwork.jsx";
 import createUpperVibeShop, { animateShop } from "./UpperVibeShop";
 import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition, getRiderCameraTransform } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
@@ -785,6 +786,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       if (worldModeRef.current === "beach") createBeachWorld(scene);
       else buildPark(scene);
+      createSacredGeometryNetwork(scene, worldModeRef.current);
       scene.userData._cityQuality = quality;
       const cachedNeonSigns = [];
       scene.traverse((obj) => {
@@ -1571,6 +1573,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.lookAt(camera.position);
           }
         }
+        if (!isMob || frameRef.current % 3 === 0) animateSacredGeometryNetwork(scene, t, audioBeat);
         if (worldModeRef.current === "city" && (!isMob || frameRef.current % 8 === 0)) animateCitySpiritualVisuals(scene, t, px, pz);
         // Beach animations: lightweight shoreline in City; full Zen Beach only in Beach World.
         if (worldModeRef.current === "beach") {
