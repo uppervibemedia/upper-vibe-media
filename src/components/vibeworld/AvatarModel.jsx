@@ -292,13 +292,13 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboardi
   if (speed > 0.5) {
     const key = entry.clips.run ? "run" : "walk";
     if (entry.clips[key]) {
-      crossFade(entry, key, 0.2);
-      entry.clips[key].setEffectiveTimeScale(Math.min(3.0, speed * 1.12));
+      crossFade(entry, key, 0.18);
+      entry.clips[key].setEffectiveTimeScale(Math.min(3.35, speed * 1.28));
     }
   } else if (speed > 0.07) {
     if (entry.clips.walk) {
-      crossFade(entry, "walk", 0.2);
-      entry.clips.walk.setEffectiveTimeScale(1.01 + speed * 0.56);
+      crossFade(entry, "walk", 0.18);
+      entry.clips.walk.setEffectiveTimeScale(1.15 + speed * 0.72);
     }
   } else {
     if (entry.clips.idle) {

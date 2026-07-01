@@ -399,11 +399,35 @@ function retintSkin(model, skinHex) {
   });
 }
 
+function normalizeAngleDiff(target, current) {
+  let diff = target - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return diff;
+}
+
+function fitPreviewModel(model, targetHeight = 1.7) {
+  if (!model) return;
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  const height = box.max.y - box.min.y;
+  if (height > 0) {
+    const scale = targetHeight / height;
+    model.scale.multiplyScalar(scale);
+  }
+  model.updateMatrixWorld(true);
+  const fittedBox = new THREE.Box3().setFromObject(model);
+  const center = fittedBox.getCenter(new THREE.Vector3());
+  model.position.x -= center.x;
+  model.position.z -= center.z;
+  model.position.y -= fittedBox.min.y;
+}
+
 // View rotations
-// Procedural models face +Z by default (eyes at +Z), so front = 0 (no rotation needed)
+// Procedural models face +Z by default (eyes at +Z), so front = 0.
 const VIEW_ROT = { front: 0, side: Math.PI * 0.5, back: Math.PI };
-// Soldier GLB faces -Z by default, so front = PI to flip it toward camera
-const VIEW_ROT_SOLDIER = { front: Math.PI, side: Math.PI * 1.5, back: 0 };
+// Soldier GLB faces opposite the procedural avatars, so front is offset by PI.
+const VIEW_ROT_SOLDIER = { front: Math.PI, side: Math.PI * 0.5, back: 0 };
 
 export default function AvatarPreviewCanvas({
   outfitColorKey,
@@ -467,19 +491,20 @@ export default function AvatarPreviewCanvas({
 
     if (avatarTypeKey === "test-mixamo-female") {
       const { root } = buildFemale(skinTone.hex, outfitHex, hairStyleKey || "ponytail");
-      root.scale.set(1.16, 1.16, 1.16);
+      fitPreviewModel(root);
       scene.add(root);
       state.model = root;
     } else if (avatarTypeKey === "test-mixamo") {
       const { root } = buildMale(skinTone.hex, outfitHex, hairStyleKey || "short");
-      root.scale.set(1.16, 1.16, 1.16);
+      fitPreviewModel(root);
       scene.add(root);
       state.model = root;
     } else {
       // Soldier GLB
       loadGLTF().then((gltf) => {
         const model = gltf.scene.clone(true);
-        model.rotation.y = Math.PI;
+        model.rotation.y = state.baseRot;
+        fitPreviewModel(model, 1.72);
         model.traverse((child) => {
           if (!child.isMesh) return;
           const mats = Array.isArray(child.material) ? child.material : [child.material];
@@ -487,6 +512,7 @@ export default function AvatarPreviewCanvas({
         });
         scene.add(model);
         state.model = model;
+        if (!state.autoRotate && state.targetRot !== undefined) model.rotation.y = state.targetRot;
         applyOutfitTintSoldier(model, outfitRef.current);
         if (gltf.animations.length) {
           const mixer = new THREE.AnimationMixer(model);
@@ -516,12 +542,11 @@ export default function AvatarPreviewCanvas({
           state.model.rotation.y = state.baseRot + state.yaw;
         } else if (state.targetRot !== undefined) {
           const curr = state.model.rotation.y;
-          const diff = state.targetRot - curr;
-          // Snap when close enough
+          const diff = normalizeAngleDiff(state.targetRot, curr);
           if (Math.abs(diff) < 0.002) {
             state.model.rotation.y = state.targetRot;
           } else {
-            state.model.rotation.y += diff * Math.min(1, dt * 8);
+            state.model.rotation.y += diff * Math.min(1, dt * 10);
           }
         }
       }
@@ -577,6 +602,10 @@ export default function AvatarPreviewCanvas({
     state.autoRotate = false;
     const rots = state.viewRots || VIEW_ROT_SOLDIER;
     state.targetRot = rots[viewName] ?? state.baseRot ?? Math.PI;
+    if (state.model) {
+      state.model.rotation.y = state.targetRot;
+      state.yaw = state.model.rotation.y - state.baseRot;
+    }
     state.viewTimer = setTimeout(() => {
       state.autoRotate = true;
       // Re-sync yaw so auto-rotate resumes smoothly from current angle
