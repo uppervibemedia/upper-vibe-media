@@ -262,22 +262,22 @@ export function createCitySpiritualVisuals(scene) {
     ["888", 9.05, "rgba(255,222,142,0.82)"],
   ];
   const panelOpacity = isMobile ? 0.24 : 0.34;
-  addWallVisual(decal(flowerTex, 3.25, 3.25, [-37.08, 6.2, -25], [0, Math.PI / 2, 0], panelOpacity), 38, true);
-  addWallVisual(decal(flowerTex, 3.05, 3.05, [37.08, 6.1, -12], [0, -Math.PI / 2, 0], panelOpacity), 38, true);
-  addWallVisual(decal(flowerTex, 3.35, 3.35, [14, 7.6, -37.08], [0, 0, 0], isMobile ? 0.22 : 0.32), 44, true);
-  addWallVisual(decal(flowerTex, 2.8, 2.8, [-30, 5.9, -37.08], [0, 0, 0], isMobile ? 0.2 : 0.28), 38, true);
-  addWallVisual(decal(windowTex, 4.0, 2.35, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
-  addWallVisual(decal(windowTex, 4.0, 2.35, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
-  addWallVisual(decal(windowTex, 4.3, 2.5, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.16 : 0.23), 40, true);
+  addWallVisual(decal(flowerTex, 2.35, 2.35, [-37.08, 6.2, -25], [0, Math.PI / 2, 0], panelOpacity), 38, true);
+  addWallVisual(decal(flowerTex, 2.25, 2.25, [37.08, 6.1, -12], [0, -Math.PI / 2, 0], panelOpacity), 38, true);
+  addWallVisual(decal(flowerTex, 2.45, 2.45, [14, 7.6, -37.08], [0, 0, 0], isMobile ? 0.22 : 0.32), 44, true);
+  addWallVisual(decal(flowerTex, 2.05, 2.05, [-30, 5.9, -37.08], [0, 0, 0], isMobile ? 0.2 : 0.28), 38, true);
+  addWallVisual(decal(windowTex, 3.0, 1.75, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
+  addWallVisual(decal(windowTex, 3.0, 1.75, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
+  addWallVisual(decal(windowTex, 3.15, 1.85, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.16 : 0.23), 40, true);
   angelMural.forEach(([num, y, color]) => {
-    addWallVisual(decal(angelNumberTexture(num, color), 1.35, 0.5, [-37.14, y, -4], [0, Math.PI / 2, 0], isMobile ? 0.24 : 0.36), 36);
+    addWallVisual(decal(angelNumberTexture(num, color), 1.02, 0.38, [-37.14, y, -4], [0, Math.PI / 2, 0], isMobile ? 0.24 : 0.36), 36);
   });
   const signOpacity = isMobile ? 0.22 : 0.34;
   [
-    ["Protect Your Peace", 3.25, [-37.13, 4.6, -18], [0, Math.PI / 2, 0]],
-    ["Energy Leads", 2.7, [37.13, 4.55, -4], [0, -Math.PI / 2, 0]],
-    ["Become The Frequency", 3.6, [23, 5.1, -37.13], [0, 0, 0]],
-    ["Calm Is Power", 2.75, [-12, 5.15, -37.13], [0, 0, 0]],
+    ["Protect Your Peace", 2.55, [-37.13, 4.6, -18], [0, Math.PI / 2, 0]],
+    ["Energy Leads", 2.15, [37.13, 4.55, -4], [0, -Math.PI / 2, 0]],
+    ["Become The Frequency", 2.85, [23, 5.1, -37.13], [0, 0, 0]],
+    ["Calm Is Power", 2.2, [-12, 5.15, -37.13], [0, 0, 0]],
   ].forEach(([text, width, pos, rot]) => {
     addWallVisual(decal(textTexture(text), width, 0.62, pos, rot, signOpacity), 28);
   });
