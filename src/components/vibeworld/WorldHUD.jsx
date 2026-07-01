@@ -205,6 +205,7 @@ export default function WorldHUD({
   useEffect(() => { onDomeOpenChange?.(visualizerOpen); }, [visualizerOpen, onDomeOpenChange]);
   const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
   const [academyOpen, setAcademyOpen] = useState(false);
+  const [academyInitialView, setAcademyInitialView] = useState("overview");
   const [ferrisWheelOpen, setFerrisWheelOpen] = useState(false);
   const [isRiding, setIsRiding] = useState(false);
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
@@ -852,22 +853,23 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={actionStyle()}
           >
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); if (zone?.id === "academy") window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "academy" } })); setAcademyOpen(true); onMobileModalChange?.(true); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#7C3AED,#00D4F0)",
-                color: "#fff",
-                boxShadow: "0 0 20px rgba(124,58,237,0.4)",
-                minHeight: "44px",
-                touchAction: "manipulation",
-                pointerEvents: "auto",
-              }}
-            >
-              <GraduationCap className="w-3.5 h-3.5" />
-              {zone?.id === "retreatacademy" ? "Enter Retreat Academy" : "Enter Vibe Academy"}
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2" style={{ pointerEvents: "auto" }}>
+              <button
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => { hapticTap(); if (zone?.id === "academy") window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "academy" } })); setAcademyInitialView("overview"); setAcademyOpen(true); onMobileModalChange?.(true); }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                style={{ background: "linear-gradient(135deg,#7C3AED,#00D4F0)", color: "#fff", boxShadow: "0 0 20px rgba(124,58,237,0.4)", minHeight: "44px", touchAction: "manipulation" }}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                {zone?.id === "retreatacademy" ? "Enter Retreat Academy" : "Enter Academy"}
+              </button>
+              {zone?.id === "academy" && (
+                <>
+                  <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setAcademyInitialView("videos"); setAcademyOpen(true); onMobileModalChange?.(true); }} className="px-4 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "rgba(0,212,240,0.18)", border: "1px solid rgba(0,212,240,0.34)", color: "#DFFBFF", minHeight: "44px", touchAction: "manipulation" }}>Watch Learning Videos</button>
+                  <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setAcademyInitialView("daily"); setAcademyOpen(true); onMobileModalChange?.(true); }} className="px-4 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "rgba(255,211,110,0.16)", border: "1px solid rgba(255,211,110,0.30)", color: "#FFD36E", minHeight: "44px", touchAction: "manipulation" }}>Daily Lesson</button>
+                </>
+              )}
+            </div>
           </motion.div>
         )}
 
@@ -1041,6 +1043,7 @@ export default function WorldHUD({
         onClose={() => { setAcademyOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
         mode={zone?.id === "retreatacademy" ? "beach" : "city"}
+        initialView={academyInitialView}
       />
 
       {/* ── Ferris Wheel Panel ────────────────────────────────────── */}
