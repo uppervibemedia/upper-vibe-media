@@ -125,19 +125,6 @@ function groundSymbolTexture(kind, label = "") {
       pts.forEach(([x, y]) => circle(x, y, 16));
       [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7],[6,8],[7,8]].forEach(([a,b]) => line(pts[a][0], pts[a][1], pts[b][0], pts[b][1]));
       circle(cx, cy, maxR * 0.72);
-    } else if (kind === "merkaba") {
-      for (let flip = 0; flip < 2; flip++) {
-        ctx.beginPath();
-        for (let i = 0; i < 3; i++) {
-          const a = -Math.PI / 2 + i * Math.PI * 2 / 3 + (flip ? Math.PI : 0);
-          const px = cx + Math.cos(a) * maxR * 0.68;
-          const py = cy + Math.sin(a) * maxR * 0.68;
-          i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-        }
-        ctx.closePath(); ctx.stroke();
-      }
-      circle(cx, cy, maxR * 0.78);
-      circle(cx, cy, maxR * 0.34);
     } else if (kind === "egg") {
       const pts = []; for (let i = 0; i < 8; i++) pts.push([cx + Math.cos(i * Math.PI / 4) * maxR * 0.3, cy + Math.sin(i * Math.PI / 4) * maxR * 0.3]);
       pts.forEach(([x, y]) => circle(x, y, maxR * 0.18)); circle(cx, cy, maxR * 0.62);
@@ -194,41 +181,24 @@ export function createCitySpiritualVisuals(scene) {
   const group = new Group(); group.name = "citySpiritualVisuals";
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  const zoneSymbols = [
-    ["metatron", 5.8, 0, -24.5, 0.24, 0.06],        // Main Stage
-    ["seed", 4.8, 4.8, -10.6, 0.22, 0.12],          // DJ Booth edge
-    ["merkaba", 5.2, -24.5, -10.8, 0.23, -0.16],    // Crystal left
-    ["fruit", 5.2, 24.5, -10.8, 0.23, 0.14],        // Crystal right
-    ["torus", 5.4, -13, 5.3, 0.22, 0.08],           // Visualizer Dome
-    ["egg", 5.0, -22, -21.2, 0.22, -0.12],          // Vibe Lounge
-    ["sri", 5.0, -28, 4.7, 0.22, 0.08],             // Vibe Academy
-    ["vesica", 4.8, -15.8, -8.8, 0.22, -0.18],      // Daily Vibe Check
-    ["circle", 5.2, 29, 4.2, 0.21, 0.1],            // Ferris Wheel
-    ["flower", 5.2, 8.3, 13.2, 0.21, 0.16],         // Beach transporter edge
+  const floorSymbols = [
+    ["metatron", 11.8, -24, 3, 0.24, 0.12],
+    ["tree", 9.5, -7, 15, 0.22, 0.16],
+    ["vesica", 9.5, 15, -15, 0.22, -0.18],
   ];
-  group.userData.groundSymbols = zoneSymbols.map(([kind, size, x, z, opacity, rot]) => {
+  group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot]) => {
     const sym = groundDecal(groundSymbolTexture(kind), size, x, z, isMobile ? opacity * 0.78 : opacity, rot);
     group.add(sym);
     return sym;
   });
 
-  const words = ["Calm Is Power", "Focus Is Currency", "Energy Flows Where Attention Goes", "Alignment First", "Protect Your Frequency", "Discipline Creates Freedom", "Stay Centered", "Your State Creates Your Reality", "Breathe and Receive", "Raise the Signal", "Peace Is a Flex", "Frequency Is the Foundation"];
-  const zoneAffirmationSpots = [
-    [0, 3.25, -29.2],      // Main Stage
-    [0, 2.55, -6],         // Dance Floor
-    [5.4, 2.45, -11.6],    // DJ Booth
-    [-29.2, 3.0, -10.2],   // Crystal left
-    [29.2, 3.0, -10.2],    // Crystal right
-    [-13, 2.8, 6.6],       // Visualizer Dome
-    [-22, 2.95, -23.8],    // Vibe Lounge
-    [-28, 2.8, 4.2],       // Vibe Academy
-    [-16.2, 2.75, -10.8],  // Daily Vibe Check
-    [29.2, 3.0, 5.6],      // Ferris Wheel
-    [8.2, 2.75, 13.6],     // Beach transporter
-  ];
+  const words = ["ALIGN", "RECEIVE", "TRUST", "FLOW", "CALM", "FOCUS", "ACTIVATE", "I AM", "BECOME", "HARMONIZE", "ENERGY FIRST", "STAY ALIGNED", "I AM READY", "HIGHER SELF", "ABUNDANCE FLOWS", "CLARITY NOW"];
+  const spots = [[-9, 1.9, -18], [9, 1.9, -15], [-20, 2.2, -4], [17, 2.1, 9.5], [-7, 2.25, 10.5], [22, 2.2, -23], [-28, 2.3, 2], [27, 2.3, -2], [0, 2.1, -21], [-13, 2.35, 3], [12, 2.25, 2], [-24, 2.35, 13], [24, 2.35, -8]];
   const shuffledWords = [...words].sort(() => Math.random() - 0.5);
-  const affirmations = zoneAffirmationSpots.map((spot, i) => [shuffledWords[i % shuffledWords.length], ...spot]);
-  group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.5 : 0.68); group.add(h); return h; });
+  const shuffledSpots = [...spots].sort(() => Math.random() - 0.5);
+  const count = isMobile ? 7 : 9;
+  const affirmations = shuffledSpots.slice(0, count).map((spot, i) => [shuffledWords[i % shuffledWords.length], ...spot]);
+  group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.56 : 0.74); group.add(h); return h; });
 
   scene.add(group); scene.userData.citySpiritualVisuals = group;
 }
@@ -238,13 +208,11 @@ export function animateCitySpiritualVisuals(scene, t, px, pz) {
   if (!group?.userData?.affirmations) return;
   group.userData.affirmations.forEach((h) => {
     const dx = h.position.x - px, dz = h.position.z - pz, d2 = dx * dx + dz * dz;
-    const visibleRadius = 44;
-    const visible = d2 < visibleRadius * visibleRadius;
+    const near = d2 < 18 * 18;
     h.position.y = h.userData.baseY + Math.sin(t * 0.75 + h.userData.phase) * 0.08;
     h.rotation.y = Math.sin(t * 0.18 + h.userData.phase) * 0.12;
-    const distanceFade = Math.max(0.46, 1 - (d2 / (visibleRadius * visibleRadius)) * 0.46);
-    const opacity = visible ? h.userData.baseOpacity * distanceFade * (0.88 + Math.sin(t * 1.1 + h.userData.phase) * 0.06) : 0;
-    h.visible = visible;
+    const opacity = near ? h.userData.baseOpacity * (0.82 + Math.sin(t * 1.1 + h.userData.phase) * 0.08) : 0;
+    h.visible = near;
     h.children.forEach((side) => { side.material.opacity = opacity; });
   });
 }
