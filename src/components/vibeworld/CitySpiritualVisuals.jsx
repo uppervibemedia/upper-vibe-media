@@ -174,27 +174,12 @@ export function createCitySpiritualVisuals(scene) {
   group.add(decal(sacredWindowTexture(), 6, 4, [17, 6.2, -35.82], rotSouth, isMobile ? 0.34 : 0.5));
   group.add(decal(angelTexture(), 7.2, 3.8, [-35.86, 5.8, -14], rotWest, isMobile ? 0.4 : 0.58));
   group.add(decal(moonTexture(), 6.2, 2.4, [9, 7.2, -35.84], rotSouth, isMobile ? 0.42 : 0.62));
-  group.add(decal(waveTexture(), 6.4, 3.0, [35.86, 4.8, 4], rotWest, isMobile ? 0.38 : 0.58));
-  group.add(decal(waveTexture(), 5.4, 2.6, [-26, 4.2, -35.85], rotSouth, isMobile ? 0.34 : 0.52));
 
-  const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.2 : 0.3, depthWrite: false, side: DoubleSide });
-  gridMat.userData.baseOpacity = isMobile ? 0.2 : 0.3;
-  group.userData.energyGridMat = gridMat;
-  const zones = [
-    { x: -6, z: -27 },
-    { x: -27, z: -20 },
-    { x: -18, z: -8.5 },
-    { x: -30, z: 9.5 },
-    { x: -14, z: 16.5 },
-    { x: -8, z: 23 },
-    { x: 29, z: 15 },
-    { x: 27, z: -15 },
-    { x: 30, z: -30 },
-    { x: -6, z: -27 },
-  ];
-  for (let i = 0; i < zones.length - 1; i++) addGridLine(group, zones[i], zones[i + 1], gridMat);
-  addGridLine(group, { x: -18, z: -8.5 }, { x: 27, z: -15 }, gridMat);
-  addGridLine(group, { x: -14, z: 16.5 }, { x: 29, z: 15 }, gridMat);
+  const powerGridSymbol = groundDecal(groundSymbolTexture("metatron", ""), 13.5, 22, -3, isMobile ? 0.46 : 0.66, 0.12);
+  powerGridSymbol.name = "powerGridSymbol";
+  powerGridSymbol.material.userData.baseOpacity = isMobile ? 0.46 : 0.66;
+  group.userData.powerGridSymbolMat = powerGridSymbol.material;
+  group.add(powerGridSymbol);
 
   const zoneSymbolSize = 7.2;
   const zoneSymbolOpacity = isMobile ? 0.38 : 0.58;
@@ -202,17 +187,13 @@ export function createCitySpiritualVisuals(scene) {
     ["egg", -6, -27, 0.22, 1.0],
     ["flower", -27, -20, -0.16, 0.96],
     ["seed", 27, -15, 0.2, 0.96],
-    ["sri", -14, 16.5, -0.28, 0.98],
     ["chakra", -18, -8.5, 0.32, 1.0],
     ["metatron", -30, 9.5, 0.02, 1.0],
-    ["fruit", 29, 15, -0.18, 0.94],
-    ["vesica", -8, 23, 0.38, 0.92],
     ["pentagon", 30, -30, -0.22, 0.86],
     ["pentagram", -31, -2, 0.12, 0.86],
   ].forEach(([kind, x, z, rot, boost]) => {
     group.add(groundDecal(groundSymbolTexture(kind, ""), zoneSymbolSize, x, z, zoneSymbolOpacity * boost, rot));
   });
-  group.add(groundDecal(groundSymbolTexture("metatron", ""), 10.5, 23, -3, zoneSymbolOpacity * 1.08, 0.12));
 
   const crystalMat = new MeshBasicMaterial({ color: new Color("#A078FF"), transparent: true, opacity: isMobile ? 0.42 : 0.62, depthWrite: false });
   [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
@@ -226,10 +207,10 @@ export function createCitySpiritualVisuals(scene) {
 export function animateCitySpiritualVisuals(scene, t, px, pz) {
   const group = scene.userData.citySpiritualVisuals;
   if (!group?.userData?.affirmations) return;
-  const energyGridMat = group.userData.energyGridMat;
-  if (energyGridMat) {
-    const base = energyGridMat.userData.baseOpacity || 0.24;
-    energyGridMat.opacity = base * (0.72 + Math.sin(t * 1.4) * 0.18);
+  const powerGridSymbolMat = group.userData.powerGridSymbolMat;
+  if (powerGridSymbolMat) {
+    const base = powerGridSymbolMat.userData.baseOpacity || 0.56;
+    powerGridSymbolMat.opacity = base * (0.78 + Math.sin(t * 1.4) * 0.12);
   }
   group.userData.affirmations.forEach((h) => {
     const dx = h.position.x - px, dz = h.position.z - pz, d2 = dx * dx + dz * dz;
