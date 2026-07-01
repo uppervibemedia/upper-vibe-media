@@ -3,6 +3,7 @@ import createZenBeach from "./ZenBeach";
 import { createBeachDaySky } from "./BeachDaySky";
 import { createBeachReturnPlanet } from "./BeachReturnPlanet";
 import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
+import { beachPreviewFlags } from "./beachPreviewFlags.js";
 import { createBeachArrivalReturnPlaza } from "./BeachArrivalReturnPlaza.jsx";
 
 const { Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, CylinderGeometry, RingGeometry, Color, PointLight, AmbientLight, HemisphereLight, DirectionalLight, CanvasTexture, SpriteMaterial, Sprite, LinearFilter } = THREE;
@@ -81,6 +82,26 @@ export function createTransportPad(scene, { x, z, label, color = "#00E5FF", name
   scene.userData.transportPads = scene.userData.transportPads || [];
   scene.userData.transportPads.push({ x, z, label, name, ring, glow, light });
   return { base, ring, glow, sign, light };
+}
+
+function addComingSoonSign(scene, x, z, color = "#7DEBFF") {
+  const title = makeLabel("COMING SOON", color);
+  title.position.set(x, 2.4, z);
+  title.scale.set(4.5, 0.8, 1);
+  title.userData.isNeonSign = true;
+  scene.add(title);
+  const body = makeLabel("ACTIVITY BEING UPGRADED", "#FFD08A");
+  body.position.set(x, 1.75, z + 0.08);
+  body.scale.set(5.4, 0.62, 1);
+  body.userData.isNeonSign = true;
+  scene.add(body);
+}
+
+function addBeachPreviewSigns(scene) {
+  if (!beachPreviewFlags.enableBeachPreviewMode) return;
+  if (!beachPreviewFlags.enableBeachSurfZone) addComingSoonSign(scene, 18, 34, "#7DEBFF");
+  if (!beachPreviewFlags.enableBeachDiveZone) addComingSoonSign(scene, 35, 34, "#42DDF2");
+  if (!beachPreviewFlags.enableBeachFrequencyCove) addComingSoonSign(scene, -52, 2, "#B58CFF");
 }
 
 export function createBeachWorld(scene) {
@@ -183,6 +204,7 @@ export function createBeachWorld(scene) {
 
   createZenBeach(scene, 0, 0);
   createBeachResortAddOns(scene);
+  addBeachPreviewSigns(scene);
   createBeachArrivalReturnPlaza(scene);
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });

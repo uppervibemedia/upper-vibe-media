@@ -57,9 +57,11 @@ import BeachPortalTransition from "@/components/vibeworld/BeachPortalTransition"
 import TransportConfirmModal from "@/components/vibeworld/TransportConfirmModal";
 import BeachQuestHUD from "@/components/vibeworld/BeachQuestHUD";
 import BeachActivityHUD from "@/components/vibeworld/BeachActivityHUD";
+import BeachPreviewNotice from "@/components/vibeworld/BeachPreviewNotice";
 import DailyCityEngagement from "@/components/vibeworld/DailyCityEngagement";
 import SacredLearningLayer from "@/components/vibeworld/SacredLearningLayer";
 import CommunityEnergyDisplay from "@/components/vibeworld/CommunityEnergyDisplay";
+import { beachPreviewFlags } from "@/components/vibeworld/beachPreviewFlags";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -441,6 +443,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [grantBeachCoins]);
 
   useEffect(() => {
+    if (beachPreviewFlags.enableBeachPreviewMode && !beachPreviewFlags.enableBeachDailyQuest) return;
     const onShell = (e) => {
       const shellId = e.detail?.shellId;
       if (!shellId) return;
@@ -786,6 +789,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const handleStartBeachActivity = useCallback((type) => {
     if (!type || beachActivityHud?.active) return;
+    if (beachPreviewFlags.enableBeachPreviewMode) {
+      if (type === "surf" && !beachPreviewFlags.enableBeachSurfZone) return;
+      if (type === "dive" && !beachPreviewFlags.enableBeachDiveZone) return;
+      if (type === "frequency" && !beachPreviewFlags.enableBeachFrequencyCove) return;
+      if (type === "coaster" && !beachPreviewFlags.enableBeachCoaster) return;
+    }
     setBeachActivityRequest({ id: Date.now(), type });
     setMobileModalOpen(false);
     setAnyBlockingUIOpen(true);
@@ -808,6 +817,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   useEffect(() => {
     if (worldMode !== "beach") return;
+    if (beachPreviewFlags.enableBeachPreviewMode && !beachPreviewFlags.enableBeachDailyQuest) return;
     if (detectZone(playerPos.x, playerPos.z)?.id === "zenbeach" && !beachQuest.visitedZen) {
       updateBeachQuest((q) => ({ ...q, visitedZen: true }), 0, "visit_zen");
     }
@@ -1143,11 +1153,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           stageFullScreen={stageFullScreen}
           onOpenInventory={() => setInventoryOpen(true)}
         />
-        <BeachQuestHUD
+        {!beachPreviewFlags.enableBeachPreviewMode && beachPreviewFlags.enableBeachDailyQuest && (
+          <BeachQuestHUD
+            worldMode={worldMode}
+            quest={beachQuest}
+            nearbyActivity={nearbyBeachActivity}
+            onRelax={handleBeachRelax}
+            isMobile={isMobile}
+            mobileLayout={mobileLayout}
+          />
+        )}
+        <BeachPreviewNotice
           worldMode={worldMode}
-          quest={beachQuest}
-          nearbyActivity={nearbyBeachActivity}
-          onRelax={handleBeachRelax}
           isMobile={isMobile}
           mobileLayout={mobileLayout}
         />

@@ -50,6 +50,7 @@ import CityDashboardPanel from "./panels/CityDashboardPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import NotificationPanel from "./panels/NotificationPanel";
 import { base44 } from "@/api/base44Client";
+import { beachPreviewFlags } from "@/components/vibeworld/beachPreviewFlags";
 
 
 const ZONE_ICONS = {
@@ -873,7 +874,7 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "zenbeach" && (
+        {zone?.id === "zenbeach" && !beachPreviewFlags.enableBeachPreviewMode && (
           <motion.div
             key="zenbeach-actions"
             initial={{ opacity: 0, y: 10 }}
@@ -903,13 +904,13 @@ export default function WorldHUD({
 
         {zone?.id === "surfzone" && !beachActivityActive && (
           <motion.div key="surf-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
-            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); onStartBeachActivity?.("surf"); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#68D7E8,#00E5FF)", color: "#021018", boxShadow: "0 0 20px rgba(104,215,232,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Surf Challenge</button>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); if (beachPreviewFlags.enableBeachSurfZone) onStartBeachActivity?.("surf"); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: beachPreviewFlags.enableBeachSurfZone ? "linear-gradient(135deg,#68D7E8,#00E5FF)" : "rgba(255,255,255,0.08)", border: beachPreviewFlags.enableBeachSurfZone ? "none" : "1px solid rgba(255,255,255,0.14)", color: beachPreviewFlags.enableBeachSurfZone ? "#021018" : "rgba(255,255,255,0.72)", boxShadow: "0 0 20px rgba(104,215,232,0.22)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />{beachPreviewFlags.enableBeachSurfZone ? "Start Surf Challenge" : "Coming Soon — Activity Upgrading"}</button>
           </motion.div>
         )}
 
         {zone?.id === "divezone" && !beachActivityActive && (
           <motion.div key="dive-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
-            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); onStartBeachActivity?.("dive"); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#42DDF2,#7C3AED)", color: "#fff", boxShadow: "0 0 20px rgba(66,221,242,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Dive Adventure</button>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); if (beachPreviewFlags.enableBeachDiveZone) onStartBeachActivity?.("dive"); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: beachPreviewFlags.enableBeachDiveZone ? "linear-gradient(135deg,#42DDF2,#7C3AED)" : "rgba(255,255,255,0.08)", border: beachPreviewFlags.enableBeachDiveZone ? "none" : "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.72)", boxShadow: "0 0 20px rgba(66,221,242,0.22)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />{beachPreviewFlags.enableBeachDiveZone ? "Start Dive Adventure" : "Coming Soon — Activity Upgrading"}</button>
           </motion.div>
         )}
 
@@ -921,11 +922,11 @@ export default function WorldHUD({
 
         {zone?.id === "frequencycove" && (
           <motion.div key="frequency-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
-            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("frequency"); onMobileModalChange?.(false); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#7C3AED,#B58CFF)", color: "#fff", boxShadow: "0 0 20px rgba(181,140,255,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Sparkles className="w-3.5 h-3.5" />Enter Frequency Cove</button>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); if (beachPreviewFlags.enableBeachFrequencyCove) { setActiveBeachActivity("frequency"); onMobileModalChange?.(false); } }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: beachPreviewFlags.enableBeachFrequencyCove ? "linear-gradient(135deg,#7C3AED,#B58CFF)" : "rgba(255,255,255,0.08)", border: beachPreviewFlags.enableBeachFrequencyCove ? "none" : "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.72)", boxShadow: "0 0 20px rgba(181,140,255,0.22)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Sparkles className="w-3.5 h-3.5" />{beachPreviewFlags.enableBeachFrequencyCove ? "Enter Frequency Cove" : "Coming Soon — Activity Upgrading"}</button>
           </motion.div>
         )}
 
-        {zone?.id === "bonfirebeach" && (
+        {zone?.id === "bonfirebeach" && !beachPreviewFlags.enableBeachPreviewMode && (
           <motion.div key="bonfire-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
             <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("bonfire"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#FFB347,#FFD36E)", color: "#261000", boxShadow: "0 0 20px rgba(255,179,71,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}>Relax by Bonfire</button>
           </motion.div>
