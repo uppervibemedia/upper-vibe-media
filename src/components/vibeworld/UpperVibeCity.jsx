@@ -129,6 +129,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [equippedClothing, setEquippedClothing] = useState(null);
   const [dailyIntentionAura, setDailyIntentionAura] = useState(null);
 
+  useEffect(() => {
+    const onBoost = (event) => {
+      const boost = event.detail;
+      if (!boost?.color) return;
+      setDailyIntentionAura((previous) => {
+        const next = { ...boost, itemId: boost.itemId || `symbol_boost_${Date.now()}` };
+        setTimeout(() => {
+          setDailyIntentionAura((current) => current?.itemId === next.itemId ? previous : current);
+        }, boost.durationMs || 10 * 60 * 1000);
+        return next;
+      });
+      setAuraActive(true);
+    };
+    window.addEventListener("uvcTemporaryAuraBoost", onBoost);
+    return () => window.removeEventListener("uvcTemporaryAuraBoost", onBoost);
+  }, []);
+
   // Item id to hex color for aura — keep minimal, full set in AuraGlow
   const auraColors = {
     "glow_starter": "#00AADD", "shop_glow_starter": "#00AADD",
@@ -1205,6 +1222,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           mobileLayout={mobileLayout}
           hidden={stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
           userId={user?.id}
+          isDancing={isDancing}
         />
         <CityCanvas
         worldMode={worldMode}

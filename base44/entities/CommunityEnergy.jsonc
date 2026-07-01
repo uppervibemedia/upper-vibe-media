@@ -1,0 +1,45 @@
+{
+  "name": "CommunityEnergy",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "description": "Daily city goal date in YYYY-MM-DD format"
+    },
+    "goal": {
+      "type": "number",
+      "default": 500,
+      "description": "Energy required to complete the shared daily goal"
+    },
+    "energy": {
+      "type": "number",
+      "default": 0,
+      "description": "Current contributed community energy"
+    },
+    "participant_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Users or guests who contributed today"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "ISO timestamp when the shared goal was reached"
+    }
+  },
+  "required": [
+    "date"
+  ],
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": true,
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
