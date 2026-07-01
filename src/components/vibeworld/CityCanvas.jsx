@@ -112,7 +112,7 @@ function getCityQuality() {
     lowMemory,
     qualityLevel,
     currentLevel: qualityLevel,
-    pixelRatio: qualityLevel === "mobile" ? (isIOS ? 1.05 : 1.15) : 1.65,
+    pixelRatio: qualityLevel === "mobile" ? (isIOS ? 0.95 : 1.05) : 1.4,
     farClip: qualityLevel === "mobile" ? 112 : 155,
     antialias: qualityLevel === "high",
     shadowMapSize: qualityLevel === "mobile" ? 384 : 1024,
@@ -285,7 +285,7 @@ export function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 2. UVC CENTRAL PLAZA — circular hub at center
   // ═════════════════════════════════════════════════════════════
-  const PLAZA_X = 0, PLAZA_Z = -13, PLAZA_R = 10.5; // 50% larger dance floor
+  const PLAZA_X = 0, PLAZA_Z = -6, PLAZA_R = 7.2; // performance layout: smaller dance floor, farther from stage
 
   const plazaDisc = new Mesh(
     new CircleGeometry(PLAZA_R, 64),
@@ -1143,8 +1143,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           dfRef.x = px;
           dfRef.z = pz;
           const dfDx = px - 0;
-          const dfDz = pz - (-13);
-          dfRef.onDanceFloor = worldModeRef.current === "city" && Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= 10.0;
+          const dfDz = pz - (-6);
+          dfRef.onDanceFloor = worldModeRef.current === "city" && Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= 6.2;
         }
         const avatar = avatarRef.current;
         if (avatar) {
@@ -1184,7 +1184,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const jDist = Math.sqrt(jdx * jdx + jdz * jdz);
           const nearJukebox = jDist < JUKEBOX_INTERACT_RADIUS;
           const ddx = px;
-          const ddz = pz - (-13);
+          const ddz = pz - (-6);
           const dFloorDist = Math.sqrt(ddx * ddx + ddz * ddz);
           const proximityVol = Math.max(0.1, Math.min(1.0, 1.0 - (dFloorDist - 2) / (DANCE_FLOOR_RADIUS - 2)));
           try { onJukeboxProxRef.current(nearJukebox, proximityVol); } catch {}
@@ -1541,7 +1541,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Distance flags — declared before any code that uses them
         const nearBeach = pz > 10;
-        const danceDist = Math.sqrt(px * px + (pz + 13) * (pz + 13));
+        const danceDist = Math.sqrt(px * px + (pz + 6) * (pz + 6));
         const nearDanceFloor = danceDist < 18;
         const lowQuality = quality.currentLevel === "low";
         const mobileQuality = quality.currentLevel === "mobile" || lowQuality;

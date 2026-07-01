@@ -7,7 +7,7 @@ const ZONES = {
   plaza: {
     name: "UVC Central Plaza",
     id: "plaza",
-    cx: 0, cz: -13, radius: 7,
+    cx: 0, cz: -6, radius: 6,
     icon: "Compass",
   },
   stage: {

@@ -728,9 +728,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Dance floor boundary — hysteresis to prevent boundary flicker ──────────
   // Use a slightly smaller radius to confirm entry (10.0) vs exit (10.5).
   // A debounce timer ensures the zone only changes after 500ms of stable position.
-  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13;
-  const DANCE_FLOOR_ENTER_R = 10.0; // must be clearly inside before switching to DJ
-  const DANCE_FLOOR_EXIT_R  = 10.5; // must be clearly outside before restoring personal audio
+  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -6;
+  const DANCE_FLOOR_ENTER_R = 6.2; // performance layout: smaller active DJ zone
+  const DANCE_FLOOR_EXIT_R  = 6.8; // hysteresis before restoring personal audio
   const dfDx = playerPos.x - DANCE_FLOOR_CX;
   const dfDz = playerPos.z - DANCE_FLOOR_CZ;
   const dfDist = Math.sqrt(dfDx * dfDx + dfDz * dfDz);

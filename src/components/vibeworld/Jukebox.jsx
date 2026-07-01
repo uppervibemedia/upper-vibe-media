@@ -6,12 +6,12 @@ import * as THREE from "three";
 
 // Plaza / dance floor center
 const PLAZA_X = 0;
-const PLAZA_Z = -13;
+const PLAZA_Z = -6;
 
 // DJ Booth sits to the right of the dance floor, just outside its edge (moved 20% farther right)
 export const JUKEBOX_POS = { x: PLAZA_X + 9.8, z: PLAZA_Z + 0.5 };
 export const JUKEBOX_INTERACT_RADIUS = 7.0;
-export const DANCE_FLOOR_RADIUS = 7;
+export const DANCE_FLOOR_RADIUS = 5.4;
 
 // Scale multiplier — 50% larger than original (1.0 * 1.5 * 1.5)
 const SCALE = 2.25;
@@ -50,6 +50,7 @@ export function createJukebox(scene) {
   const group = new THREE.Group();
   group.name = "jukebox";
   group.scale.set(SCALE, SCALE, SCALE);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // ── Platform base ──────────────────────────────────────────────────
   const platform = new THREE.Mesh(
@@ -203,15 +204,16 @@ export function createJukebox(scene) {
     towerTop.position.set(0, 1.72, 0);
     towerGroup.add(towerTop);
 
-    // Light beam — fires toward dance floor in local +Z direction
-    const beamMat = basicMat(sx < 0 ? "#C43BFF" : "#00D4F0", 0.07);
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.5, 8.0, 8, 1, true), beamMat);
-    // Tilt slightly down toward the floor, pointing forward (+Z)
-    beam.rotation.x = 0.18;
-    beam.position.set(0, 2.2, 3.0);
-    beam.renderOrder = 1;
-    towerGroup.add(beam);
-    djBeamMats.push(beamMat);
+    // Light beam — desktop only; iPhone uses fake glow/lights instead of transparent cones.
+    if (!isMobile) {
+      const beamMat = basicMat(sx < 0 ? "#C43BFF" : "#00D4F0", 0.045);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.38, 6.0, 8, 1, true), beamMat);
+      beam.rotation.x = 0.18;
+      beam.position.set(0, 2.2, 2.5);
+      beam.renderOrder = 1;
+      towerGroup.add(beam);
+      djBeamMats.push(beamMat);
+    }
   }
 
   scene.userData.djTrimMats = djTrimMats;
@@ -223,8 +225,8 @@ export function createJukebox(scene) {
   const lightOffsetDist = 3.5 * SCALE;
   const djLightCyan = new THREE.PointLight();
   djLightCyan.color = new THREE.Color("#00D4F0");
-  djLightCyan.intensity = 6.0;
-  djLightCyan.distance = 18;
+  djLightCyan.intensity = isMobile ? 2.7 : 4.2;
+  djLightCyan.distance = isMobile ? 11 : 15;
   djLightCyan.position.set(
     JUKEBOX_POS.x + TO_FLOOR_NX * lightOffsetDist,
     2.5,
@@ -234,8 +236,8 @@ export function createJukebox(scene) {
 
   const djLightPurple = new THREE.PointLight();
   djLightPurple.color = new THREE.Color("#C43BFF");
-  djLightPurple.intensity = 4.0;
-  djLightPurple.distance = 16;
+  djLightPurple.intensity = isMobile ? 1.4 : 2.7;
+  djLightPurple.distance = isMobile ? 9 : 13;
   djLightPurple.position.set(
     JUKEBOX_POS.x + TO_FLOOR_NX * (lightOffsetDist * 0.5),
     3.5,

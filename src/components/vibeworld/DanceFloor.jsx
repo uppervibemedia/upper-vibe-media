@@ -27,12 +27,12 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
 
   // ── Animated light tiles — grid of squares across the plaza ──
   // Mobile uses fewer, larger visual tiles so the dance floor stays lively without making controls feel heavy.
-  const TILE_SIZE = isMobile ? 0.95 : 0.7;
-  const TILE_GAP = isMobile ? 0.42 : 0.25;
-  const TILE_RADIUS = PLAZA_R - 1.5;
+  const TILE_SIZE = isMobile ? 1.05 : 0.85;
+  const TILE_GAP = isMobile ? 0.58 : 0.38;
+  const TILE_RADIUS = PLAZA_R - 1.35;
   const tileColors = ["#00D4F0", "#C43BFF", "#E040FB", "#00E5FF", "#A078FF", "#EDB84A", "#FF6EC7", "#4DF0FF"];
 
-  const tileSpan = isMobile ? 5 : 7;
+  const tileSpan = isMobile ? 3 : 4;
   for (let row = -tileSpan; row <= tileSpan; row++) {
     for (let col = -tileSpan; col <= tileSpan; col++) {
       const tx = row * (TILE_SIZE + TILE_GAP);
@@ -69,11 +69,9 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
 
   // ── Concentric pulse rings — brighter, more visible ──────────
   const ringDefs = [
-    { inner: 1.9, outer: 2.05, color: "#E040FB", opacity: 0.72, name: "danceInnerRing" },
-    { inner: 2.8, outer: 2.95, color: "#EDB84A", opacity: 0.55, name: "danceGoldRing" },
-    { inner: 3.6, outer: 3.75, color: "#00D4F0", opacity: 0.60, name: "danceCyanRing" },
-    { inner: 4.5, outer: 4.7,  color: "#9B7EFF", opacity: 0.55, name: "danceOuterRing" },
-    { inner: 5.5, outer: 5.7,  color: "#FF6EC7", opacity: 0.45, name: "dancePinkRing" },
+    { inner: 1.6, outer: 1.75, color: "#E040FB", opacity: 0.58, name: "danceInnerRing" },
+    { inner: 2.7, outer: 2.86, color: "#EDB84A", opacity: 0.42, name: "danceGoldRing" },
+    { inner: 3.8, outer: 3.98, color: "#00D4F0", opacity: 0.46, name: "danceCyanRing" },
   ];
 
   for (const rd of ringDefs) {
@@ -96,7 +94,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   }
 
   // ── Light sweep beams — thin glowing strips that arc across the floor ──
-  const sweepCount = isMobile ? 3 : 6;
+  const sweepCount = isMobile ? 1 : 2;
   for (let i = 0; i < sweepCount; i++) {
     const sweepGeo = new RingGeometry(PLAZA_R * 0.3 + i * 0.9, PLAZA_R * 0.3 + i * 0.9 + 0.12, isMobile ? 32 : 64);
     const sweepMat = new MeshBasicMaterial({
@@ -117,7 +115,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   }
 
   // ── Edge glow dots — perimeter of floor ───────────────────
-  const dotCount = isMobile ? 20 : 36;
+  const dotCount = isMobile ? 10 : 16;
   const dotMats = [];
   for (let i = 0; i < dotCount; i++) {
     const angle = (i / dotCount) * Math.PI * 2;
