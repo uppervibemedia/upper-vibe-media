@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { addNeonPalmCluster } from "./BeachPalmTree.jsx";
 
 function basic(color, opts = {}) {
   return new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: !!opts.transparent, opacity: opts.opacity ?? 1, depthWrite: false, side: THREE.DoubleSide });
@@ -31,18 +32,7 @@ function addBush(group, x, z, scale = 1) {
 }
 
 function addPalmCluster(group, x, z, scale = 1) {
-  const tallScale = scale * 1.75;
-  for (let i = 0; i < 3; i++) {
-    const px = x + (i - 1) * 1.85 * scale;
-    const pz = z + (i % 2) * 1.15 * scale;
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * tallScale, 0.18 * tallScale, 2.15 * tallScale, 8), standard("#7A4E2A"));
-    trunk.position.set(px, 1.08 * tallScale, pz); trunk.rotation.z = i === 1 ? -0.15 : 0.12; group.add(trunk);
-    const leafMat = basic("#247D55", { transparent: true, opacity: 0.9 });
-    for (let j = 0; j < 6; j++) {
-      const leaf = new THREE.Mesh(new THREE.BoxGeometry(1.45 * tallScale, 0.07 * tallScale, 0.3 * tallScale), leafMat.clone());
-      leaf.position.set(px, 2.1 * tallScale, pz); leaf.rotation.set(0.18, (j / 6) * Math.PI * 2, 0.24); group.add(leaf);
-    }
-  }
+  addNeonPalmCluster(group, x, z, scale, { count: 3, spacing: 1.85 });
 }
 
 function addResortHut(group, x, z, rot = 0) {
@@ -195,6 +185,8 @@ export function createBeachEdgeDesign(scene) {
   [-50, -36, 34, 50, -18, 18].forEach((x, i) => addRock(group, x, 34 + (i % 2) * 4, 2.0, 0.9, 1.3, "#887968"));
   addPalmCluster(group, -52, 20, 1.05); addPalmCluster(group, 52, 20, 1.05); addPalmCluster(group, -42, -36, 1.15); addPalmCluster(group, 44, -35, 1.15);
   addPalmCluster(group, -16, -46, 1.25); addPalmCluster(group, 12, -47, 1.2); addPalmCluster(group, 30, -43, 1.08);
+  addPalmCluster(group, -58, -4, 0.92); addPalmCluster(group, 58, -6, 0.94);
+  addPalmCluster(group, -60, 38, 0.86); addPalmCluster(group, 60, 36, 0.88);
   addRock(group, -5, -45, 4.2, 1.25, 1.8, "#7F715F");
   addRock(group, 20, -44, 3.4, 1.1, 1.6, "#99846A");
   addCliffWall(group);

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { addNeonPalm } from "./BeachPalmTree.jsx";
 
 function basic(color, opts = {}) {
   return new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: !!opts.transparent, opacity: opts.opacity ?? 1, depthWrite: false, side: THREE.DoubleSide });
@@ -40,14 +41,7 @@ function addChair(group, x, z, color, rot = 0) {
 }
 
 function addPalm(group, x, z, scale = 1) {
-  const tallScale = scale * 1.7;
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * tallScale, 0.22 * tallScale, 2.28 * tallScale, 8), standard("#7A4E2A"));
-  trunk.position.set(x, 1.14 * tallScale, z); trunk.rotation.z = 0.12; group.add(trunk);
-  const leafMat = basic("#247D55", { transparent: true, opacity: 0.92 });
-  for (let i = 0; i < 7; i++) {
-    const leaf = new THREE.Mesh(new THREE.BoxGeometry(1.55 * tallScale, 0.08 * tallScale, 0.32 * tallScale), leafMat.clone());
-    leaf.position.set(x, 2.24 * tallScale, z); leaf.rotation.set(0.16, (i / 7) * Math.PI * 2, 0.25); group.add(leaf);
-  }
+  addNeonPalm(group, x, z, scale, { lean: 0.12 + Math.abs(x % 3) * 0.02, leanDir: x < 0 ? 1 : -1, fronds: 9 });
 }
 
 function addGlowStone(group, x, z, color = "#B58CFF") {
@@ -111,6 +105,8 @@ export function createBeachResortDecor(scene) {
   addSmallVilla(group, -10, -6, -0.18);
   addSmallVilla(group, -24, 8, 0.35);
   addPalm(group, 48, 17, 0.78); addPalm(group, 56, 22, 0.74);
+  addPalm(group, -48, -6, 0.7); addPalm(group, 32, -18, 0.68);
+  addPalm(group, -54, 31, 0.72); addPalm(group, 48, 32, 0.7);
 
   [[-34, 1.5, 25], [52, 1.4, 20], [10, 1.4, 16], [0, 1.1, 34], [35, 1.2, 34], [40, 1.2, 13]].forEach(([x, y, z]) => {
     const light = new THREE.PointLight(new THREE.Color("#FFD08A"), 0.82, 10);

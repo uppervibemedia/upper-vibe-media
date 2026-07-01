@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { addNeonPalm } from "./BeachPalmTree.jsx";
 
 const {
   CircleGeometry,
@@ -85,18 +86,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
 }
 
 function createPalm(scene, x, z, scale = 1) {
-  const tallScale = scale * 1.75;
-  const trunk = new Mesh(new CylinderGeometry(0.12 * tallScale, 0.18 * tallScale, 2.1 * tallScale, 8), mat("#7A4E2A", { roughness: 0.8 }));
-  trunk.position.set(x, 1.05 * tallScale, z);
-  trunk.rotation.z = 0.16;
-  scene.add(trunk);
-  const leafMat = mat("#247D55", { roughness: 0.75 });
-  for (let i = 0; i < 6; i++) {
-    const leaf = new Mesh(new BoxGeometry(1.42 * tallScale, 0.08 * tallScale, 0.3 * tallScale), leafMat.clone());
-    leaf.position.set(x, 2.05 * tallScale, z);
-    leaf.rotation.set(0.14, (i / 6) * Math.PI * 2, 0.22);
-    scene.add(leaf);
-  }
+  addNeonPalm(scene, x, z, scale, { lean: 0.13, leanDir: x < 40 ? 1 : -1, fronds: 9 });
 }
 
 function createLoungeCushion(scene, x, z, color) {
