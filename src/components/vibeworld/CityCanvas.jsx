@@ -1561,7 +1561,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
         if (!prioritizeMovement && (!isMob || frameRef.current % 3 === 0)) animateSacredGeometryNetwork(scene, t, audioBeat);
-        if (worldModeRef.current === "city" && !prioritizeMovement && (!isMob || frameRef.current % 8 === 0)) animateCitySpiritualVisuals(scene, t, px, pz);
+        const hasActiveSacredLearning = window.__uvcActiveSacredSymbol && t < window.__uvcActiveSacredSymbol.until;
+        if (worldModeRef.current === "city" && (hasActiveSacredLearning || (!prioritizeMovement && (!isMob || frameRef.current % 8 === 0)))) animateCitySpiritualVisuals(scene, t, px, pz);
         // Beach animations: lightweight shoreline in City; full Zen Beach only in Beach World.
         if (worldModeRef.current === "beach") {
           if (prioritizeMovement ? frameRef.current % 10 === 0 : (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateZenBeach(scene, t, audioBeat);

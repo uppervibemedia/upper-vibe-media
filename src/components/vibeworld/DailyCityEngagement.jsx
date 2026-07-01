@@ -22,6 +22,8 @@ const TASKS = [
   { id: "dance_60", label: "Dance for 60 seconds" },
   { id: "academy", label: "Visit Vibe Academy" },
   { id: "sacred_symbol", label: "Activate one sacred geometry symbol" },
+  { id: "symbol_activation_3", label: "Activate 3 sacred geometry symbols" },
+  { id: "read_frequency_lesson", label: "Read 1 Frequency Lesson" },
   { id: "visualizer_dome", label: "Enter Visualizer Dome" },
   { id: "beach_visit", label: "Visit Upper Vibe Beach" },
 ];
@@ -118,6 +120,7 @@ function buildDaily(userId) {
     streakRewardClaimed: false,
     questRewardClaimed: false,
     milestoneRewards: {},
+    symbolActivations: {},
     welcomeDismissed: false,
   };
 }
@@ -241,6 +244,16 @@ export default function DailyCityEngagement({
   useEffect(() => {
     const onAction = (e) => {
       const action = e.detail?.action;
+      if (action === "sacred_symbol_activated") {
+        const symbolId = e.detail?.symbolId;
+        const prev = dailyRef.current;
+        const activations = { ...(prev?.symbolActivations || {}) };
+        if (symbolId) activations[symbolId] = true;
+        saveNext({ ...prev, symbolActivations: activations });
+        completeAction("sacred_symbol");
+        if (Object.keys(activations).length >= 3) completeAction("symbol_activation_3");
+        return;
+      }
       if (action) completeAction(action);
     };
     window.addEventListener("uvcDailyAction", onAction);
@@ -256,9 +269,6 @@ export default function DailyCityEngagement({
     if (!playerPos || worldMode !== "city") return;
     if (CRYSTAL_NODES.some((n) => (playerPos.x - n.x) ** 2 + (playerPos.z - n.z) ** 2 < 5.2 ** 2)) {
       completeAction("crystal_charge");
-    }
-    if (SACRED_SYMBOLS.some((n) => (playerPos.x - n.x) ** 2 + (playerPos.z - n.z) ** 2 < 4.2 ** 2)) {
-      completeAction("sacred_symbol");
     }
   }, [playerPos?.x, playerPos?.z, worldMode, completeAction]);
 

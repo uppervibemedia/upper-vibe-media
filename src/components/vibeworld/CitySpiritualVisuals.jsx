@@ -197,6 +197,25 @@ function addGridLine(group, a, b, mat) {
   line.renderOrder = 2; group.add(line);
 }
 
+function makePowerPulseMesh(isMobile) {
+  const mat = new MeshBasicMaterial({ color: new Color("#FFD36E"), transparent: true, opacity: 0, depthWrite: false, side: DoubleSide });
+  const pulse = new Mesh(new PlaneGeometry(isMobile ? 2.4 : 3.3, isMobile ? 0.28 : 0.36), mat);
+  pulse.rotation.x = -Math.PI / 2;
+  pulse.position.y = 0.072;
+  pulse.visible = false;
+  pulse.renderOrder = 8;
+  return pulse;
+}
+
+function positionPowerPulse(pulse, start, end, amount) {
+  const dx = end.x - start.x, dz = end.z - start.z;
+  const x = start.x + dx * amount;
+  const z = start.z + dz * amount;
+  pulse.position.x = x;
+  pulse.position.z = z;
+  pulse.rotation.z = -Math.atan2(dz, dx);
+}
+
 export function createCitySpiritualVisuals(scene) {
   const group = new Group(); group.name = "citySpiritualVisuals";
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -213,7 +232,11 @@ export function createCitySpiritualVisuals(scene) {
     ["flower", 9.4, 31, 20, 0.17, -0.12],
   ];
   group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot]) => {
-    const sym = groundDecal(groundSymbolTexture(kind), size, x, z, isMobile ? opacity * 0.78 : opacity, rot);
+    const baseOpacity = isMobile ? opacity * 0.78 : opacity;
+    const sym = groundDecal(groundSymbolTexture(kind), size, x, z, baseOpacity, rot);
+    sym.userData.symbolId = kind;
+    sym.userData.baseOpacity = baseOpacity;
+    sym.userData.baseScale = 1;
     group.add(sym);
     return sym;
   });
@@ -266,6 +289,8 @@ export function createCitySpiritualVisuals(scene) {
     addGridLine(group, { x: 0, z: -6 }, { x, z }, gridGlowMat);
     addGridLine(group, { x: 0, z: -6 }, { x, z }, gridCoreMat);
   });
+  group.userData.powerPulses = [makePowerPulseMesh(isMobile), makePowerPulseMesh(isMobile)];
+  group.userData.powerPulses.forEach((pulse) => group.add(pulse));
   const crystalMat = new MeshBasicMaterial({ color: new Color("#BFA2FF"), transparent: true, opacity: isMobile ? 0.32 : 0.48, depthWrite: false });
   [[-28, 12.8, -37.5], [12, 14.4, -37.5], [37.5, 11.2, -17]].forEach(([x, y, z]) => {
     const crystal = new Group();
@@ -291,6 +316,10 @@ export function createCitySpiritualVisuals(scene) {
     ["Calm Is Power", -31, 2.25, -13],
     ["Focus Is Currency", -31, 2.35, 21],
     ["Peace Is Power", 31, 2.35, 22],
+    ["Learn: Sound Is Frequency", 3, 2.45, -27],
+    ["Learn: Regulate Align Act", -18, 2.45, 14],
+    ["Learn: Future Self Vision", -13, 2.55, 7],
+    ["Learn: Rest Supports Mission", 22, 2.35, 9],
   ];
   const shuffledWords = [...words].sort(() => Math.random() - 0.5);
   const shuffledSpots = [...spots].sort(() => Math.random() - 0.5);
@@ -322,4 +351,36 @@ export function animateCitySpiritualVisuals(scene, t, px, pz) {
     const range = visual.userData.visualRange || 38;
     visual.visible = dx * dx + dz * dz < range * range;
   });
+
+  const active = window.__uvcActiveSacredSymbol;
+  const activeLive = active && t < active.until;
+  (group.userData.groundSymbols || []).forEach((sym) => {
+    const base = sym.userData.baseOpacity || 0.2;
+    const isActive = activeLive && sym.userData.symbolId === active.id;
+    if (isActive) {
+      const wave = Math.sin(t * 4.2) * 0.5 + 0.5;
+      sym.material.opacity = Math.min(0.82, base * 2.2 + wave * 0.18);
+      const s = 1.015 + wave * 0.025;
+      sym.scale.set(s, s, 1);
+    } else {
+      sym.material.opacity += (base - sym.material.opacity) * 0.18;
+      sym.scale.x += (1 - sym.scale.x) * 0.12;
+      sym.scale.y += (1 - sym.scale.y) * 0.12;
+    }
+  });
+
+  const pulses = group.userData.powerPulses || [];
+  if (activeLive && pulses.length) {
+    const crystals = [{ x: -30, z: -10 }, { x: 30, z: -10 }];
+    const target = { x: active.x, z: active.z };
+    const progress = Math.min(1, Math.max(0, (t - active.startedAt) / 2.4));
+    pulses.forEach((pulse, i) => {
+      const stagger = Math.max(0, Math.min(1, progress - i * 0.08));
+      positionPowerPulse(pulse, crystals[i], target, stagger);
+      pulse.visible = stagger > 0 && progress < 1;
+      pulse.material.opacity = pulse.visible ? Math.sin(stagger * Math.PI) * 0.72 : 0;
+    });
+  } else {
+    pulses.forEach((pulse) => { pulse.visible = false; pulse.material.opacity = 0; });
+  }
 }

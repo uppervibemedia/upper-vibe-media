@@ -1,0 +1,247 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { BookOpen, CheckCircle2, Sparkles, X, Zap } from "lucide-react";
+
+const DAILY_WISDOM = [
+  "Your nervous system is part of your manifestation. A regulated state helps you make clearer choices.",
+  "Energy is built through repetition. What you practice daily becomes your frequency.",
+  "Calm is not weakness. Calm gives you control over your next move.",
+  "Your attention is currency. Where you place it, your energy follows.",
+  "Manifestation works better when your actions match your intention.",
+  "Music can shift your state, but your habits keep the frequency stable.",
+];
+
+const SYMBOLS = [
+  { id: "torus", title: "Torus Field", kind: "torus", x: 22, z: 1.5, r: 5.8, teaching: "What you give energy to returns through your field. Choose your loop wisely.", action: "Name one loop you are ready to upgrade today." },
+  { id: "seed", title: "Seed of Life", kind: "seed", x: 22, z: -13.5, r: 5.6, teaching: "Every result begins as a seed. Choose the thought you keep watering.", action: "Pick one thought that supports your next move." },
+  { id: "tree", title: "Energy First", kind: "tree", x: -8, z: 4, r: 5.4, teaching: "Your state changes how you move, speak, create, and decide.", action: "Choose one state you want to embody today." },
+  { id: "metatron", title: "Metatron’s Cube", kind: "metatron", x: -24, z: 3, r: 5.7, teaching: "Structure gives energy direction. Focus turns potential into form.", action: "Choose one priority before you take action." },
+  { id: "vesica", title: "Vesica Piscis", kind: "vesica", x: 5, z: -18, r: 5, teaching: "New realities form where two worlds meet: who you are and who you are becoming.", action: "Take one action from your future-self identity." },
+  { id: "chakra", title: "Calm Is Power", kind: "chakra", x: -7.5, z: -21.5, r: 4.3, teaching: "A regulated nervous system helps you respond instead of react.", action: "Take one slow breath before your next decision." },
+  { id: "egg", title: "Merkaba Motion", kind: "egg", x: -25, z: 18, r: 4.8, teaching: "Your energy moves with your attention. Align your direction before you accelerate.", action: "Point your attention at the outcome you actually want." },
+  { id: "sri", title: "Sri Yantra", kind: "sri", x: -31, z: -19, r: 4.7, teaching: "Desire needs direction. Focus turns scattered energy into a clear signal.", action: "Write one clean intention in your mind." },
+  { id: "flower", title: "Flower of Life", kind: "flower", x: 31, z: 20, r: 4.7, teaching: "All things are connected. What you repeat becomes the pattern you live inside.", action: "Repeat one habit that supports your highest pattern." },
+];
+
+const ZONE_LESSONS = [
+  { id: "stage", name: "Main Stage", x: 0, z: -32, r: 8, title: "Sound as Frequency", text: "Sound is not just entertainment here. It is a frequency tool for emotion, creativity, and state change.", action: "Notice how one song shifts your body." },
+  { id: "dance", name: "Dance Floor", x: 0, z: -6, r: 7.2, title: "Movement Releases Energy", text: "Movement helps move stuck energy through the body and rebuild confidence from the inside out.", action: "Move for ten seconds without judging it." },
+  { id: "crystal", name: "Crystal Zones", x: -30, z: -10, r: 6, title: "Energy Follows Attention", text: "Energy follows attention. Set a clear signal before you move.", action: "Choose your next step before taking it." },
+  { id: "crystal_east", name: "Crystal Zones", x: 30, z: -10, r: 6, title: "Clarity Is Power", text: "A clear intention gives your energy somewhere useful to go.", action: "Name what you are focusing on right now." },
+  { id: "vibecheck", name: "Daily Vibe Check", x: -16, z: -13, r: 5, title: "Information, Not Judgment", text: "Your score is not judgment. It is information that helps you adjust your frequency.", action: "Ask: what does my energy need next?" },
+  { id: "dome", name: "Visualizer Dome", x: -13, z: 10, r: 8, title: "Future Self Vision", text: "Visualization trains your mind to recognize possibility before it becomes familiar.", action: "Picture one brave version of yourself." },
+  { id: "academy", name: "Vibe Academy", x: -18, z: 16, r: 8, title: "Regulate. Align. Act.", text: "Deeper learning starts when your nervous system is steady enough to receive the lesson.", action: "Learn one thing, then apply one thing." },
+  { id: "ferris", name: "Ferris Wheel", x: 0, z: 24, r: 10, title: "Perspective Shift", text: "A higher view can change how you see your current problem.", action: "Zoom out before you decide." },
+  { id: "beachgate", name: "Beach Transporter", x: 22, z: 12.25, r: 7, title: "Rest Supports Mission", text: "Rest is not leaving the mission. Rest keeps the mission sustainable.", action: "Let reset be part of the plan." },
+];
+
+function todayKey() {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+function hashString(value) {
+  let h = 0;
+  for (let i = 0; i < value.length; i++) h = Math.imul(31, h) + value.charCodeAt(i) | 0;
+  return Math.abs(h);
+}
+
+function dailyPick(items, salt = "") {
+  return items[hashString(`${todayKey()}:${salt}`) % items.length];
+}
+
+function symbolRewardKey() {
+  return `uvc_symbol_rewards_${todayKey()}`;
+}
+
+function getRewardedSymbols() {
+  try { return JSON.parse(localStorage.getItem(symbolRewardKey()) || "{}"); } catch { return {}; }
+}
+
+function saveRewardedSymbols(data) {
+  try { localStorage.setItem(symbolRewardKey(), JSON.stringify(data)); } catch {}
+}
+
+function grantVibeCoins(symbolId) {
+  window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
+    detail: {
+      source: "daily_reward",
+      coinIds: Array.from({ length: 5 }, (_, i) => `symbol_${todayKey()}_${symbolId}_${i}`),
+    },
+  }));
+}
+
+export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mobileLayout, hidden }) {
+  const [wisdomOpen, setWisdomOpen] = useState(false);
+  const [activeCard, setActiveCard] = useState(null);
+  const [nearZone, setNearZone] = useState(null);
+  const [candidate, setCandidate] = useState(null);
+  const [activationStarted, setActivationStarted] = useState(null);
+  const [holdTick, setHoldTick] = useState(0);
+  const cooldownRef = useRef({});
+  const activatedTodayRef = useRef(getRewardedSymbols());
+  const wisdom = useMemo(() => dailyPick(DAILY_WISDOM, "wisdom"), []);
+  const symbolVariations = useMemo(() => hashString(todayKey()) % 3, []);
+
+  useEffect(() => {
+    const key = `uvc_wisdom_seen_${todayKey()}`;
+    let seen = false;
+    try { seen = localStorage.getItem(key) === "1"; } catch {}
+    if (!seen) {
+      setWisdomOpen(true);
+      try { localStorage.setItem(key, "1"); } catch {}
+      const t = setTimeout(() => setWisdomOpen(false), 9000);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!playerPos || worldMode !== "city" || hidden) {
+      setNearZone(null);
+      setCandidate(null);
+      setActivationStarted(null);
+      return;
+    }
+
+    const zone = ZONE_LESSONS.find((z) => (playerPos.x - z.x) ** 2 + (playerPos.z - z.z) ** 2 < z.r ** 2) || null;
+    setNearZone(zone);
+
+    const symbol = SYMBOLS.find((s) => (playerPos.x - s.x) ** 2 + (playerPos.z - s.z) ** 2 < s.r ** 2) || null;
+    const now = performance.now();
+    if (!symbol) {
+      setCandidate(null);
+      setActivationStarted(null);
+      return;
+    }
+    if (cooldownRef.current[symbol.id] && cooldownRef.current[symbol.id] > now) {
+      setCandidate(symbol);
+      setActivationStarted(null);
+      return;
+    }
+    setCandidate((current) => current?.id === symbol.id ? current : symbol);
+    setActivationStarted((current) => current && candidate?.id === symbol.id ? current : now);
+  }, [playerPos?.x, playerPos?.z, worldMode, hidden, candidate?.id]);
+
+  useEffect(() => {
+    if (!activationStarted) return;
+    const id = setInterval(() => setHoldTick(performance.now()), 180);
+    return () => clearInterval(id);
+  }, [activationStarted]);
+
+  useEffect(() => {
+    if (!candidate || !activationStarted) return;
+    const remaining = Math.max(0, 3000 - (performance.now() - activationStarted));
+    const t = setTimeout(() => {
+      const now = performance.now();
+      if (!candidate || cooldownRef.current[candidate.id] > now) return;
+      cooldownRef.current[candidate.id] = now + 20000;
+      const rewarded = activatedTodayRef.current;
+      const firstToday = !rewarded[candidate.id];
+      if (firstToday) {
+        rewarded[candidate.id] = true;
+        activatedTodayRef.current = rewarded;
+        saveRewardedSymbols(rewarded);
+        grantVibeCoins(candidate.id);
+      }
+      const shiftedTeaching = symbolVariations === 0 ? candidate.teaching : symbolVariations === 1 ? `${candidate.teaching} Your repetition becomes your rhythm.` : `${candidate.teaching} Keep it simple, clear, and embodied.`;
+      setActiveCard({ ...candidate, teaching: shiftedTeaching, reward: firstToday });
+      setActivationStarted(null);
+      window.__uvcActiveSacredSymbol = { id: candidate.id, x: candidate.x, z: candidate.z, kind: candidate.kind, startedAt: performance.now() * 0.001, until: performance.now() * 0.001 + 6 };
+      window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "sacred_symbol_activated", symbolId: candidate.id } }));
+    }, remaining);
+    return () => clearTimeout(t);
+  }, [candidate, activationStarted, symbolVariations]);
+
+  const openZoneLesson = () => {
+    if (!nearZone) return;
+    setActiveCard({ title: nearZone.title, teaching: nearZone.text, action: nearZone.action, zone: nearZone.name, reward: false });
+    window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "read_frequency_lesson" } }));
+  };
+
+  if (hidden) return null;
+
+  const top = isMobile && mobileLayout ? mobileLayout.sa.top + 250 : 220;
+  const holdProgress = candidate && activationStarted ? Math.min(1, ((holdTick || performance.now()) - activationStarted) / 3000) : 0;
+
+  return (
+    <>
+      <AnimatePresence>
+        {wisdomOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.96 }}
+            className="absolute left-1/2 z-[67] rounded-2xl pointer-events-auto"
+            style={{ top, transform: "translateX(-50%)", width: isMobile ? "min(88vw, 340px)" : 360, background: "rgba(5,6,18,0.84)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(18px)", boxShadow: "0 16px 50px rgba(0,0,0,0.45)" }}
+          >
+            <div className="flex items-start gap-3 p-3">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(0,229,255,0.12)", color: "#00E5FF" }}><BookOpen className="w-4 h-4" /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black tracking-[0.18em] uppercase" style={{ color: "#00E5FF" }}>Today’s Frequency Lesson</p>
+                <p className="text-[12px] leading-relaxed text-white/68 mt-1">{wisdom}</p>
+              </div>
+              <button onClick={() => setWisdomOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", touchAction: "manipulation" }}><X className="w-3 h-3" /></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {nearZone && !activeCard && (
+          <motion.button
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            onClick={openZoneLesson}
+            className="absolute right-3 z-[66] pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-full text-[10px] font-black tracking-wider uppercase"
+            style={{ top: isMobile && mobileLayout ? mobileLayout.sa.top + 76 : 84, background: "rgba(5,6,18,0.78)", border: "1px solid rgba(255,211,110,0.22)", color: "#FFD36E", backdropFilter: "blur(14px)", touchAction: "manipulation" }}
+          >
+            <Sparkles className="w-3 h-3" /> Learn
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {candidate && activationStarted && !activeCard && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="absolute left-1/2 z-[66] pointer-events-none rounded-full px-3 py-2"
+            style={{ transform: "translateX(-50%)", bottom: isMobile && mobileLayout ? mobileLayout.actionBottom + 72 : 136, background: "rgba(5,6,18,0.78)", border: "1px solid rgba(0,229,255,0.2)", backdropFilter: "blur(14px)" }}
+          >
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/65">
+              <Zap className="w-3 h-3" style={{ color: "#00E5FF" }} /> Hold to activate {candidate.title}
+            </div>
+            <div className="h-1 mt-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)", width: 170 }}>
+              <div className="h-full rounded-full" style={{ width: `${Math.max(8, holdProgress * 100)}%`, background: "linear-gradient(90deg,#00E5FF,#FFD36E)" }} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeCard && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.96 }}
+            className="absolute left-1/2 z-[68] pointer-events-auto rounded-3xl overflow-hidden"
+            style={{ transform: "translateX(-50%)", bottom: isMobile && mobileLayout ? mobileLayout.actionBottom + 92 : 150, width: isMobile ? "min(90vw, 360px)" : 380, background: "rgba(5,6,18,0.9)", border: "1px solid rgba(0,229,255,0.22)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.5), 0 0 34px rgba(0,229,255,0.14)" }}
+          >
+            <div className="flex items-start gap-3 p-4">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(0,229,255,0.12)", color: "#00E5FF" }}><Sparkles className="w-4 h-4" /></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: activeCard.reward ? "#FFD36E" : "#00E5FF" }}>{activeCard.reward ? "+5 Vibe Coins — Symbol Activated" : activeCard.zone || "Frequency Lesson"}</p>
+                <h3 className="font-heading font-black text-white text-base mt-1">{activeCard.title}</h3>
+                <p className="text-[12px] leading-relaxed text-white/66 mt-2">“{activeCard.teaching}”</p>
+                <p className="text-[11px] leading-relaxed mt-2" style={{ color: "#FFD36E" }}><b>Action:</b> {activeCard.action}</p>
+              </div>
+              <button onClick={() => setActiveCard(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", touchAction: "manipulation" }}><X className="w-3.5 h-3.5" /></button>
+            </div>
+            {activeCard.reward && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#4ADE80" }}><CheckCircle2 className="w-3 h-3" /> Daily reward saved — no repeat farming today</div>}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
