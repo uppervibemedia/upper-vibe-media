@@ -5,11 +5,11 @@
 import * as THREE from "three";
 
 export const CRYSTAL_ZONE_NODES = [
-  { x: -12, z: -6, label: "Crystal Node" },
-  { x: 12, z: -6, label: "Crystal Node" },
+  { x: -30, z: -10, label: "Crystal Node" },
+  { x: 30, z: -10, label: "Crystal Node" },
 ];
 export const CRYSTAL_ZONE_X = 0;
-export const CRYSTAL_ZONE_Z = -6;
+export const CRYSTAL_ZONE_Z = -10;
 export const CRYSTAL_ZONE_RADIUS = 4.2;
 
 const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
