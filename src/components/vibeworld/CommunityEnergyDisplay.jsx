@@ -50,7 +50,7 @@ export default function CommunityEnergyDisplay({ activeUsers = [], isMobile, mob
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Sparkles className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#00E5FF" }} />
-            <p className="text-[9px] font-black uppercase tracking-[0.16em] truncate" style={{ color: "rgba(232,252,255,0.82)" }}>Community Energy</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] truncate" style={{ color: "rgba(232,252,255,0.82)" }}>Frequency Energy</p>
           </div>
           <div className="flex items-center gap-1 text-[10px] font-black" style={{ color: "#FFD36E" }}>
             <Activity className="w-3 h-3" /> {activeSymbols.length}
