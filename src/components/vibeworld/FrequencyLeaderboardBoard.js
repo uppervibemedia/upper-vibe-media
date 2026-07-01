@@ -27,7 +27,7 @@ function makeBoardTexture() {
 export function createFrequencyLeaderboardBoard(scene) {
   const group = new THREE.Group();
   group.name = "frequencyLeaderboardBoard";
-  group.position.set(-13, 0, 17);
+  group.position.set(0, 0, 12.25);
   group.rotation.y = Math.PI;
   const panelMat = new THREE.MeshBasicMaterial({ map: makeBoardTexture(), transparent: true, opacity: 0.94, depthWrite: true });
   const panel = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 3.15), panelMat);
