@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { X, GraduationCap, Sparkles, Brain, Music4, Sun, Wallet, ChevronLeft, ChevronRight, PlayCircle, BookOpen, CheckCircle2, ExternalLink, ArrowLeft } from "lucide-react";
+import { X, GraduationCap, Sparkles, Brain, Music4, Sun, Wallet, PlayCircle, BookOpen, CheckCircle2, ArrowLeft } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
+import AcademyVideoPlayer from "./AcademyVideoPlayer";
 
 const TOPIC_TAGS = ["Sacred Geometry", "Frequency", "Nervous System", "Manifestation", "Mindset", "Music Energy", "Confidence", "Focus", "Emotional Reset"];
 
@@ -38,7 +39,7 @@ function toEmbedUrl(lesson) {
   const id = lesson?.youtube_video_id || watchUrl.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/|v=)([A-Za-z0-9_-]{11})/)?.[1];
   if (!id) return null;
   const origin = typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : "";
-  return `https://www.youtube.com/embed/${id}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1${origin ? `&origin=${origin}` : ""}`;
+  return `https://www.youtube.com/embed/${id}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1${origin ? `&origin=${origin}&widget_referrer=${origin}` : ""}`;
 }
 
 function academyTitle(score) {
@@ -175,28 +176,20 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
           </div>
         </div>
       ) : view === "videos" ? (
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 p-4 overflow-y-auto">
-          <div className="flex-1 min-w-0 rounded-3xl overflow-hidden" style={{ background: "rgba(0,0,0,0.45)", border: "1px solid rgba(0,229,255,0.18)" }}>
-            <div className="aspect-video bg-black flex items-center justify-center">
-              {loadingVideos ? <div className="w-6 h-6 border-2 border-cyan-300/20 border-t-cyan-300 rounded-full animate-spin" /> : embedUrl ? <iframe key={embedUrl} src={embedUrl} title={currentLesson?.title || "Academy Lesson"} className="w-full h-full" style={{ border: 0 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /> : <p className="text-white/35 text-sm">No learning videos found yet.</p>}
-            </div>
-            <div className="p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: config.accent }}>Learning Video • Lesson {currentIndex + 1}</p>
-              <h4 className="font-heading font-black text-white text-lg mt-1 leading-tight">{currentLesson?.title || "Upper Vibe Academy"}</h4>
-              {currentLesson?.description && <p className="text-xs text-white/42 mt-2 leading-relaxed">{currentLesson.description}</p>}
-              {watchUrl && <div className="rounded-2xl p-3 mt-4" style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)" }}><p className="text-xs text-white/55">Video cannot play inside the Academy right now.</p><a href={watchUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-full font-black text-[10px]" style={{ background: "rgba(255,255,255,0.08)", color: "#fff" }}>Watch on YouTube <ExternalLink className="w-3 h-3" /></a></div>}
-              <div className="flex flex-wrap items-center gap-2 mt-4">
-                <button disabled={currentIndex <= 0} onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} className="flex items-center gap-1 px-4 py-2 rounded-full font-black text-[10px] disabled:opacity-35" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", touchAction: "manipulation" }}><ChevronLeft className="w-3 h-3" /> Previous</button>
-                <button disabled={currentIndex >= lessons.length - 1} onClick={() => setCurrentIndex((i) => Math.min(lessons.length - 1, i + 1))} className="flex items-center gap-1 px-4 py-2 rounded-full font-black text-[10px] disabled:opacity-35" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", touchAction: "manipulation" }}>Next <ChevronRight className="w-3 h-3" /></button>
-                <button onClick={completeVideoLesson} className="px-4 py-2 rounded-full font-black text-[10px]" style={{ background: config.button, color: "#fff", touchAction: "manipulation" }}>Mark Lesson Complete</button>
-              </div>
-            </div>
-          </div>
-          <div className="lg:w-72 rounded-3xl p-3 overflow-y-auto" style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)", maxHeight: isMobile ? "none" : "100%" }}>
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/35 mb-3">Lesson Playlist</p>
-            <div className="space-y-2">{lessons.map((lesson, idx) => <button key={lesson.id} onClick={() => setCurrentIndex(idx)} className="w-full rounded-2xl p-3 text-left" style={{ background: idx === currentIndex ? "rgba(0,229,255,0.12)" : "rgba(255,255,255,0.035)", border: idx === currentIndex ? "1px solid rgba(0,229,255,0.28)" : "1px solid rgba(255,255,255,0.06)", touchAction: "manipulation" }}><p className="text-xs font-black text-white leading-tight line-clamp-2">{lesson.title}</p><p className="text-[9px] text-white/30 mt-1">Lesson {idx + 1}</p></button>)}</div>
-          </div>
-        </div>
+        <AcademyVideoPlayer
+          loadingVideos={loadingVideos}
+          embedUrl={embedUrl}
+          watchUrl={watchUrl}
+          currentLesson={currentLesson}
+          currentIndex={currentIndex}
+          lessons={lessons}
+          setCurrentIndex={setCurrentIndex}
+          completeVideoLesson={completeVideoLesson}
+          config={config}
+          isMobile={isMobile}
+          onBackToAcademy={() => setView("overview")}
+          onExitAcademy={onClose}
+        />
       ) : view === "progress" ? (
         <div className="flex-1 overflow-y-auto p-5">
           <button onClick={() => setView("overview")} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/45 mb-4"><ArrowLeft className="w-3 h-3" /> Back to Academy</button>
