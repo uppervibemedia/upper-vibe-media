@@ -111,8 +111,8 @@ function getCityQuality() {
     lowMemory,
     qualityLevel,
     currentLevel: qualityLevel,
-    pixelRatio: qualityLevel === "mobile" ? (isIOS ? 0.95 : 1.05) : 1.4,
-    farClip: qualityLevel === "mobile" ? 112 : 155,
+    pixelRatio: qualityLevel === "mobile" ? (isIOS ? 0.85 : 0.95) : 1.25,
+    farClip: qualityLevel === "mobile" ? 104 : 140,
     antialias: qualityLevel === "high",
     shadowMapSize: qualityLevel === "mobile" ? 384 : 1024,
     nearDistance: qualityLevel === "mobile" ? 18 : 22,
@@ -1363,11 +1363,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               }
             }
           }
-        } else if (stageScreen && scene.userData._stageCanvasApplied) {
-          // No canvas — hide the stage screen (prevents duplicate cover art behind embed)
-          stageScreen.material = new MeshBasicMaterial({ color: new Color("#0a0a1e"), depthWrite: true, transparent: true, opacity: 0.15 });
-          scene.userData._stageCanvasApplied = false;
-          scene.userData._stageTex = null;
+        } else if (stageScreen && !scene.userData._stageCanvasApplied) {
+          stageScreen.material = new MeshBasicMaterial({ color: new Color("#102A4A"), depthWrite: true });
         }
 
         // ─── OCEAN WAVES — rolling from deep water toward shore ──
@@ -1671,7 +1668,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const ferrisGate = tvSmooth
           ? (ferrisRidingRef.current || ferrisDist < 30)
           : (!mobileQuality || ferrisRidingRef.current || nearFerris || frameRef.current % (lowQuality ? 10 : 6) === 0);
-        if (ferrisGate) animateFerrisWheel(scene, t, audioBeat, px, pz, tvSmooth);
+        if (ferrisGate && (!mobileQuality || ferrisRidingRef.current || frameRef.current % 2 === 0)) animateFerrisWheel(scene, t, audioBeat, px, pz, tvSmooth);
 
 
         // ─── BEACH TREASURE HUNT — lightweight proximity collect ────────
@@ -1701,7 +1698,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         scene.userData._ferrisRiding = ferrisRidingRef.current;
         if (!prioritizeMovement || frameRef.current % 3 === 0) animateCosmicSky(scene, camera, t, dt);
         if (worldModeRef.current === "city" && (!prioritizeMovement || frameRef.current % 3 === 0)) tickAddOns(scene, t);
-        if (worldModeRef.current === "city" && (!isMob || frameRef.current % 3 === 0)) animateFrequencyLeaderboardBoard(scene, t);
+        if (worldModeRef.current === "city" && frameRef.current % (isMob ? 12 : 4) === 0) animateFrequencyLeaderboardBoard(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height

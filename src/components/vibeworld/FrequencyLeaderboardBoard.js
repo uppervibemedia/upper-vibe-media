@@ -4,14 +4,15 @@ import { base44 } from "@/api/base44Client";
 const BOARD_W = 768;
 const BOARD_H = 1536;
 
-function fitText(ctx, text, maxWidth, startSize, weight = 900, family = "Inter, sans-serif") {
+function fitText(ctx, text, maxWidth, startSize, weight = 900, family = "Inter, sans-serif", minSize = 20) {
   let size = startSize;
   do {
     ctx.font = `${weight} ${size}px ${family}`;
     if (ctx.measureText(text).width <= maxWidth) return size;
-    size -= 4;
-  } while (size >= 34);
-  return size;
+    size -= 3;
+  } while (size >= minSize);
+  ctx.font = `${weight} ${minSize}px ${family}`;
+  return minSize;
 }
 
 function drawBoard(ctx, rows = [], loading = false) {
@@ -24,17 +25,17 @@ function drawBoard(ctx, rows = [], loading = false) {
   ctx.strokeStyle = "rgba(181,140,255,0.55)"; ctx.lineWidth = 4; ctx.strokeRect(54, 54, BOARD_W - 108, BOARD_H - 108);
 
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0,229,255,0.9)"; ctx.shadowBlur = 24;
-  ctx.fillStyle = "#DFFBFF"; ctx.font = "900 58px Syne, Inter, sans-serif"; ctx.fillText("FREQUENCY", BOARD_W / 2, 120);
-  ctx.fillStyle = "#00E5FF"; ctx.font = "900 62px Syne, Inter, sans-serif"; ctx.fillText("LEADERBOARD", BOARD_W / 2, 188);
+  ctx.shadowColor = "rgba(0,229,255,0.9)"; ctx.shadowBlur = 20;
+  ctx.fillStyle = "#DFFBFF"; fitText(ctx, "FREQUENCY", 620, 54, 900, "Syne, Inter, sans-serif", 34); ctx.fillText("FREQUENCY", BOARD_W / 2, 116);
+  ctx.fillStyle = "#00E5FF"; fitText(ctx, "LEADERBOARD", 620, 54, 900, "Syne, Inter, sans-serif", 32); ctx.fillText("LEADERBOARD", BOARD_W / 2, 178);
   ctx.shadowBlur = 8;
-  ctx.fillStyle = "rgba(255,211,110,0.92)"; ctx.font = "800 28px Inter, sans-serif"; ctx.fillText("LIVE TOP 5", BOARD_W / 2, 250);
+  ctx.fillStyle = "rgba(255,211,110,0.92)"; ctx.font = "800 26px Inter, sans-serif"; ctx.fillText("LIVE TOP 5", BOARD_W / 2, 238);
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(255,255,255,0.52)"; ctx.font = "800 22px Inter, sans-serif";
-  ctx.textAlign = "left"; ctx.fillText("RANK", 88, 330);
-  ctx.fillText("VIBE NAME", 188, 330);
-  ctx.textAlign = "right"; ctx.fillText("SCORE", 682, 330);
+  ctx.fillStyle = "rgba(255,255,255,0.52)"; ctx.font = "800 20px Inter, sans-serif";
+  ctx.textAlign = "left"; ctx.fillText("RANK", 86, 318);
+  ctx.fillText("VIBE NAME", 188, 318);
+  ctx.textAlign = "right"; ctx.fillText("SCORE", 678, 318);
 
   if (loading) {
     ctx.textAlign = "center";
@@ -56,13 +57,13 @@ function drawBoard(ctx, rows = [], loading = false) {
   }
 
   rows.slice(0, 5).forEach((row, i) => {
-    const y = 425 + i * 188;
+    const y = 410 + i * 180;
     const isTop = i === 0;
-    const grad = ctx.createLinearGradient(76, y - 58, 692, y + 58);
+    const grad = ctx.createLinearGradient(76, y - 54, 692, y + 54);
     grad.addColorStop(0, isTop ? "rgba(255,211,110,0.18)" : "rgba(0,229,255,0.09)");
     grad.addColorStop(1, "rgba(124,58,237,0.10)");
     ctx.fillStyle = grad;
-    roundRect(ctx, 74, y - 66, 620, 128, 28);
+    roundRect(ctx, 72, y - 60, 624, 116, 24);
     ctx.fill();
     ctx.strokeStyle = isTop ? "rgba(255,211,110,0.42)" : "rgba(0,229,255,0.22)";
     ctx.lineWidth = 3;
@@ -70,23 +71,23 @@ function drawBoard(ctx, rows = [], loading = false) {
 
     ctx.textAlign = "center";
     ctx.fillStyle = isTop ? "#FFD36E" : "#DFFBFF";
-    ctx.font = "900 46px Syne, Inter, sans-serif";
-    ctx.fillText(`#${i + 1}`, 124, y);
+    fitText(ctx, `#${i + 1}`, 78, 42, 900, "Syne, Inter, sans-serif", 24);
+    ctx.fillText(`#${i + 1}`, 122, y);
 
-    const username = (row.username || "Vibe User").slice(0, 18);
+    const username = String(row.username || "Vibe User").trim() || "Vibe User";
     ctx.textAlign = "left";
     ctx.fillStyle = "#FFFFFF";
-    fitText(ctx, username, 305, 42, 900, "Syne, Inter, sans-serif");
-    ctx.fillText(username, 188, y - 22);
+    fitText(ctx, username, 302, 36, 900, "Syne, Inter, sans-serif", 20);
+    ctx.fillText(username, 184, y - 18);
     ctx.fillStyle = "rgba(0,229,255,0.75)";
-    ctx.font = "800 20px Inter, sans-serif";
-    ctx.fillText("Frequency Score", 190, y + 30);
+    ctx.font = "800 18px Inter, sans-serif";
+    ctx.fillText("Frequency Score", 186, y + 26);
 
     ctx.textAlign = "right";
     ctx.fillStyle = isTop ? "#FFD36E" : "#FFFFFF";
     const score = Math.round(row.all_time_score || 0).toLocaleString();
-    fitText(ctx, score, 185, 44, 900, "Syne, Inter, sans-serif");
-    ctx.fillText(score, 668, y);
+    fitText(ctx, score, 160, 38, 900, "Syne, Inter, sans-serif", 22);
+    ctx.fillText(score, 670, y - 2);
   });
 
   ctx.textAlign = "center";

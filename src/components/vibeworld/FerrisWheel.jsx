@@ -184,28 +184,19 @@ export function createFerrisWheel(scene) {
   hubNeon.position.set(0, HUB_Y, 0);
   staticGroup.add(hubNeon);
 
-  // ── Boarding deck ──
-  // Placed at Z+ side of the wheel (loading zone at bottom-front)
-  const deckMat = stdMat("#232336", 0.4, 0.45);
-  const deck = new Mesh(new BoxGeometry(2.8, 0.28, 1.8), deckMat);
-  deck.position.set(0, 0.42, WHEEL_RADIUS - 0.3);
-  deck.castShadow = true;
-  staticGroup.add(deck);
+  // ── Open boarding marker — slim, intentional, no placeholder box behind the ride ──
+  const boardingHalo = new Mesh(
+    new RingGeometry(1.15, 1.55, IS_MOB ? 28 : 48),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.72, depthWrite: false, side: THREE.DoubleSide })
+  );
+  boardingHalo.rotation.x = -Math.PI / 2;
+  boardingHalo.position.set(0, 0.045, WHEEL_RADIUS + 0.25);
+  boardingHalo.renderOrder = 2;
+  staticGroup.add(boardingHalo);
 
-  // Deck edge neon strip
-  const deckStrip = new Mesh(new BoxGeometry(2.85, 0.055, 0.055), neonMat("#00E5FF", 0.85));
-  deckStrip.position.set(0, 0.58, WHEEL_RADIUS + 0.62);
-  staticGroup.add(deckStrip);
-
-  // Deck side railings
-  for (const sx of [-1.35, 1.35]) {
-    const rail = new Mesh(new BoxGeometry(0.045, 0.75, 1.8), stdMat("#2E3A4E", 0.3, 0.7));
-    rail.position.set(sx, 0.94, WHEEL_RADIUS - 0.3);
-    staticGroup.add(rail);
-    const topRail = new Mesh(new BoxGeometry(0.045, 0.045, 1.8), neonMat("#00C8FF", 0.55));
-    topRail.position.set(sx, 1.32, WHEEL_RADIUS - 0.3);
-    staticGroup.add(topRail);
-  }
+  const entryLine = new Mesh(new BoxGeometry(2.2, 0.035, 0.035), neonMat("#FFD36E", 0.74));
+  entryLine.position.set(0, 0.22, WHEEL_RADIUS + 0.92);
+  staticGroup.add(entryLine);
 
   // Base neon rings (stationary ground decor)
   const baseLed1Mat = neonMat("#00D4F0", 0.78);

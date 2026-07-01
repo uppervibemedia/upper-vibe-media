@@ -1293,7 +1293,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           }}
           isDancing={isDancing}
           activeEmote={activeEmote}
-          stageCanvas={worldMode === "city" && stageWatching ? null : worldMode === "city" ? stageCanvas : null}
+          stageCanvas={worldMode === "city" ? stageCanvas : null}
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}
           audioBeatRef={audioBeatRef}
@@ -1482,8 +1482,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         mobileLayout={mobileLayout}
       />
 
-      {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
-      {worldMode === "city" && !stageWatching && (
+      {/* Stage cover visualizer keeps branded media on the stage screen behind any video overlay */}
+      {worldMode === "city" && (
         <StageCoverVisualizer
           onReady={(c) => setStageCanvas(c)}
           video={stageVideos[stageVideoIdx] || null}

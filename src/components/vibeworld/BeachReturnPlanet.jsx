@@ -77,8 +77,8 @@ export function createBeachReturnPlanet(scene) {
   group.add(planet);
 
   const atmosphere = new THREE.Mesh(
-    new THREE.SphereGeometry(3.22, 44, 24),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color("#8B5CFF"), transparent: true, opacity: 0.30, depthWrite: false, blending: THREE.AdditiveBlending })
+    new THREE.SphereGeometry(2.76, 44, 24),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color("#8B5CFF"), transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending })
   );
   atmosphere.userData.isReturnCityPortal = true;
   group.add(atmosphere);

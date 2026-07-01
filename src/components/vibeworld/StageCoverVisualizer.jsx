@@ -302,7 +302,7 @@ export default function StageCoverVisualizer({ onReady, video, audioIntensityRef
       const nowMs = performance.now();
       const mode = perfModeRef.current;
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const interval = mode === "full" ? (isMobile ? 140 : 80) : mode === "medium" ? 350 : 1100;
+      const interval = mode === "full" ? (isMobile ? 220 : 120) : mode === "medium" ? 450 : 1300;
       if (nowMs - lastDrawRef.current < interval) {
         animRef.current = requestAnimationFrame(animate);
         return;
