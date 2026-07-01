@@ -125,7 +125,7 @@ function addConnection(group, a, b, y, color = "#7DEBFF") {
 }
 
 const CITY_NODES = [
-  { kind: "metatron", x: 3, z: -16, size: 5.2, color: "#A8F8FF" },
+  { kind: "metatron", x: 0, z: -6, size: 4.6, color: "#A8F8FF" },
   { kind: "egg", x: -6, z: -27, size: 4.4, color: "#7DEBFF" },
   { kind: "flower", x: -24, z: -22, size: 4.2, color: "#B58CFF" },
   { kind: "chakra", x: -25, z: -6, size: 4.1, color: "#FFD36E" },
