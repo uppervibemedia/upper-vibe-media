@@ -5,17 +5,17 @@ const Y_LINE = 0.032;
 const Y_SYMBOL = 0.046;
 
 export const CHAKRA_PATH_POINTS = [
-  { x: 0, z: 1.45, type: "anchor" },
-  { x: -1.7, z: 2.55, type: "chakra", key: "root", label: "ROOT", mantra: "LAM", color: "#FF3B30" },
-  { x: -1.15, z: 3.85, type: "chakra", key: "sacral", label: "SACRAL", mantra: "VAM", color: "#FF8A00" },
-  { x: -0.58, z: 5.12, type: "chakra", key: "solar", label: "SOLAR", mantra: "RAM", color: "#FFD36E" },
-  { x: 0, z: 6.42, type: "chakra", key: "heart", label: "HEART", mantra: "YAM", color: "#42FF9B" },
-  { x: 0.58, z: 7.72, type: "chakra", key: "throat", label: "THROAT", mantra: "HAM", color: "#00E5FF" },
-  { x: 1.15, z: 9.02, type: "chakra", key: "thirdEye", label: "THIRD EYE", mantra: "OM", color: "#7C8CFF" },
-  { x: 1.7, z: 10.32, type: "chakra", key: "crown", label: "CROWN", mantra: "AH", color: "#C58CFF" },
+  { x: 0, z: -6, type: "anchor" },
+  { x: 0, z: -3.35, type: "chakra", key: "root", label: "ROOT", mantra: "LAM", color: "#FF3B30" },
+  { x: 0, z: -1.45, type: "chakra", key: "sacral", label: "SACRAL", mantra: "VAM", color: "#FF8A00" },
+  { x: 0, z: 0.45, type: "chakra", key: "solar", label: "SOLAR", mantra: "RAM", color: "#FFD36E" },
+  { x: 0, z: 2.35, type: "chakra", key: "heart", label: "HEART", mantra: "YAM", color: "#42FF9B" },
+  { x: 0, z: 4.25, type: "chakra", key: "throat", label: "THROAT", mantra: "HAM", color: "#00E5FF" },
+  { x: 0, z: 6.15, type: "chakra", key: "thirdEye", label: "THIRD EYE", mantra: "OM", color: "#4F63FF" },
+  { x: 0, z: 8.05, type: "chakra", key: "crown", label: "CROWN", mantra: "AH", color: "#C58CFF" },
   { x: 0, z: 12.25, type: "leaderboard" },
   { x: 0, z: 17.8, type: "guide" },
-  { x: 0, z: 21.9, type: "ferris" },
+  { x: 0, z: 22.4, type: "ferris" },
 ];
 
 function hexToRgba(hex, alpha) {
@@ -83,12 +83,12 @@ function createSymbolTexture(chakra) {
   }
   ctx.restore();
 
-  ctx.strokeStyle = "rgba(0,229,255,0.82)";
+  ctx.strokeStyle = hexToRgba(chakra.color, 0.9);
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.arc(128, 128, 72, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(255,211,110,0.55)";
+  ctx.strokeStyle = "rgba(255,211,110,0.45)";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(128, 128, 88, 0, Math.PI * 2);
@@ -167,9 +167,10 @@ export function createChakraPathSystem(scene) {
   for (let i = 0; i < CHAKRA_PATH_POINTS.length - 1; i++) {
     const a = CHAKRA_PATH_POINTS[i];
     const b = CHAKRA_PATH_POINTS[i + 1];
-    const glow = makeSegment(a, b, 0.72, "#00E5FF", 0.12, -0.004);
-    const core = makeSegment(a, b, 0.16, i >= 8 ? "#FFD36E" : "#00D4F0", i >= 8 ? 0.32 : 0.38, 0.004);
-    const accent = makeSegment(a, b, 0.035, "#A078FF", 0.42, 0.011);
+    const glow = makeSegment(a, b, 0.58, "#00E5FF", 0.10, -0.004);
+    const core = makeSegment(a, b, 0.13, i >= 8 ? "#FFD36E" : "#00D4F0", i >= 8 ? 0.28 : 0.34, 0.004);
+    const accent = makeSegment(a, b, 0.04, "#FFFFFF", 0.58, 0.018);
+    accent.renderOrder = 11;
     group.add(glow, core, accent);
     glowSegments.push(glow);
     coreSegments.push(core, accent);
@@ -190,7 +191,7 @@ export function createChakraPathSystem(scene) {
     );
     symbol.rotation.x = -Math.PI / 2;
     symbol.position.set(chakra.x, Y_SYMBOL + index * 0.0006, chakra.z);
-    symbol.renderOrder = 7;
+    symbol.renderOrder = 9;
     symbol.userData.baseScale = 1;
     symbol.userData.baseOpacity = 0.78;
 
@@ -199,8 +200,8 @@ export function createChakraPathSystem(scene) {
       makeLineMat(index === 6 ? "#FFD36E" : chakra.color, 0.34)
     );
     halo.rotation.x = -Math.PI / 2;
-    halo.position.set(chakra.x, Y_SYMBOL + 0.01 + index * 0.0006, chakra.z);
-    halo.renderOrder = 8;
+    halo.position.set(chakra.x, Y_SYMBOL + 0.012 + index * 0.0006, chakra.z);
+    halo.renderOrder = 10;
     halo.userData.baseOpacity = 0.34;
 
     const prompt = makePromptSprite(chakra);
@@ -254,9 +255,10 @@ export function animateChakraPathSystem(scene, t, playerX = 0, playerZ = 0, mobi
   const system = scene.userData.chakraPathSystem;
   if (!system) return;
 
-  const slowPulse = 0.5 + Math.sin(t * 1.4) * 0.5;
-  for (const segment of system.glowSegments) segment.material.opacity = segment.userData.baseOpacity * (0.72 + slowPulse * 0.42);
-  for (const segment of system.coreSegments) segment.material.opacity = segment.userData.baseOpacity * (0.76 + slowPulse * 0.28);
+  const slowPulse = 0.5 + Math.sin(t * 1.25) * 0.5;
+  const flowHead = pointOnPath(system.pathPoints, t * 0.07);
+  for (const segment of system.glowSegments) segment.material.opacity = segment.userData.baseOpacity * (0.68 + slowPulse * 0.34);
+  for (const segment of system.coreSegments) segment.material.opacity = segment.userData.baseOpacity * (0.74 + slowPulse * 0.22);
 
   for (const chakra of system.chakras) {
     const dx = playerX - chakra.x;
@@ -264,12 +266,16 @@ export function animateChakraPathSystem(scene, t, playerX = 0, playerZ = 0, mobi
     const dist = Math.sqrt(dx * dx + dz * dz);
     const near = Math.max(0, 1 - dist / 4.2);
     const standing = dist < 1.45;
-    const pulse = 1 + Math.sin(t * (2.1 + near * 1.4) + chakra.phase) * (0.035 + near * 0.07);
-    const scale = pulse * (1 + near * 0.16);
+    const flowDx = flowHead.x - chakra.x;
+    const flowDz = flowHead.z - chakra.z;
+    const flowHit = Math.max(0, 1 - Math.sqrt(flowDx * flowDx + flowDz * flowDz) / 1.55);
+    const rhythm = Math.sin(t * 2.6 + chakra.phase) * 0.5 + 0.5;
+    const pulse = 1 + rhythm * 0.035 + near * 0.08 + flowHit * 0.18;
+    const scale = pulse * (1 + near * 0.08);
     chakra.symbol.scale.setScalar(scale);
-    chakra.halo.scale.setScalar(1 + near * 0.24 + Math.sin(t * 2.0 + chakra.phase) * 0.025);
-    chakra.symbol.material.opacity = Math.min(0.96, chakra.symbol.userData.baseOpacity + near * 0.18);
-    chakra.halo.material.opacity = Math.min(0.72, chakra.halo.userData.baseOpacity + near * 0.26);
+    chakra.halo.scale.setScalar(1 + near * 0.18 + flowHit * 0.34 + Math.sin(t * 2.0 + chakra.phase) * 0.018);
+    chakra.symbol.material.opacity = Math.min(1, chakra.symbol.userData.baseOpacity + near * 0.12 + flowHit * 0.22);
+    chakra.halo.material.opacity = Math.min(0.86, chakra.halo.userData.baseOpacity + near * 0.18 + flowHit * 0.38);
     if (chakra.prompt?.material) {
       const targetOpacity = standing ? 0.94 : 0;
       chakra.prompt.material.opacity += (targetOpacity - chakra.prompt.material.opacity) * (mobileThrottle ? 0.28 : 0.38);
@@ -278,9 +284,9 @@ export function animateChakraPathSystem(scene, t, playerX = 0, playerZ = 0, mobi
   }
 
   for (const dot of system.flowDots) {
-    const p = pointOnPath(system.pathPoints, dot.userData.offset + t * 0.055);
+    const p = pointOnPath(system.pathPoints, dot.userData.offset + t * 0.07);
     dot.position.x = p.x;
     dot.position.z = p.z;
-    dot.material.opacity = 0.45 + Math.sin(t * 3.2 + dot.userData.offset * 8) * 0.18;
+    dot.material.opacity = 0.46 + Math.sin(t * 3.2 + dot.userData.offset * 8) * 0.16;
   }
 }
