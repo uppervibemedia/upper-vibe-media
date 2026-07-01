@@ -95,7 +95,7 @@ function grantVibeCoins(symbolId, claimedAt) {
   }));
 }
 
-export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mobileLayout, hidden, userId }) {
+export default function SacredLearningLayer({ playerPos, livePositionRef, worldMode, isMobile, mobileLayout, hidden, userId }) {
   const [wisdomOpen, setWisdomOpen] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
   const [nearZone, setNearZone] = useState(null);
@@ -105,6 +105,8 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
   const cooldownRef = useRef({});
   const settleTimerRef = useRef(null);
   const lastPosRef = useRef(null);
+  const activeCardRef = useRef(null);
+  const activationStartedRef = useRef(null);
   const activatedTodayRef = useRef(getRewardedSymbols());
   const wisdom = useMemo(() => dailyPick(DAILY_WISDOM, "wisdom"), []);
 
@@ -121,66 +123,90 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
     }
   }, []);
 
+  useEffect(() => { activeCardRef.current = activeCard; }, [activeCard]);
+  useEffect(() => { activationStartedRef.current = activationStarted; }, [activationStarted]);
+
   useEffect(() => {
     const clearSettle = () => {
       if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
       settleTimerRef.current = null;
     };
 
-    if (!playerPos || worldMode !== "city" || hidden) {
+    const resetSymbolState = () => {
       clearSettle();
+      window.__uvcActiveSacredSymbol = null;
       setNearZone(null);
       setCandidate(null);
       setActivationStarted(null);
+      if (activeCardRef.current?.isSymbol) setActiveCard(null);
+    };
+
+    if (worldMode !== "city" || hidden) {
+      resetSymbolState();
       return;
     }
 
-    const now = performance.now();
-    const zone = ZONE_LESSONS.find((z) => (playerPos.x - z.x) ** 2 + (playerPos.z - z.z) ** 2 < z.r ** 2) || null;
-    setNearZone(zone);
+    const sample = () => {
+      const live = livePositionRef?.current || playerPos;
+      const x = Number.isFinite(live?.x) ? live.x : playerPos?.x;
+      const z = Number.isFinite(live?.z) ? live.z : playerPos?.z;
+      if (!Number.isFinite(x) || !Number.isFinite(z)) return;
 
-    const last = lastPosRef.current;
-    const moveDist = last ? Math.hypot(playerPos.x - last.x, playerPos.z - last.z) : 0;
-    lastPosRef.current = { x: playerPos.x, z: playerPos.z, t: now };
-    const isMoving = moveDist > 0.12;
-    const symbol = SYMBOLS.find((s) => (playerPos.x - s.x) ** 2 + (playerPos.z - s.z) ** 2 < s.r ** 2) || null;
+      const now = performance.now();
+      const zone = ZONE_LESSONS.find((zDef) => (x - zDef.x) ** 2 + (z - zDef.z) ** 2 < zDef.r ** 2) || null;
+      setNearZone((current) => current?.id === zone?.id ? current : zone);
 
-    if (activeCard?.isSymbol) {
-      clearSettle();
-      setCandidate(null);
-      setActivationStarted(null);
-      if (!symbol || symbol.id !== activeCard.id) {
-        window.__uvcActiveSacredSymbol = null;
-        setActiveCard(null);
-      } else {
-        window.__uvcActiveSacredSymbol = { id: symbol.id, x: symbol.x, z: symbol.z, kind: symbol.kind, startedAt: performance.now() * 0.001, active: true };
+      const last = lastPosRef.current;
+      const moveDist = last ? Math.hypot(x - last.x, z - last.z) : 0;
+      lastPosRef.current = { x, z, t: now };
+      const isMoving = moveDist > 0.045;
+      const symbol = SYMBOLS.find((s) => (x - s.x) ** 2 + (z - s.z) ** 2 < s.r ** 2) || null;
+      const active = activeCardRef.current;
+
+      if (active?.isSymbol) {
+        clearSettle();
+        setCandidate(null);
+        setActivationStarted(null);
+        if (!symbol || symbol.id !== active.id) {
+          window.__uvcActiveSacredSymbol = null;
+          setActiveCard(null);
+        } else {
+          window.__uvcActiveSacredSymbol = { id: symbol.id, x: symbol.x, z: symbol.z, kind: symbol.kind, startedAt: now * 0.001, active: true };
+        }
+        return;
       }
-      return;
-    }
 
-    if (!symbol || isMoving) {
+      if (!symbol || isMoving) {
+        clearSettle();
+        window.__uvcActiveSacredSymbol = null;
+        setCandidate(symbol || null);
+        setActivationStarted(null);
+        return;
+      }
+
+      if (cooldownRef.current[symbol.id] && cooldownRef.current[symbol.id] > now) {
+        clearSettle();
+        setCandidate(symbol);
+        setActivationStarted(null);
+        return;
+      }
+
+      setCandidate((current) => current?.id === symbol.id ? current : symbol);
+      if (!activationStartedRef.current && !settleTimerRef.current) {
+        settleTimerRef.current = setTimeout(() => {
+          settleTimerRef.current = null;
+          setActivationStarted(performance.now());
+        }, 550);
+      }
+    };
+
+    sample();
+    const id = setInterval(sample, 120);
+    return () => {
+      clearInterval(id);
       clearSettle();
-      window.__uvcActiveSacredSymbol = null;
-      setCandidate(symbol || null);
-      setActivationStarted(null);
-      return;
-    }
-
-    if (cooldownRef.current[symbol.id] && cooldownRef.current[symbol.id] > now) {
-      clearSettle();
-      setCandidate(symbol);
-      setActivationStarted(null);
-      return;
-    }
-
-    setCandidate((current) => current?.id === symbol.id ? current : symbol);
-    if (!activationStarted && !settleTimerRef.current) {
-      settleTimerRef.current = setTimeout(() => {
-        settleTimerRef.current = null;
-        setActivationStarted(performance.now());
-      }, 550);
-    }
-  }, [playerPos?.x, playerPos?.z, worldMode, hidden, activationStarted, activeCard?.id, activeCard?.isSymbol]);
+    };
+  }, [playerPos, livePositionRef, worldMode, hidden]);
 
   useEffect(() => {
     if (!activationStarted) return;

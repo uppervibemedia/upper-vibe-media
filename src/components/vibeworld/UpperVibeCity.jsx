@@ -1167,6 +1167,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         />
         <SacredLearningLayer
           playerPos={playerPos}
+          livePositionRef={danceFloorFrameRef}
           worldMode={worldMode}
           isMobile={isMobile}
           mobileLayout={mobileLayout}
