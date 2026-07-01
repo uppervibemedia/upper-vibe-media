@@ -672,16 +672,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (!stageMuted) {
         stageEmbedRef.current?.unmute();
       }
-    }, 300);
+    }, 80);
   }, [stageFullScreen, pauseGlobal, stageMuted]);
 
   const handleExitWatchMode = useCallback(() => {
+    const wasFullScreen = stageFullScreen;
+    setStageFullScreen(false);
+    preFullscreenWasWatchingRef.current = false;
     muteStage();
-    // Resume global player ONLY if fullscreen is not open
-    if (!stageFullScreen) {
-      resumeGlobalIfNeeded(stagePausedPlayerRef);
-    }
+    resumeGlobalIfNeeded(stagePausedPlayerRef);
+    if (wasFullScreen) resumeGlobalIfNeeded(fullscreenPausedPlayerRef);
     stagePausedPlayerRef.current = false;
+    fullscreenPausedPlayerRef.current = false;
 
     // 2.5s cooldown — prevents proximity from immediately re-triggering watch mode
     exitCooldownRef.current = true;
@@ -1169,6 +1171,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           isMobile={isMobile}
           mobileLayout={mobileLayout}
           hidden={stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
+          userId={user?.id}
         />
         <CityCanvas
         worldMode={worldMode}

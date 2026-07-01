@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, Flame, Sparkles, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { claimRewardCooldown } from "@/lib/rewardCooldown";
 
 const INTENTIONS = [
   { id: "peace", label: "Peace", color: "#4CC9FF", itemId: "daily_intention_peace" },
@@ -157,15 +158,21 @@ export default function DailyCityEngagement({
     try { localStorage.setItem(storageKey(userId), JSON.stringify(daily)); } catch {}
   }, [daily, userId]);
 
-  const grantCoins = useCallback((amount, reason) => {
-    if (!amount) return;
+  const grantCoins = useCallback(async (amount, reason) => {
+    if (!amount) return false;
+    const claim = await claimRewardCooldown(userId, `city:${reason}`);
+    if (!claim.allowed) {
+      setMessage(claim.message || "Reward already claimed. Come back in 24 hours.");
+      return false;
+    }
     window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
       detail: {
         source: "daily_reward",
-        coinIds: Array.from({ length: amount }, (_, i) => `daily_${dailyRef.current.date}_${reason}_${i}`),
+        coinIds: Array.from({ length: amount }, (_, i) => `daily_${claim.claimedAt}_${reason}_${i}`),
       },
     }));
-  }, []);
+    return true;
+  }, [userId]);
 
   const grantMilestoneItem = useCallback(async (item) => {
     if (!userId || !item || grantedItemsRef.current.has(item.id)) return;
@@ -295,7 +302,7 @@ export default function DailyCityEngagement({
     const afterAura = dailyRef.current;
     if (event.id === "aura" && !afterAura.rewardedActions?.aura_activation_day) {
       saveNext({ ...afterAura, rewardedActions: { ...(afterAura.rewardedActions || {}), aura_activation_day: true } });
-      grantCoins(5, "aura_activation_day");
+      grantCoins(5, `aura:${intention.id}`);
       setMessage("Intention aura set — +5 Aura Activation Day bonus");
     } else {
       setMessage("Intention aura set — daily quest progress is separate");

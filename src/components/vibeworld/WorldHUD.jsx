@@ -12,7 +12,7 @@ import {
 function useStageAutoHide(active, tvMode) {
   const [visible, setVisible] = useState(true);
   const timerRef = useRef(null);
-  const delay = tvMode ? 2000 : 3000;
+  const delay = 10000;
 
   const show = useCallback(() => {
     setVisible(true);

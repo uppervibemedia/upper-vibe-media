@@ -1,0 +1,57 @@
+{
+  "name": "UserRewardCooldown",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID or guest key"
+    },
+    "reward_key": {
+      "type": "string",
+      "description": "Unique reward cooldown key"
+    },
+    "last_claimed_at": {
+      "type": "string",
+      "description": "ISO timestamp of last reward claim"
+    }
+  },
+  "required": [
+    "user_id",
+    "reward_key",
+    "last_claimed_at"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

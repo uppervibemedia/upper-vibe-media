@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, CheckCircle2, Sparkles, X, Zap } from "lucide-react";
+import { claimRewardCooldown } from "@/lib/rewardCooldown";
 
 const DAILY_WISDOM = [
   "Your nervous system is part of your manifestation. A regulated state helps you make clearer choices.",
@@ -22,6 +23,24 @@ const SYMBOLS = [
   { id: "sri", title: "Sri Yantra", kind: "sri", x: -31, z: -19, r: 4.7, teaching: "Desire needs direction. Focus turns scattered energy into a clear signal.", action: "Write one clean intention in your mind." },
   { id: "flower", title: "Flower of Life", kind: "flower", x: 31, z: 20, r: 4.7, teaching: "All things are connected. What you repeat becomes the pattern you live inside.", action: "Repeat one habit that supports your highest pattern." },
 ];
+
+const SYMBOL_LESSONS = {
+  torus: [["Energy loops return what you keep circulating. Choose what you feed.", "Notice one habit loop and decide what energy you want it to return."], ["Giving and receiving are one field. Blocking either side slows your flow.", "Name one thing you can receive without guilt today."], ["What you focus on expands through your field and returns as pattern.", "Redirect your attention toward one outcome you actually want."]],
+  seed: [["Beginnings carry the pattern of what comes next.", "Plant one small habit that matches your future self."], ["Intention is a seed. Repetition is the water.", "Repeat one supportive thought before your next action."], ["Small starts still count. Energy grows when you keep showing up.", "Take the first tiny step instead of waiting for perfect timing."]],
+  tree: [["Your energy has roots. Stable roots create stronger expression.", "Choose one grounding action before you move forward."], ["Growth needs both structure and nourishment.", "Give your body one supportive signal right now."], ["Your state changes the fruit of your choices.", "Name the state you want your next choice to come from."]],
+  metatron: [["Structure gives energy direction. Focus turns potential into form.", "Choose one priority before you take action."], ["Order gives your magic a channel.", "Clear one distraction from your next ten minutes."], ["Discipline is devotion made visible.", "Pick one boundary that protects your focus today."]],
+  vesica: [["Transition is the space where your old self and new self overlap.", "Take one action from your becoming-self identity."], ["Balance is not standing still. It is moving with awareness.", "Name what needs less energy and what needs more."], ["New realities form through the doorway between choice and repetition.", "Step through one small doorway today."]],
+  chakra: [["A regulated nervous system helps you respond instead of react.", "Take one slow breath before your next decision."], ["Calm is power because it keeps your signal clear.", "Relax your jaw and reset your shoulders."], ["Your body is a frequency instrument. Tune it before you transmit.", "Pause for ten seconds and listen inward."]],
+  egg: [["Your energy moves with your attention. Align direction before speed.", "Point your attention at the outcome you actually want."], ["Elevation requires direction. Motion without alignment scatters power.", "Choose the direction your energy is moving today."], ["Protection and movement can exist together.", "Move forward without abandoning your peace."]],
+  sri: [["Desire needs direction. Focus turns scattered energy into a clear signal.", "Write one clean intention in your mind."], ["Manifestation strengthens when desire meets discipline.", "Pair one desire with one practical next step."], ["Beauty becomes power when your focus is precise.", "Simplify your intention to one sentence."]],
+  flower: [["All things are connected. What you repeat becomes the pattern you live inside.", "Repeat one habit that supports your highest pattern."], ["Creation grows through repetition, connection, and rhythm.", "Choose one pattern worth repeating today."], ["Your life pattern changes when your daily pattern changes.", "Upgrade one small repeated action."]],
+};
+
+function getDailySymbolLesson(symbol) {
+  const lessons = SYMBOL_LESSONS[symbol.id] || [[symbol.teaching, symbol.action]];
+  const [teaching, action] = lessons[hashString(`${todayKey()}:${symbol.id}`) % lessons.length];
+  return { teaching, action };
+}
 
 const ZONE_LESSONS = [
   { id: "stage", name: "Main Stage", x: 0, z: -32, r: 8, title: "Sound as Frequency", text: "Sound is not just entertainment here. It is a frequency tool for emotion, creativity, and state change.", action: "Notice how one song shifts your body." },
@@ -61,16 +80,16 @@ function saveRewardedSymbols(data) {
   try { localStorage.setItem(symbolRewardKey(), JSON.stringify(data)); } catch {}
 }
 
-function grantVibeCoins(symbolId) {
+function grantVibeCoins(symbolId, claimedAt) {
   window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
     detail: {
       source: "daily_reward",
-      coinIds: Array.from({ length: 5 }, (_, i) => `symbol_${todayKey()}_${symbolId}_${i}`),
+      coinIds: Array.from({ length: 5 }, (_, i) => `symbol_${claimedAt}_${symbolId}_${i}`),
     },
   }));
 }
 
-export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mobileLayout, hidden }) {
+export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mobileLayout, hidden, userId }) {
   const [wisdomOpen, setWisdomOpen] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
   const [nearZone, setNearZone] = useState(null);
@@ -80,7 +99,7 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
   const cooldownRef = useRef({});
   const activatedTodayRef = useRef(getRewardedSymbols());
   const wisdom = useMemo(() => dailyPick(DAILY_WISDOM, "wisdom"), []);
-  const symbolVariations = useMemo(() => hashString(todayKey()) % 3, []);
+
 
   useEffect(() => {
     const key = `uvc_wisdom_seen_${todayKey()}`;
@@ -130,26 +149,27 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
   useEffect(() => {
     if (!candidate || !activationStarted) return;
     const remaining = Math.max(0, 3000 - (performance.now() - activationStarted));
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       const now = performance.now();
       if (!candidate || cooldownRef.current[candidate.id] > now) return;
       cooldownRef.current[candidate.id] = now + 20000;
-      const rewarded = activatedTodayRef.current;
-      const firstToday = !rewarded[candidate.id];
+      const claim = await claimRewardCooldown(userId, `sacred_symbol:${candidate.id}`);
+      const firstToday = claim.allowed;
       if (firstToday) {
+        const rewarded = activatedTodayRef.current;
         rewarded[candidate.id] = true;
         activatedTodayRef.current = rewarded;
         saveRewardedSymbols(rewarded);
-        grantVibeCoins(candidate.id);
+        grantVibeCoins(candidate.id, claim.claimedAt);
       }
-      const shiftedTeaching = symbolVariations === 0 ? candidate.teaching : symbolVariations === 1 ? `${candidate.teaching} Your repetition becomes your rhythm.` : `${candidate.teaching} Keep it simple, clear, and embodied.`;
-      setActiveCard({ ...candidate, teaching: shiftedTeaching, reward: firstToday, alreadyActivated: !firstToday, isSymbol: true });
+      const dailyLesson = getDailySymbolLesson(candidate);
+      setActiveCard({ ...candidate, teaching: dailyLesson.teaching, action: dailyLesson.action, reward: firstToday, alreadyActivated: !firstToday, cooldownMessage: claim.message, isSymbol: true });
       setActivationStarted(null);
       window.__uvcActiveSacredSymbol = { id: candidate.id, x: candidate.x, z: candidate.z, kind: candidate.kind, startedAt: performance.now() * 0.001, until: performance.now() * 0.001 + 6 };
       window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "sacred_symbol_activated", symbolId: candidate.id } }));
     }, remaining);
     return () => clearTimeout(t);
-  }, [candidate, activationStarted, symbolVariations]);
+  }, [candidate, activationStarted, userId]);
 
   const openZoneLesson = () => {
     if (!nearZone) return;
@@ -239,7 +259,7 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
               <button onClick={() => setActiveCard(null)} className="w-10 h-10 min-w-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)", touchAction: "manipulation" }}><X className="w-4 h-4" /></button>
             </div>
             {activeCard.reward && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#4ADE80" }}><CheckCircle2 className="w-3 h-3" /> Daily reward saved — no repeat farming today</div>}
-            {activeCard.alreadyActivated && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#C4AAFF" }}><CheckCircle2 className="w-3 h-3" /> Already activated today — no extra coins</div>}
+            {activeCard.alreadyActivated && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#C4AAFF" }}><CheckCircle2 className="w-3 h-3" /> {activeCard.cooldownMessage || "Wisdom unlocked. Coins available again tomorrow."}</div>}
           </motion.div>
         )}
       </AnimatePresence>

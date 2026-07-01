@@ -89,9 +89,10 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
     setReady(true);
     setStarted(true);
     // Start playback muted (always works on iOS)
+    postCmd("playVideo");
     setTimeout(() => {
       postCmd("playVideo");
-    }, 300);
+    }, 80);
   }, [postCmd]);
 
   // ── User-triggered unmute/mute toggle ───────────────────────────────────

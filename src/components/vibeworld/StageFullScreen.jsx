@@ -38,7 +38,7 @@ export default function StageFullScreen({
   const showControls = useCallback(() => {
     setControlsVisible(true);
     clearTimer();
-    const delay = tvMode ? 2000 : 3000;
+    const delay = 10000;
     hideTimerRef.current = setTimeout(() => setControlsVisible(false), delay);
   }, [tvMode]);
 
