@@ -373,7 +373,7 @@ export function animateCitySpiritualVisuals(scene, t, px, pz, camera) {
   const charging = window.__uvcChargingSacredSymbol;
   const activeLive = active && active.active === true;
   const chargeLive = charging && charging.active === true;
-  const surge = activeLive ? active : chargeLive ? charging : null;
+  const surge = chargeLive ? charging : null;
   (group.userData.groundSymbols || []).forEach((sym) => {
     const base = sym.userData.baseOpacity || 0.2;
     const isActive = activeLive && sym.userData.symbolId === active.id;
@@ -392,14 +392,14 @@ export function animateCitySpiritualVisuals(scene, t, px, pz, camera) {
 
   const pulses = group.userData.powerPulses || [];
   if (surge && pulses.length) {
-    const crystals = [{ x: -30, z: -10 }, { x: 30, z: -10 }];
+    const gridCore = { x: 0, z: -6 };
     const target = { x: surge.x, z: surge.z };
-    const cycle = ((t - surge.startedAt) % 1.45) / 1.45;
+    const cycle = ((t - surge.startedAt) % 1.35) / 1.35;
     pulses.forEach((pulse, i) => {
-      const stagger = Math.max(0, Math.min(1, cycle - i * 0.12));
-      positionPowerPulse(pulse, crystals[i], target, stagger);
+      const stagger = Math.max(0, Math.min(1, cycle - i * 0.18));
+      positionPowerPulse(pulse, gridCore, target, stagger);
       pulse.visible = stagger > 0 && stagger < 1;
-      pulse.material.opacity = pulse.visible ? Math.sin(stagger * Math.PI) * (activeLive ? 0.72 : 0.88) : 0;
+      pulse.material.opacity = pulse.visible ? Math.sin(stagger * Math.PI) * 0.9 : 0;
     });
   } else {
     pulses.forEach((pulse) => { pulse.visible = false; pulse.material.opacity = 0; });
