@@ -183,7 +183,8 @@ function addCityBeachPlanet(group) {
   portalLabel.visible = false;
   planetGroup.add(portalLabel);
 
-  planetGroup.userData = { isBeachPortal: true, baseScale: 1 };
+  planetGroup.scale.setScalar(1.4);
+  planetGroup.userData = { isBeachPortal: true, baseScale: 1.4 };
 
   group.add(planetGroup);
   return planetGroup;
@@ -288,7 +289,8 @@ export function animateSimpleCityShoreline(scene, t) {
     const pulseActive = planet.userData._portalPulseUntil && t < planet.userData._portalPulseUntil;
     const interactive = !!planet.userData._portalHover || pulseActive;
     const pulse = pulseActive ? Math.sin((planet.userData._portalPulseUntil - t) * 28) * 0.035 : 0;
-    const targetScale = interactive ? 1.08 + pulse : 1;
+    const baseScale = planet.userData.baseScale || 1;
+    const targetScale = baseScale * (interactive ? 1.08 + pulse : 1);
     planet.scale.setScalar(planet.scale.x + (targetScale - planet.scale.x) * 0.2);
     if (halo?.material) halo.material.opacity = (interactive ? 0.18 : 0.1) + tide * 0.035;
     if (label) label.visible = interactive;

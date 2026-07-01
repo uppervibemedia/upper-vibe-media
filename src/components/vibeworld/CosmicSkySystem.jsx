@@ -440,6 +440,30 @@ export function createCosmicSky(scene) {
       radius: 94,
       orbitSpeed: (Math.PI * 2) / 230,
     },
+    {
+      // AURORA — large high-orbit planet that clears skyline landmarks
+      id: "aurora",
+      bodyColors: ["#08122A", "#123A78", "#2168B8", "#55D8FF", "#E8FBFF"],
+      glowColor: "rgba(80,220,255,0.46)", ringColor: "rgba(120,245,255,0.46)",
+      size: isMobile ? 24 : 36,
+      angleOffset: Math.PI * 0.95,
+      horizonY: 54,
+      radius: 112,
+      orbitSpeed: (Math.PI * 2) / 360,
+      clearanceBoost: 26,
+    },
+    {
+      // SOLAR VIOLET — second large high-orbit planet, offset to avoid overlap
+      id: "solarViolet",
+      bodyColors: ["#18031F", "#3E1458", "#74268A", "#E089FF", "#FFE7A8"],
+      glowColor: "rgba(230,130,255,0.42)", ringColor: "rgba(255,220,130,0.42)",
+      size: isMobile ? 22 : 34,
+      angleOffset: Math.PI * 1.38,
+      horizonY: 62,
+      radius: 118,
+      orbitSpeed: (Math.PI * 2) / 410,
+      clearanceBoost: 32,
+    },
   ];
 
   function seededRand(seed) {
@@ -449,7 +473,7 @@ export function createCosmicSky(scene) {
 
   // Remove the 3 smallest separate 3D sky planets entirely — no sprites/textures/animations created.
   const removedSmallPlanetIds = new Set(["green", "gold", "violet"]);
-  const mobilePlanetIds = new Set(["mega", "west", "ice", "teal"]);
+  const mobilePlanetIds = new Set(["mega", "west", "ice", "teal", "aurora", "solarViolet"]);
   const activePlanetDefs = PLANET_DEFS.filter((def) =>
     !removedSmallPlanetIds.has(def.id) && (!isMobile || mobilePlanetIds.has(def.id))
   );
@@ -559,15 +583,15 @@ export function createCosmicSky(scene) {
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-    } else if (def.id === "teal") {
-      // Teal: smooth horizontal bands
-      for (let b = 0; b < 6; b++) {
-        const by = cy - R + (b / 5) * R * 2;
-        const bw = R * (0.04 + rng() * 0.07);
-        const alpha = 0.05 + rng() * 0.08;
+    } else if (def.id === "teal" || def.id === "aurora" || def.id === "solarViolet") {
+      // Large city fly-by planets: smooth high-frequency bands
+      for (let b = 0; b < 7; b++) {
+        const by = cy - R + (b / 6) * R * 2;
+        const bw = R * (0.04 + rng() * 0.08);
+        const alpha = 0.06 + rng() * 0.09;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${220 + Math.floor(rng()*35)},255,${alpha})`);
+        bandG.addColorStop(0.5, def.id === "solarViolet" ? `rgba(${210 + Math.floor(rng()*35)},${110 + Math.floor(rng()*80)},255,${alpha})` : `rgba(${130 + Math.floor(rng()*90)},${210 + Math.floor(rng()*45)},255,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
@@ -644,8 +668,8 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Ring for mega planet and ice (large purple ringed) planet
-    if (def.id === "mega" || def.id === "ice") {
+    // Ring for the largest destination/fly-by planets
+    if (def.id === "mega" || def.id === "ice" || def.id === "aurora" || def.id === "solarViolet") {
       pctx.save();
       pctx.translate(cx, cy);
       pctx.scale(1, 0.28);
@@ -691,6 +715,7 @@ export function createCosmicSky(scene) {
       horizonY: def.horizonY,
       radius: def.radius,
       orbitSpeed: def.orbitSpeed,
+      clearanceBoost: def.clearanceBoost || 0,
       id: def.id,
     };
   });
@@ -883,9 +908,10 @@ export function animateCosmicSky(scene, camera, t, dt) {
       // (i.e. directly in front of the camera where buildings are visible),
       // raise it up so it clears the skyline.
       const frontFactor = Math.max(0, Math.cos(angle));
-      const buildingArc = frontFactor * frontFactor * 20;
+      const buildingArc = frontFactor * frontFactor * (20 + (p.clearanceBoost || 0));
+      const highPassLift = (p.clearanceBoost || 0) * (0.45 + Math.max(0, Math.sin(angle + p.angleOffset)) * 0.35);
 
-      const cy = camera.position.y + p.horizonY + buildingArc + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
+      const cy = camera.position.y + p.horizonY + buildingArc + highPassLift + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
 
       // Ferris ride: fade ALL planets out to prevent them passing through ride geometry.
