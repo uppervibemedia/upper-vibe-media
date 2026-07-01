@@ -14,21 +14,21 @@ const DAILY_WISDOM = [
 ];
 
 const SYMBOLS = [
-  { id: "torus", title: "Torus Field", kind: "torus", x: 22, z: 1.5, r: 3.25, teaching: "What you give energy to returns through your field. Choose your loop wisely.", action: "Name one loop you are ready to upgrade today." },
-  { id: "seed", title: "Seed of Life", kind: "seed", x: 22, z: -13.5, r: 3.15, teaching: "Every result begins as a seed. Choose the thought you keep watering.", action: "Pick one thought that supports your next move." },
-  { id: "tree", title: "Energy First", kind: "tree", x: -8, z: 4, r: 3.05, teaching: "Your state changes how you move, speak, create, and decide.", action: "Choose one state you want to embody today." },
-  { id: "metatron", title: "Metatron’s Cube", kind: "metatron", x: -24, z: 3, r: 3.2, teaching: "Structure gives energy direction. Focus turns potential into form.", action: "Choose one priority before you take action." },
-  { id: "vesica", title: "Vesica Piscis", kind: "vesica", x: 5, z: -18, r: 2.85, teaching: "New realities form where two worlds meet: who you are and who you are becoming.", action: "Take one action from your future-self identity." },
-  { id: "chakra", title: "Calm Is Power", kind: "chakra", x: -7.5, z: -21.5, r: 2.55, teaching: "A regulated nervous system helps you respond instead of react.", action: "Take one slow breath before your next decision." },
-  { id: "egg", title: "Merkaba Motion", kind: "egg", x: -25, z: 18, r: 2.8, teaching: "Your energy moves with your attention. Align your direction before you accelerate.", action: "Point your attention at the outcome you actually want." },
-  { id: "sri", title: "Sri Yantra", kind: "sri", x: -31, z: -19, r: 2.75, teaching: "Desire needs direction. Focus turns scattered energy into a clear signal.", action: "Write one clean intention in your mind." },
-  { id: "flower", title: "Flower of Life", kind: "flower", x: 31, z: 20, r: 2.75, teaching: "All things are connected. What you repeat becomes the pattern you live inside.", action: "Repeat one habit that supports your highest pattern." },
-  { id: "stage_metatron", title: "Stage Metatron’s Cube", kind: "metatron", x: -10.5, z: -27.5, r: 3.65, exitR: 4.55, teaching: "Structure gives stage energy direction.", action: "Choose one sound or thought to focus on." },
-  { id: "stage_seed", title: "Stage Seed of Life", kind: "seed", x: 10.5, z: -27.5, r: 2.15, teaching: "A new sound can plant a new state.", action: "Let one rhythm reset your energy." },
-  { id: "stage_vesica", title: "Stage Vesica Piscis", kind: "vesica", x: -16, z: -31, r: 2.0, teaching: "Music opens the doorway between feeling and action.", action: "Notice what the song invites you to become." },
-  { id: "stage_torus", title: "Stage Torus Field", kind: "torus", x: 16, z: -31, r: 2.0, teaching: "The energy you bring to sound returns through your body.", action: "Receive the frequency with intention." },
-  { id: "stage_merkaba", title: "Stage Merkaba", kind: "egg", x: -6.5, z: -24.5, r: 1.95, teaching: "Aligned motion moves energy upward.", action: "Point your attention toward elevation." },
-  { id: "stage_hex", title: "Stage Hex Geometry", kind: "hex", x: 6.5, z: -24.5, r: 1.95, teaching: "Patterns make sound feel stable and alive.", action: "Find the pattern inside the beat." },
+  { id: "torus", title: "Torus Field", kind: "torus", x: 22, z: 1.5, r: 4.1, exitR: 5.0, teaching: "What you give energy to returns through your field. Choose your loop wisely.", action: "Name one loop you are ready to upgrade today." },
+  { id: "seed", title: "Seed of Life", kind: "seed", x: 22, z: -13.5, r: 4.0, exitR: 4.9, teaching: "Every result begins as a seed. Choose the thought you keep watering.", action: "Pick one thought that supports your next move." },
+  { id: "tree", title: "Energy First", kind: "tree", x: -8, z: 4, r: 3.9, exitR: 4.8, teaching: "Your state changes how you move, speak, create, and decide.", action: "Choose one state you want to embody today." },
+  { id: "metatron", title: "Metatron’s Cube", kind: "metatron", x: -24, z: 3, r: 4.05, exitR: 5.0, teaching: "Structure gives energy direction. Focus turns potential into form.", action: "Choose one priority before you take action." },
+  { id: "vesica", title: "Vesica Piscis", kind: "vesica", x: 5, z: -18, r: 3.7, exitR: 4.6, teaching: "New realities form where two worlds meet: who you are and who you are becoming.", action: "Take one action from your future-self identity." },
+  { id: "chakra", title: "Calm Is Power", kind: "chakra", x: -7.5, z: -21.5, r: 3.4, exitR: 4.25, teaching: "A regulated nervous system helps you respond instead of react.", action: "Take one slow breath before your next decision." },
+  { id: "egg", title: "Merkaba Motion", kind: "egg", x: -25, z: 18, r: 3.6, exitR: 4.5, teaching: "Your energy moves with your attention. Align your direction before you accelerate.", action: "Point your attention at the outcome you actually want." },
+  { id: "sri", title: "Sri Yantra", kind: "sri", x: -31, z: -19, r: 3.55, exitR: 4.45, teaching: "Desire needs direction. Focus turns scattered energy into a clear signal.", action: "Write one clean intention in your mind." },
+  { id: "flower", title: "Flower of Life", kind: "flower", x: 31, z: 20, r: 3.55, exitR: 4.45, teaching: "All things are connected. What you repeat becomes the pattern you live inside.", action: "Repeat one habit that supports your highest pattern." },
+  { id: "stage_metatron", title: "Stage Metatron’s Cube", kind: "metatron", x: -9, z: -31, r: 3.65, exitR: 4.55, teaching: "Structure gives stage energy direction.", action: "Choose one sound or thought to focus on." },
+  { id: "stage_seed", title: "Stage Seed of Life", kind: "seed", x: 10.5, z: -27.5, r: 3.25, exitR: 4.1, teaching: "A new sound can plant a new state.", action: "Let one rhythm reset your energy." },
+  { id: "stage_vesica", title: "Stage Vesica Piscis", kind: "vesica", x: -16, z: -31, r: 3.15, exitR: 3.95, teaching: "Music opens the doorway between feeling and action.", action: "Notice what the song invites you to become." },
+  { id: "stage_torus", title: "Stage Torus Field", kind: "torus", x: 16, z: -31, r: 3.15, exitR: 3.95, teaching: "The energy you bring to sound returns through your body.", action: "Receive the frequency with intention." },
+  { id: "stage_merkaba", title: "Stage Merkaba", kind: "egg", x: -24, z: -11, r: 3.0, exitR: 3.8, teaching: "Aligned motion moves energy upward.", action: "Point your attention toward elevation." },
+  { id: "stage_hex", title: "Stage Hex Geometry", kind: "hex", x: 30, z: -25, r: 3.0, exitR: 3.8, teaching: "Patterns make sound feel stable and alive.", action: "Find the pattern inside the beat." },
 ];
 
 const SYMBOL_LESSONS = {

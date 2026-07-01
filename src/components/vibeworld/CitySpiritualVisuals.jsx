@@ -230,12 +230,12 @@ export function createCitySpiritualVisuals(scene) {
     ["egg", 9.6, -25, 18, 0.18, -0.1],
     ["sri", 9.4, -31, -19, 0.17, 0.14],
     ["flower", 9.4, 31, 20, 0.17, -0.12],
-    ["metatron", 6.2, -10.5, -27.5, 0.2, 0.08, "stage_metatron"],
+    ["metatron", 6.2, -9, -31, 0.2, 0.08, "stage_metatron"],
     ["seed", 6.0, 10.5, -27.5, 0.2, -0.08, "stage_seed"],
     ["vesica", 5.7, -16, -31, 0.18, 0.12, "stage_vesica"],
     ["torus", 5.7, 16, -31, 0.18, -0.12, "stage_torus"],
-    ["egg", 5.5, -6.5, -24.5, 0.18, 0.16, "stage_merkaba"],
-    ["hex", 5.5, 6.5, -24.5, 0.18, -0.16, "stage_hex"],
+    ["egg", 5.5, -24, -11, 0.18, 0.16, "stage_merkaba"],
+    ["hex", 5.5, 30, -25, 0.18, -0.16, "stage_hex"],
   ];
   group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot, id]) => {
     const baseOpacity = isMobile ? opacity * 0.78 : opacity;
