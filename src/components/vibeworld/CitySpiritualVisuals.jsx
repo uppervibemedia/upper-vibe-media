@@ -237,10 +237,12 @@ export function createCitySpiritualVisuals(scene) {
     ["888", 9.05, "rgba(255,222,142,0.82)"],
   ];
   const moonTex = moonTexture();
+  const waveTex = waveTexture();
   const panelOpacity = isMobile ? 0.2 : 0.3;
   addWallVisual(decal(flowerTex, 3.25, 3.25, [-37.08, 6.2, -25], [0, Math.PI / 2, 0], panelOpacity), 38);
   addWallVisual(decal(flowerTex, 3.05, 3.05, [37.08, 6.1, -12], [0, -Math.PI / 2, 0], panelOpacity), 38);
   addWallVisual(decal(flowerTex, 3.35, 3.35, [14, 7.6, -37.08], [0, 0, 0], isMobile ? 0.18 : 0.28), 44);
+  addWallVisual(decal(flowerTex, 2.8, 2.8, [-30, 5.9, -37.08], [0, 0, 0], isMobile ? 0.16 : 0.24), 38);
   addWallVisual(decal(windowTex, 4.0, 2.35, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.14 : 0.22), 34);
   addWallVisual(decal(windowTex, 4.0, 2.35, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.14 : 0.22), 34);
   addWallVisual(decal(windowTex, 4.3, 2.5, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.13 : 0.2), 40);
@@ -248,6 +250,16 @@ export function createCitySpiritualVisuals(scene) {
     addWallVisual(decal(angelNumberTexture(num, color), 1.35, 0.5, [-37.14, y, -4], [0, Math.PI / 2, 0], isMobile ? 0.24 : 0.36), 36);
   });
   addWallVisual(decal(moonTex, 4.7, 1.34, [37.12, 6.6, 5.5], [0, -Math.PI / 2, 0], isMobile ? 0.2 : 0.28), 34);
+  addWallVisual(decal(waveTex, 4.8, 1.8, [37.12, 5.75, -27], [0, -Math.PI / 2, 0], isMobile ? 0.16 : 0.24), 36);
+  const signOpacity = isMobile ? 0.22 : 0.34;
+  [
+    ["Protect Your Peace", 3.25, [-37.13, 4.6, -18], [0, Math.PI / 2, 0]],
+    ["Energy Leads", 2.7, [37.13, 4.55, -4], [0, -Math.PI / 2, 0]],
+    ["Become The Frequency", 3.6, [23, 5.1, -37.13], [0, 0, 0]],
+    ["Calm Is Power", 2.75, [-12, 5.15, -37.13], [0, 0, 0]],
+  ].forEach(([text, width, pos, rot]) => {
+    addWallVisual(decal(textTexture(text), width, 0.62, pos, rot, signOpacity), 28);
+  });
   const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.07 : 0.11, depthWrite: false, side: DoubleSide });
   floorSymbols.forEach(([, , x, z]) => addGridLine(group, { x: 0, z: -6 }, { x, z }, gridMat));
   const crystalMat = new MeshBasicMaterial({ color: new Color("#BFA2FF"), transparent: true, opacity: isMobile ? 0.32 : 0.48, depthWrite: false });
