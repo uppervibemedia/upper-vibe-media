@@ -227,7 +227,8 @@ function DirectChatPanel({
           type="text"
           value={draft}
           onChange={(e) => { setDraft(e.target.value); setSendError(null); }}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => { e.stopPropagation(); handleKeyDown(e); }}
+          onKeyUp={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           placeholder={failedDraft ? "Tap retry above..." : "Type a message..."}
           maxLength={500}
