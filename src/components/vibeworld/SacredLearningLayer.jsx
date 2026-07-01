@@ -23,7 +23,7 @@ const SYMBOLS = [
   { id: "egg", title: "Merkaba Motion", kind: "egg", x: -25, z: 18, r: 2.8, teaching: "Your energy moves with your attention. Align your direction before you accelerate.", action: "Point your attention at the outcome you actually want." },
   { id: "sri", title: "Sri Yantra", kind: "sri", x: -31, z: -19, r: 2.75, teaching: "Desire needs direction. Focus turns scattered energy into a clear signal.", action: "Write one clean intention in your mind." },
   { id: "flower", title: "Flower of Life", kind: "flower", x: 31, z: 20, r: 2.75, teaching: "All things are connected. What you repeat becomes the pattern you live inside.", action: "Repeat one habit that supports your highest pattern." },
-  { id: "stage_metatron", title: "Stage Metatron’s Cube", kind: "metatron", x: -10.5, z: -27.5, r: 2.15, teaching: "Structure gives stage energy direction.", action: "Choose one sound or thought to focus on." },
+  { id: "stage_metatron", title: "Stage Metatron’s Cube", kind: "metatron", x: -10.5, z: -27.5, r: 3.65, exitR: 4.55, teaching: "Structure gives stage energy direction.", action: "Choose one sound or thought to focus on." },
   { id: "stage_seed", title: "Stage Seed of Life", kind: "seed", x: 10.5, z: -27.5, r: 2.15, teaching: "A new sound can plant a new state.", action: "Let one rhythm reset your energy." },
   { id: "stage_vesica", title: "Stage Vesica Piscis", kind: "vesica", x: -16, z: -31, r: 2.0, teaching: "Music opens the doorway between feeling and action.", action: "Notice what the song invites you to become." },
   { id: "stage_torus", title: "Stage Torus Field", kind: "torus", x: 16, z: -31, r: 2.0, teaching: "The energy you bring to sound returns through your body.", action: "Receive the frequency with intention." },
@@ -107,6 +107,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
   const settleTimerRef = useRef(null);
   const lastPosRef = useRef(null);
   const activeCardRef = useRef(null);
+  const candidateRef = useRef(null);
   const activationStartedRef = useRef(null);
   const activatedTodayRef = useRef(getRewardedSymbols());
   const wisdom = useMemo(() => dailyPick(DAILY_WISDOM, "wisdom"), []);
@@ -125,6 +126,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
   }, []);
 
   useEffect(() => { activeCardRef.current = activeCard; }, [activeCard]);
+  useEffect(() => { candidateRef.current = candidate; }, [candidate]);
   useEffect(() => { activationStartedRef.current = activationStarted; }, [activationStarted]);
 
   useEffect(() => {
@@ -159,11 +161,16 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
       setNearZone((current) => current?.id === zone?.id ? current : zone);
 
       const last = lastPosRef.current;
-      const moveDist = last ? Math.hypot(x - last.x, z - last.z) : 0;
       lastPosRef.current = { x, z, t: now };
-      const isMoving = moveDist > 0.045;
-      const symbol = SYMBOLS.find((s) => (x - s.x) ** 2 + (z - s.z) ** 2 < s.r ** 2) || null;
       const active = activeCardRef.current;
+      const activeSymbolId = active?.isSymbol ? active.id : candidateRef.current?.id;
+      const inRangeSymbol = SYMBOLS.find((s) => (x - s.x) ** 2 + (z - s.z) ** 2 < s.r ** 2) || null;
+      let symbol = inRangeSymbol;
+      if (!symbol && activeSymbolId) {
+        const heldSymbol = SYMBOLS.find((s) => s.id === activeSymbolId);
+        const leaveRadius = heldSymbol?.exitR || ((heldSymbol?.r || 0) + 0.75);
+        if (heldSymbol && (x - heldSymbol.x) ** 2 + (z - heldSymbol.z) ** 2 < leaveRadius ** 2) symbol = heldSymbol;
+      }
 
       if (active?.isSymbol) {
         clearSettle();
@@ -179,11 +186,11 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
         return;
       }
 
-      if (!symbol || isMoving) {
+      if (!symbol) {
         clearSettle();
         window.__uvcActiveSacredSymbol = null;
         window.__uvcChargingSacredSymbol = null;
-        setCandidate(symbol || null);
+        setCandidate(null);
         setActivationStarted(null);
         return;
       }
@@ -200,10 +207,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
         window.__uvcChargingSacredSymbol = { id: symbol.id, x: symbol.x, z: symbol.z, kind: symbol.kind, startedAt: activationStartedRef.current * 0.001, active: true };
       }
       if (!activationStartedRef.current && !settleTimerRef.current) {
-        settleTimerRef.current = setTimeout(() => {
-          settleTimerRef.current = null;
-          setActivationStarted(performance.now());
-        }, 550);
+        setActivationStarted(now);
       }
     };
 
