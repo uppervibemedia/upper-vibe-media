@@ -122,6 +122,7 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
       detail: { source: "daily_reward", coinIds: Array.from({ length: 10 }, (_, i) => `academy_daily_${claim.claimedAt}_${i}`) },
     }));
     window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "read_frequency_lesson" } }));
+    window.dispatchEvent(new CustomEvent("uvcFrequencyScoreAction", { detail: { action: "academy_daily_lesson" } }));
     const today = new Date().toLocaleDateString("en-CA");
     const next = { ...getProgress(), lessonsCompleted: (progress.lessonsCompleted || 0) + 1, lastDailyDate: today, dailyStreak: progress.lastDailyDate === today ? (progress.dailyStreak || 1) : (progress.dailyStreak || 0) + 1 };
     saveProgress(next);
@@ -131,6 +132,7 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
 
   const completeVideoLesson = () => {
     window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "read_frequency_lesson" } }));
+    window.dispatchEvent(new CustomEvent("uvcFrequencyScoreAction", { detail: { action: "academy_learning_video", lessonId: currentLesson?.id || `video_${currentIndex}` } }));
     const key = currentLesson?.id || `video_${currentIndex}`;
     const done = new Set(progress.completedVideoIds || []);
     done.add(key);

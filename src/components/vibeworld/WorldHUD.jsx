@@ -49,6 +49,8 @@ import SocialPanel from "./panels/SocialPanel";
 import CityDashboardPanel from "./panels/CityDashboardPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import NotificationPanel from "./panels/NotificationPanel";
+import FrequencyLeaderboardPanel from "./panels/FrequencyLeaderboardPanel";
+import FrequencyLeaderboardPrompt from "./FrequencyLeaderboardPrompt";
 import { base44 } from "@/api/base44Client";
 import { beachPreviewFlags } from "@/components/vibeworld/beachPreviewFlags";
 
@@ -60,6 +62,7 @@ const ZONE_ICONS = {
   lounge: MessageCircle,
   library: Library,
   vibecheck: Sparkles,
+  leaderboard: Sparkles,
   zenbeach: Sparkles,
   surfzone: Waves,
   divezone: Waves,
@@ -205,6 +208,7 @@ export default function WorldHUD({
   const [visualizerOpen, setVisualizerOpen] = useState(false);
   useEffect(() => { onDomeOpenChange?.(visualizerOpen); }, [visualizerOpen, onDomeOpenChange]);
   const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [academyOpen, setAcademyOpen] = useState(false);
   const [academyInitialView, setAcademyInitialView] = useState("overview");
   const [ferrisWheelOpen, setFerrisWheelOpen] = useState(false);
@@ -817,6 +821,15 @@ export default function WorldHUD({
           </motion.div>
         )}
 
+        {zone?.id === "leaderboard" && !stageWatching && (
+          <FrequencyLeaderboardPrompt
+            visible={zone?.id === "leaderboard" && !leaderboardOpen}
+            onOpen={() => { hapticTap(); setLeaderboardOpen(true); onMobileModalChange?.(true); }}
+            isMobile={isMobile}
+            mobileLayout={mobileLayout}
+          />
+        )}
+
         {zone?.id === "lounge" && !loungePanelOpen && (
           <motion.div
             key="lounge-actions"
@@ -1036,6 +1049,14 @@ export default function WorldHUD({
         open={vibeCheckOpen}
         onClose={() => { setVibeCheckOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
+      />
+
+      <FrequencyLeaderboardPanel
+        open={leaderboardOpen}
+        onClose={() => { setLeaderboardOpen(false); onMobileModalChange?.(false); }}
+        user={{ id: currentUserId }}
+        isMobile={isMobile}
+        mobileLayout={mobileLayout}
       />
 
       {/* ── Academy Panel (slide-up) ────────────────────────────── */}

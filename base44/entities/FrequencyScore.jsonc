@@ -1,0 +1,53 @@
+{
+  "name": "FrequencyScore",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID"
+    },
+    "username": {
+      "type": "string",
+      "description": "Public city username only"
+    },
+    "avatar_type_key": {
+      "type": "string",
+      "description": "Public avatar icon key"
+    },
+    "avatar_image_url": {
+      "type": "string",
+      "description": "Optional public profile image URL"
+    },
+    "all_time_score": {
+      "type": "number",
+      "default": 0,
+      "description": "All-time Frequency Score"
+    },
+    "action_timestamps": {
+      "type": "object",
+      "description": "Last awarded timestamps by anti-farming key"
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "ISO timestamp of last score update"
+    }
+  },
+  "required": [
+    "user_id",
+    "username"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

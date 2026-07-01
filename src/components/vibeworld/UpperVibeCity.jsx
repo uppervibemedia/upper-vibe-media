@@ -61,6 +61,8 @@ import BeachPreviewNotice from "@/components/vibeworld/BeachPreviewNotice";
 import DailyCityEngagement from "@/components/vibeworld/DailyCityEngagement";
 import SacredLearningLayer from "@/components/vibeworld/SacredLearningLayer";
 import CommunityEnergyDisplay from "@/components/vibeworld/CommunityEnergyDisplay";
+import FrequencyScoreTracker from "@/components/vibeworld/FrequencyScoreTracker";
+import FrequencyScoreToast from "@/components/vibeworld/FrequencyScoreToast";
 import { beachPreviewFlags } from "@/components/vibeworld/beachPreviewFlags";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
@@ -1168,6 +1170,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           isMobile={isMobile}
           mobileLayout={mobileLayout}
         />
+        <FrequencyScoreTracker user={user} />
+        <FrequencyScoreToast isMobile={isMobile} mobileLayout={mobileLayout} />
         <DailyCityEngagement
           userId={user?.id}
           isMobile={isMobile}

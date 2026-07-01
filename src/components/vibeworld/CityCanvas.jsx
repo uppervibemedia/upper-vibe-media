@@ -10,6 +10,7 @@ import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { createMoonPhaseStagePath } from "./MoonPhasePath";
+import { createFrequencyLeaderboardBoard, animateFrequencyLeaderboardBoard } from "./FrequencyLeaderboardBoard";
 
 import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_ZONE_NODES } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
@@ -138,6 +139,7 @@ const STREAM_ZONES = [
   { key: "music_library", names: ["musicLibrary"], x: 22, z: -20, keepVisible: true },
   { key: "visualizer", names: ["visualizerDome", "domePortalGlow"], x: -13, z: 10, keepVisible: true },
   { key: "vibe_check", names: ["dailyVibeCheck", "vibeMirrorGroup"], x: -16, z: -13, keepVisible: true },
+  { key: "leaderboard", names: ["frequencyLeaderboardBoard"], x: -31, z: -7, keepVisible: true },
   { key: "academy", names: ["upperVibeAcademy", "academyEntrance"], x: -28, z: 5, keepVisible: true },
   { key: "crystal", names: ["crystalZone"], x: CRYSTAL_ZONE_X, z: CRYSTAL_ZONE_Z, keepVisible: true },
   { key: "ferris", names: ["ferrisWheel"], x: WHEEL_X, z: WHEEL_Z, keepVisible: true },
@@ -352,6 +354,7 @@ export function buildPark(scene) {
   buildVisualizerDomeZone(scene);
   buildDailyVibeCheckZone(scene);
   buildVibeAcademyZone(scene);
+  createFrequencyLeaderboardBoard(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 8.5.5 CRYSTAL ZONE — old Vibe Academy location
@@ -1698,6 +1701,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         scene.userData._ferrisRiding = ferrisRidingRef.current;
         if (!prioritizeMovement || frameRef.current % 3 === 0) animateCosmicSky(scene, camera, t, dt);
         if (worldModeRef.current === "city" && (!prioritizeMovement || frameRef.current % 3 === 0)) tickAddOns(scene, t);
+        if (worldModeRef.current === "city" && (!isMob || frameRef.current % 3 === 0)) animateFrequencyLeaderboardBoard(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height

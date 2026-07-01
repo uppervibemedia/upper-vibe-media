@@ -40,6 +40,12 @@ const ZONES = {
     cx: -16, cz: -13, radius: 4,
     icon: "Sparkles",
   },
+  leaderboard: {
+    name: "Frequency Leaderboard",
+    id: "leaderboard",
+    cx: -31, cz: -7, radius: 5,
+    icon: "Trophy",
+  },
   zenbeach: {
     name: "Zen Beach",
     id: "zenbeach",

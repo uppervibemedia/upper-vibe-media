@@ -38,6 +38,8 @@ const ACTION_REWARDS = {
   academy: 10,
 };
 
+const FREQUENCY_SCORE_ACTIONS = new Set(["aura_zone", "crystal_charge", "stage_visualizer", "ferris_wheel"]);
+
 const WEEKLY_EVENTS = [
   { id: "abundance", name: "Abundance Week", bonus: "+5 bonus coins on completed city quest" },
   { id: "crystal", name: "Crystal Charge Weekend", bonus: "+5 bonus coins on crystal charge" },
@@ -216,6 +218,9 @@ export default function DailyCityEngagement({
 
     if (!next.completed[action]) {
       next.completed[action] = true;
+      if (FREQUENCY_SCORE_ACTIONS.has(action)) {
+        window.dispatchEvent(new CustomEvent("uvcFrequencyScoreAction", { detail: { action } }));
+      }
       changed = true;
     }
 
@@ -230,6 +235,7 @@ export default function DailyCityEngagement({
     if (allDone && !next.questRewardClaimed) {
       next.questRewardClaimed = true;
       next.questCompletedAt = new Date().toISOString();
+      window.dispatchEvent(new CustomEvent("uvcFrequencyScoreAction", { detail: { action: "daily_city_quest_complete" } }));
       rewards.push([50, "daily_city_quest"]);
       if (event.id === "abundance") rewards.push([5, "abundance_event_bonus"]);
       changed = true;
