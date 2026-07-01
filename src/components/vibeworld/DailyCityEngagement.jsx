@@ -30,7 +30,7 @@ const TASKS = [
 
 const ACTION_REWARDS = {
   vibecheck: 10,
-  aura_zone: 3,
+  aura_zone: 0,
   crystal_charge: 5,
   stage_visualizer: 10,
   ferris_wheel: 5,
@@ -219,6 +219,9 @@ export default function DailyCityEngagement({
     if (!changed) return;
     saveNext(next);
     rewards.forEach(([amount, reason]) => grantCoins(amount, reason));
+    if (rewards.some(([, reason]) => reason === "daily_city_quest")) {
+      setMessage("Daily City Quest Complete — +50 Vibe Coins");
+    }
   }, [event.id, grantCoins, saveNext]);
 
   useEffect(() => {
@@ -289,7 +292,14 @@ export default function DailyCityEngagement({
     saveNext(next);
     onSetIntentionAura?.(intention);
     completeAction("aura_zone");
-    setMessage("Your frequency is set.");
+    const afterAura = dailyRef.current;
+    if (event.id === "aura" && !afterAura.rewardedActions?.aura_activation_day) {
+      saveNext({ ...afterAura, rewardedActions: { ...(afterAura.rewardedActions || {}), aura_activation_day: true } });
+      grantCoins(5, "aura_activation_day");
+      setMessage("Intention aura set — +5 Aura Activation Day bonus");
+    } else {
+      setMessage("Intention aura set — daily quest progress is separate");
+    }
   };
 
   const closePanel = () => {
@@ -322,7 +332,7 @@ export default function DailyCityEngagement({
                 <p className="text-[11px] font-black tracking-[0.18em] uppercase" style={{ color: "#00E5FF" }}>{message}</p>
                 <div className="flex items-center gap-3 mt-2 text-[10px] text-white/45">
                   <span className="inline-flex items-center gap-1"><Flame className="w-3 h-3 text-yellow-400" /> {daily.streak} day streak</span>
-                  <span>Reward: +50 coins</span>
+                  <span>{daily.questRewardClaimed ? "Quest reward claimed" : "Quest reward unlocks at 3/3"}</span>
                 </div>
               </div>
               <button onClick={closePanel} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", touchAction: "manipulation" }}>
@@ -352,15 +362,15 @@ export default function DailyCityEngagement({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] font-black text-white/35 uppercase tracking-wider">Daily city quest</p>
-                  <p className="text-[10px] font-black" style={{ color: completedCount === 3 ? "#4ADE80" : "#FFD36E" }}>{completedCount}/3</p>
+                  <p className="text-[10px] font-black" style={{ color: completedCount === 3 ? "#4ADE80" : "#FFD36E" }}>{completedCount}/3{completedCount === 3 ? " Complete" : ""}</p>
                 </div>
                 <div className="space-y-1.5">
                   {questItems.map((task) => {
                     const done = !!daily.completed?.[task.id];
                     return (
                       <div key={task.id} className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: done ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.035)", border: `1px solid ${done ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)"}` }}>
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: done ? "#4ADE80" : "rgba(255,255,255,0.08)", color: done ? "#001008" : "rgba(255,255,255,0.2)" }}>
-                          <Check className="w-2.5 h-2.5" />
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: done ? "#4ADE80" : "transparent", border: done ? "1px solid #4ADE80" : "1px solid rgba(255,255,255,0.22)", color: done ? "#001008" : "transparent" }}>
+                          {done && <Check className="w-2.5 h-2.5" />}
                         </div>
                         <span className="text-[11px] font-bold" style={{ color: done ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.52)" }}>{task.label}</span>
                       </div>
@@ -389,7 +399,7 @@ export default function DailyCityEngagement({
             className="pointer-events-auto mx-auto flex items-center gap-2 px-3 py-2 rounded-full text-[10px] font-black tracking-wider uppercase"
             style={{ background: "rgba(5,6,18,0.76)", border: "1px solid rgba(0,229,255,0.18)", color: "rgba(255,255,255,0.62)", backdropFilter: "blur(14px)", touchAction: "manipulation" }}
           >
-            <Zap className="w-3 h-3" style={{ color: "#FFD36E" }} /> Daily Quest {completedCount}/3 <ChevronDown className="w-3 h-3" />
+            <Zap className="w-3 h-3" style={{ color: "#FFD36E" }} /> Daily Quest {completedCount}/3{completedCount === 3 ? " Complete" : ""} <ChevronDown className="w-3 h-3" />
           </motion.button>
         )}
       </AnimatePresence>

@@ -143,7 +143,7 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
         grantVibeCoins(candidate.id);
       }
       const shiftedTeaching = symbolVariations === 0 ? candidate.teaching : symbolVariations === 1 ? `${candidate.teaching} Your repetition becomes your rhythm.` : `${candidate.teaching} Keep it simple, clear, and embodied.`;
-      setActiveCard({ ...candidate, teaching: shiftedTeaching, reward: firstToday });
+      setActiveCard({ ...candidate, teaching: shiftedTeaching, reward: firstToday, alreadyActivated: !firstToday, isSymbol: true });
       setActivationStarted(null);
       window.__uvcActiveSacredSymbol = { id: candidate.id, x: candidate.x, z: candidate.z, kind: candidate.kind, startedAt: performance.now() * 0.001, until: performance.now() * 0.001 + 6 };
       window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "sacred_symbol_activated", symbolId: candidate.id } }));
@@ -226,19 +226,20 @@ export default function SacredLearningLayer({ playerPos, worldMode, isMobile, mo
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             className="absolute left-1/2 z-[68] pointer-events-auto rounded-3xl overflow-hidden"
-            style={{ transform: "translateX(-50%)", bottom: isMobile && mobileLayout ? mobileLayout.actionBottom + 92 : 150, width: isMobile ? "min(90vw, 360px)" : 380, background: "rgba(5,6,18,0.9)", border: "1px solid rgba(0,229,255,0.22)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.5), 0 0 34px rgba(0,229,255,0.14)" }}
+            style={{ transform: "translateX(-50%)", bottom: isMobile && mobileLayout ? mobileLayout.actionBottom + 132 : 190, width: isMobile ? "min(88vw, 350px)" : 380, maxHeight: isMobile ? "42dvh" : "48vh", overflowY: "auto", background: "rgba(5,6,18,0.92)", border: "1px solid rgba(0,229,255,0.22)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.5), 0 0 34px rgba(0,229,255,0.14)" }}
           >
             <div className="flex items-start gap-3 p-4">
               <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(0,229,255,0.12)", color: "#00E5FF" }}><Sparkles className="w-4 h-4" /></div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: activeCard.reward ? "#FFD36E" : "#00E5FF" }}>{activeCard.reward ? "+5 Vibe Coins — Symbol Activated" : activeCard.zone || "Frequency Lesson"}</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: activeCard.reward ? "#FFD36E" : activeCard.alreadyActivated ? "#C4AAFF" : "#00E5FF" }}>{activeCard.reward ? "+5 Vibe Coins — Symbol Activated" : activeCard.alreadyActivated ? "Already activated today — wisdom available, no repeat reward" : activeCard.zone || "Frequency Lesson"}</p>
                 <h3 className="font-heading font-black text-white text-base mt-1">{activeCard.title}</h3>
                 <p className="text-[12px] leading-relaxed text-white/66 mt-2">“{activeCard.teaching}”</p>
                 <p className="text-[11px] leading-relaxed mt-2" style={{ color: "#FFD36E" }}><b>Action:</b> {activeCard.action}</p>
               </div>
-              <button onClick={() => setActiveCard(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", touchAction: "manipulation" }}><X className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setActiveCard(null)} className="w-10 h-10 min-w-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)", touchAction: "manipulation" }}><X className="w-4 h-4" /></button>
             </div>
             {activeCard.reward && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#4ADE80" }}><CheckCircle2 className="w-3 h-3" /> Daily reward saved — no repeat farming today</div>}
+            {activeCard.alreadyActivated && <div className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider border-t border-white/5" style={{ color: "#C4AAFF" }}><CheckCircle2 className="w-3 h-3" /> Already activated today — no extra coins</div>}
           </motion.div>
         )}
       </AnimatePresence>
