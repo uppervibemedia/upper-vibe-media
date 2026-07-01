@@ -132,11 +132,11 @@ const CITY_NODES = [
   { key: "lounge", kind: "flower", x: -22, z: -25, size: 4.8, color: "#B58CFF", opacity: IS_MOBILE ? 0.22 : 0.30 },
   { key: "library", kind: "seed", x: 22, z: -20, size: 4.8, color: "#7DEBFF", opacity: IS_MOBILE ? 0.22 : 0.30 },
   { key: "vibeCheck", kind: "tree", x: -16, z: -13, size: 4.4, color: "#FFD36E", opacity: IS_MOBILE ? 0.20 : 0.28 },
-  { key: "visualizer", kind: "vesica", x: -13, z: 10, size: 4.6, color: "#7DEBFF", opacity: IS_MOBILE ? 0.20 : 0.28 },
-  { key: "beachGate", kind: "fruit", x: 12, z: 8, size: 4.8, color: "#FFD36E", opacity: IS_MOBILE ? 0.20 : 0.28 },
-  { key: "ferris", kind: "pentagon", x: 29, z: 8, size: 4.6, color: "#B58CFF", opacity: IS_MOBILE ? 0.20 : 0.28 },
-  { key: "westSpoke", kind: "circle", x: -30, z: 6, size: 4.3, color: "#A8F8FF", opacity: IS_MOBILE ? 0.18 : 0.25 },
-  { key: "eastSpoke", kind: "circle", x: 30, z: 6, size: 4.3, color: "#A8F8FF", opacity: IS_MOBILE ? 0.18 : 0.25 },
+  { key: "visualizer", kind: "vesica", x: -13, z: 10, size: 5.6, color: "#7DEBFF", opacity: IS_MOBILE ? 0.21 : 0.30 },
+  { key: "beachGate", kind: "fruit", x: 12, z: 8, size: 5.8, color: "#FFD36E", opacity: IS_MOBILE ? 0.21 : 0.30 },
+  { key: "ferris", kind: "pentagon", x: 29, z: 8, size: 5.2, color: "#B58CFF", opacity: IS_MOBILE ? 0.20 : 0.28 },
+  { key: "westSpoke", kind: "circle", x: -30, z: 6, size: 5.6, color: "#A8F8FF", opacity: IS_MOBILE ? 0.20 : 0.28 },
+  { key: "eastSpoke", kind: "circle", x: 30, z: 6, size: 5.6, color: "#A8F8FF", opacity: IS_MOBILE ? 0.20 : 0.28 },
 ];
 
 const CITY_CONNECTIONS = [

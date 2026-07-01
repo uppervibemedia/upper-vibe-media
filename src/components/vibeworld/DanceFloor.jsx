@@ -62,7 +62,7 @@ function createFlowerOfLifeTexture(size = 768) {
   for (const c of centers) {
     const dx = c.x - cx;
     const dy = c.y - cy;
-    if (Math.sqrt(dx * dx + dy * dy) > floorRadius * 0.74) continue;
+    if (Math.sqrt(dx * dx + dy * dy) > floorRadius * 0.88) continue;
     ctx.beginPath();
     ctx.arc(c.x, c.y, circleRadius, 0, Math.PI * 2);
     ctx.stroke();
@@ -121,12 +121,12 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
     color: new Color("#FFFFFF"),
     depthWrite: false,
     transparent: true,
-    opacity: isMobile ? 0.72 : 0.82,
+    opacity: isMobile ? 0.78 : 0.9,
     side: THREE.DoubleSide,
   });
 
   const flowerFloor = new Mesh(
-    new CircleGeometry(PLAZA_R * 0.82, isMobile ? 64 : 96),
+    new CircleGeometry(PLAZA_R * 0.96, isMobile ? 72 : 112),
     patternMat,
   );
   flowerFloor.rotation.x = -Math.PI / 2;
@@ -142,7 +142,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
     opacity: isMobile ? 0.34 : 0.42,
     side: THREE.DoubleSide,
   });
-  const centerRing = new Mesh(new RingGeometry(1.3, 1.62, isMobile ? 64 : 96), centerMat);
+  const centerRing = new Mesh(new RingGeometry(1.7, 2.04, isMobile ? 72 : 112), centerMat);
   centerRing.rotation.x = -Math.PI / 2;
   centerRing.position.set(PLAZA_X, 0.011, PLAZA_Z);
   centerRing.renderOrder = 3;
@@ -168,7 +168,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
     centerMat,
     outerMat,
     texture,
-    basePatternOpacity: isMobile ? 0.72 : 0.82,
+    basePatternOpacity: isMobile ? 0.78 : 0.9,
     baseCenterOpacity: isMobile ? 0.34 : 0.42,
     baseOuterOpacity: isMobile ? 0.26 : 0.34,
     lastUpdate: 0,

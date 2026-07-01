@@ -156,6 +156,8 @@ function affirmationHologram(text, x, y, z, baseOpacity) {
   holder.position.set(x, y, z);
   holder.userData.isAffirmationHologram = true;
   holder.userData.baseOpacity = baseOpacity;
+  holder.userData.baseY = y;
+  holder.userData.phase = Math.random() * Math.PI * 2;
   const tex = textTexture(text);
   [0, Math.PI].forEach((ry) => {
     const side = new Mesh(new PlaneGeometry(text.length > 18 ? 7.2 : text.length > 14 ? 6.2 : 5.2, 1.24), new MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.FrontSide }));
@@ -179,8 +181,25 @@ export function createCitySpiritualVisuals(scene) {
   const group = new Group(); group.name = "citySpiritualVisuals";
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  const affirmations = [["Protect Your Peace", -9, 1.9, -18], ["Energy Leads", 9, 1.9, -15], ["Become The Frequency", -20, 2.2, -4], ["Calm Is Power", 17, 2.1, 9.5], ["Focus Is Currency", -7, 2.25, 10.5], ["Your Energy Opens Doors", 22, 2.2, -23]];
-  group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.58 : 0.76); group.add(h); return h; });
+  const floorSymbols = [
+    ["metatron", 8.4, -24, 3, 0.28, 0.12],
+    ["seed", 7.4, 23, 3, 0.26, -0.1],
+    ["tree", 6.8, -7, 15, 0.24, 0.16],
+    ["vesica", 6.8, 15, -15, 0.24, -0.18],
+  ];
+  group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot]) => {
+    const sym = groundDecal(groundSymbolTexture(kind), size, x, z, isMobile ? opacity * 0.78 : opacity, rot);
+    group.add(sym);
+    return sym;
+  });
+
+  const words = ["ALIGN", "RECEIVE", "TRUST", "FLOW", "CALM", "ACTIVATE", "I AM", "BECOME", "HARMONIZE", "ENERGY FIRST", "HIGHER SELF", "STAY ALIGNED"];
+  const spots = [[-9, 1.9, -18], [9, 1.9, -15], [-20, 2.2, -4], [17, 2.1, 9.5], [-7, 2.25, 10.5], [22, 2.2, -23], [-28, 2.3, 2], [27, 2.3, -2], [0, 2.1, -21]];
+  const shuffledWords = [...words].sort(() => Math.random() - 0.5);
+  const shuffledSpots = [...spots].sort(() => Math.random() - 0.5);
+  const count = isMobile ? 5 : 7;
+  const affirmations = shuffledSpots.slice(0, count).map((spot, i) => [shuffledWords[i % shuffledWords.length], ...spot]);
+  group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.56 : 0.74); group.add(h); return h; });
 
   scene.add(group); scene.userData.citySpiritualVisuals = group;
 }
@@ -190,8 +209,10 @@ export function animateCitySpiritualVisuals(scene, t, px, pz) {
   if (!group?.userData?.affirmations) return;
   group.userData.affirmations.forEach((h) => {
     const dx = h.position.x - px, dz = h.position.z - pz, d2 = dx * dx + dz * dz;
-    const near = d2 < 16 * 16;
-    const opacity = near ? h.userData.baseOpacity * (0.82 + Math.sin(t * 1.1) * 0.08) : 0;
+    const near = d2 < 18 * 18;
+    h.position.y = h.userData.baseY + Math.sin(t * 0.75 + h.userData.phase) * 0.08;
+    h.rotation.y = Math.sin(t * 0.18 + h.userData.phase) * 0.12;
+    const opacity = near ? h.userData.baseOpacity * (0.82 + Math.sin(t * 1.1 + h.userData.phase) * 0.08) : 0;
     h.visible = near;
     h.children.forEach((side) => { side.material.opacity = opacity; });
   });
