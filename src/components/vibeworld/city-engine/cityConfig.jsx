@@ -16,7 +16,7 @@
 // ═══════════════════════════════════════════════════════════════════
 // Source: CityCanvas + zone module positions. Updated when zones move.
 export const ZONES = {
-  centralPlaza:    { label: "Central Plaza",      x: 0,   z: -13, tag: "plaza" },
+  centralPlaza:    { label: "Central Plaza",      x: 0,   z: -6,  tag: "plaza" },
   musicStage:      { label: "Music Stage",        x: 0,   z: -32, tag: "stage" },
   vibeLounge:      { label: "Vibe Lounge",        x: -22, z: -26, tag: "lounge" },
   musicLibrary:    { label: "Music Library",       x: 22,  z: -20, tag: "library" },

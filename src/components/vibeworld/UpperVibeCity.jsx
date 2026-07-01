@@ -104,7 +104,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
-  // Launch handled by LaunchRide — no manual "LAUNCH" button
+  // City launch pad/orb gameplay is temporarily disabled for performance.
   // ── Personal hoverboard: owned item, equipped from Inventory only ───────
   const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
   const [equippedBoard, setEquippedBoard] = useState(null);
@@ -1469,7 +1469,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </>
       )}
 
-      {/* Launch is handled by LaunchRide — no manual LAUNCH button */}
+      {/* City launch pad/orb gameplay temporarily disabled for performance */}
       {/* Crystal Zone is now a decorative landmark — no UI/interaction */}
 
       {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}

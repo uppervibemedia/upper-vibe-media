@@ -5,6 +5,9 @@ import { LAUNCH_PADS, SHOP } from "./city-engine/cityConfig";
 import { setupLaunchRide, tickLaunchRide, animateLaunchCoins, MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 import { resetSessionCoins, getVibeCoinBank } from "@/lib/vibeCoinBank";
 
+export const enableCityLaunchPads = false;
+export const enableCityOrbCoins = false;
+
 // ─────────────────────────────────────────────────────────────
 // CityAddOns — gateways new objects into the live Three.js
 // scene. Now also runs the LaunchRide auto-launch + coin
@@ -13,10 +16,6 @@ import { resetSessionCoins, getVibeCoinBank } from "@/lib/vibeCoinBank";
 
 const KEYS_CREATED = [
   "_upperVibeShop",
-  "_launchPad_lounge",
-  "_launchPad_library",
-  "_launchPad_academy",
-  "_launchPad_crystal",
 ];
 
 export { KEYS_CREATED };
@@ -35,18 +34,17 @@ export function runConnections(scene, audioBeatRef) {
   scene.userData._upperVibeShop = shop;
   scene.userData._audioBeatRef = audioBeatRef || null;
 
-  // ── 4 Launch Pads ────────────────────────────────────────
-  Object.entries(LAUNCH_PADS).forEach(([id, cfg]) => {
-    const pad = createLaunchPad(scene, cfg);
-    scene.userData[`_launchPad_${id}`] = pad;
-  });
-
-  // ── LaunchRide: floating coins in city sky ───────────────
-  setupLaunchRide(scene);
-
-  // ── Reset session coin tally on city entry ──────────────
-  resetSessionCoins();
-  window.__lrTotalCoins = getVibeCoinBank();
+  // ── Temporary performance flag: city launch pads + sky orb coins disabled ──
+  if (enableCityLaunchPads && enableCityOrbCoins) {
+    Object.entries(LAUNCH_PADS).forEach(([id, cfg]) => {
+      const pad = createLaunchPad(scene, cfg);
+      scene.userData[`_launchPad_${id}`] = pad;
+    });
+    setupLaunchRide(scene);
+    resetSessionCoins();
+    window.__lrTotalCoins = getVibeCoinBank();
+  }
+  window.__lr_flying = false;
   window.__lrCoinsCollected = 0;
   window.__lrJustLanded = false;
 }
@@ -70,7 +68,7 @@ export function tickAddOns(scene, t) {
     if (nearShop || addOnFrame % 16 === 0) animateShop(shop, t, beat);
   }
 
-  if (addOnFrame % 2 === 0) {
+  if (enableCityLaunchPads && enableCityOrbCoins && addOnFrame % 2 === 0) {
     for (const [id, cfg] of Object.entries(LAUNCH_PADS)) {
       const pad = scene.userData[`_launchPad_${id}`];
       if (!pad) continue;
@@ -81,10 +79,11 @@ export function tickAddOns(scene, t) {
     }
   }
 
-  // LaunchRide — auto-launch detection, flight, mid-air coin collect
-  tickLaunchRide(scene, t);
-  animateLaunchCoins(scene, t);
-
-  // Keep window total in sync without hitting localStorage every frame.
-  if (addOnFrame % 30 === 0) window.__lrTotalCoins = getVibeCoinBank();
+  if (enableCityLaunchPads && enableCityOrbCoins) {
+    tickLaunchRide(scene, t);
+    animateLaunchCoins(scene, t);
+    if (addOnFrame % 30 === 0) window.__lrTotalCoins = getVibeCoinBank();
+  } else {
+    window.__lr_flying = false;
+  }
 }

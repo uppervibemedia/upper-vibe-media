@@ -755,7 +755,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       window.__hbScene = scene;
       window.__uvcWorldMode = worldModeRef.current;
       scene.userData.worldMode = worldModeRef.current;
-      // CityAddOns: city-only shop + launch pads; Beach World stays separate.
+      // CityAddOns: city-only shop; temporary performance flags disable launch/orb gameplay.
       if (worldModeRef.current === "city") runConnections(scene, audioIntensityRef);
 
       const asp = rw / Math.max(rh, 1);
@@ -1128,8 +1128,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ── Launch arc handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE) ──
-        // Step-on city pads auto-launch walking AND hoverboard riders.
+        // ── Optional launch arc bridge; city launch/orb gameplay is currently disabled for performance. ──
         const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
         if (!beachActivityStateRef.current) {
           py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current;
