@@ -361,6 +361,7 @@ export function startBeachActivity(scene, type, pose) {
     state.rideU = 0;
     buildCoasterTrack(group, state.curve);
     state.cart = makeCoasterCart(group);
+    state.cart.visible = false;
   }
   return state;
 }
@@ -487,9 +488,9 @@ export function applyBeachActivityCamera(state, camera, dt) {
     const u = Math.min(0.985, Math.max(0, state.rideU || 0));
     const tangent = state.curve.getTangentAt(u).normalize();
     const look = state.curve.getPointAt(Math.min(0.999, u + 0.04));
-    const povCam = pos.clone().add(tangent.clone().multiplyScalar(0.92)).add(new THREE.Vector3(0, 1.08, 0));
+    const povCam = pos.clone().add(tangent.clone().multiplyScalar(1.85)).add(new THREE.Vector3(0, 1.18, 0));
     camera.position.lerp(povCam, Math.min(1, dt * 12));
-    camera.lookAt(look.x, look.y + 0.7, look.z);
+    camera.lookAt(look.x, look.y + 0.82, look.z);
     return;
   }
   if (state.type === "dive") {
