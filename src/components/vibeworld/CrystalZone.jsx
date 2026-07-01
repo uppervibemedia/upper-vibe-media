@@ -55,62 +55,30 @@ function mergeGeos(parts) {
 
 // ── Materials — mobile uses MeshStandardMaterial (no transmission/ior/thickness) ──
 function makeCenterMat() {
-  if (IS_MOBILE) {
-    return new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#C8E8FF"),
-      emissive: new THREE.Color("#5577FF"),
-      emissiveIntensity: 0.7,
-      metalness: 0.1,
-      roughness: 0.05,
-      transparent: true,
-      opacity: 0.88,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-  }
-  return new THREE.MeshPhysicalMaterial({
+  return new THREE.MeshStandardMaterial({
     color: new THREE.Color("#C8E8FF"),
     emissive: new THREE.Color("#5577FF"),
-    emissiveIntensity: 0.5,
-    metalness: 0.0,
-    roughness: 0.0,
-    transmission: 0.88,
-    thickness: 2.2,
-    ior: 2.0,
-    transparent: true,
-    opacity: 0.90,
+    emissiveIntensity: IS_MOBILE ? 0.7 : 0.5,
+    metalness: 0.12,
+    roughness: 0.04,
+    transparent: false,
+    opacity: 1,
     side: THREE.DoubleSide,
-    depthWrite: false,
+    depthWrite: true,
   });
 }
 
 function makeSmallMat(color, emissive, opacity = 0.76) {
-  if (IS_MOBILE) {
-    return new THREE.MeshStandardMaterial({
-      color: new THREE.Color(color),
-      emissive: new THREE.Color(emissive),
-      emissiveIntensity: 0.65,
-      metalness: 0.05,
-      roughness: 0.08,
-      transparent: true,
-      opacity,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-  }
-  return new THREE.MeshPhysicalMaterial({
+  return new THREE.MeshStandardMaterial({
     color: new THREE.Color(color),
     emissive: new THREE.Color(emissive),
-    emissiveIntensity: 0.55,
-    metalness: 0.0,
-    roughness: 0.05,
-    transmission: 0.55,
-    thickness: 0.7,
-    ior: 1.8,
-    transparent: true,
-    opacity,
+    emissiveIntensity: IS_MOBILE ? 0.65 : 0.55,
+    metalness: 0.08,
+    roughness: 0.08,
+    transparent: false,
+    opacity: 1,
     side: THREE.DoubleSide,
-    depthWrite: false,
+    depthWrite: true,
   });
 }
 
@@ -160,7 +128,7 @@ export function createCrystalZone(scene) {
   // ── Energy platform — circular base ────────────────────────────────
   const baseMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color("#1A0E44"),
-    transparent: true, opacity: 0.30, depthWrite: false, side: THREE.DoubleSide,
+    transparent: false, opacity: 1, depthWrite: true, side: THREE.DoubleSide,
   });
   const baseDisc = new THREE.Mesh(new THREE.CircleGeometry(5.5, IS_MOBILE ? 32 : 64), baseMat);
   baseDisc.rotation.x = -Math.PI / 2;
@@ -414,7 +382,7 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ, tvSmooth = fa
 
   // ── Ground rings — write only on slow frames ──
   if (cz._frame % 4 === 0) {
-    cz.baseMat.opacity      = 0.18;
+    cz.baseMat.opacity      = 1;
     cz.outerRingMat.opacity = 0.28;
     cz.midRingMat.opacity   = 0.14;
     cz.innerRingMat.opacity = 0.24;
