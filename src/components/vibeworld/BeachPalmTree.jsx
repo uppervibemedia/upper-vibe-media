@@ -2,8 +2,7 @@ import * as THREE from "three";
 
 const trunkMat = new THREE.MeshStandardMaterial({ color: new THREE.Color("#7A4E2A"), roughness: 0.86, metalness: 0.05 });
 const trunkBandMat = new THREE.MeshStandardMaterial({ color: new THREE.Color("#A16B3A"), roughness: 0.82, metalness: 0.04 });
-const frondMats = ["#16B8A8", "#23D7C7", "#2AA7FF", "#8B6CFF"].map((color) => new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.86, depthWrite: false, side: THREE.DoubleSide }));
-const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#65F4FF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+const frondMats = ["#1F6F3A", "#2E8B45", "#3F9B4F", "#287A3E"].map((color) => new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.74, metalness: 0.02, side: THREE.DoubleSide }));
 
 export function addNeonPalm(parent, x, z, scale = 1, opts = {}) {
   const group = new THREE.Group();
@@ -36,13 +35,9 @@ export function addNeonPalm(parent, x, z, scale = 1, opts = {}) {
     crown.add(leaf);
   }
 
-  const crownGlow = new THREE.Mesh(new THREE.SphereGeometry(0.82 * scale, 10, 6), glowMat);
-  crownGlow.scale.y = 0.42;
-  crownGlow.renderOrder = 8;
-  crown.add(crownGlow);
   group.add(crown);
 
-  group.userData.isNeonPalm = true;
+  group.userData.isNeonPalm = false;
   parent.add(group);
   return group;
 }

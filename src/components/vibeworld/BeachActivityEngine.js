@@ -12,9 +12,9 @@ const DIVE_ITEMS = [
   { x: 36, y: -1.38, z: 57, color: "#FFB347", kind: "chest" },
 ];
 const COASTER_POINTS = [
-  [-12, 1.25, -22], [-24, 6.8, -29], [-42, 12.4, -25], [-55, 3.0, -16],
-  [-38, 8.2, -9], [-14, 13.2, -18], [12, 5.0, -29], [38, 10.6, -25],
-  [54, 2.7, -14], [28, 8.8, -7], [3, 3.2, -12], [-12, 1.25, -22],
+  [-12, 2.6, -24], [-22, 7.8, -31], [-38, 12.8, -30], [-54, 6.8, -23],
+  [-49, 10.2, -11], [-28, 14.2, -14], [-8, 7.0, -31], [16, 11.2, -31],
+  [42, 8.6, -24], [52, 5.2, -12], [30, 9.4, -9], [4, 4.4, -15], [-12, 2.6, -24],
 ];
 
 function basic(color, opacity = 1, depthWrite = opacity >= 1) {
@@ -282,7 +282,7 @@ function buildCoasterTrack(group, curve) {
   const deck = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.26, 3.2), standard("#C4A36A", { roughness: 0.58, metalness: 0.12 }));
   deck.position.y = 0.24;
   const canopy = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.18, 3.6), standard("#E7D4A3", { roughness: 0.45, metalness: 0.12 }));
-  canopy.position.y = 2.2;
+  canopy.position.y = 4.25;
   [-2.8, 2.8].forEach((x) => [-1.2, 1.2].forEach((z) => {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 2.1, 8), standard("#5D6872"));
     post.position.set(x, 1.1, z);
@@ -486,11 +486,10 @@ export function applyBeachActivityCamera(state, camera, dt) {
   if (state.type === "coaster") {
     const u = Math.min(0.985, Math.max(0, state.rideU || 0));
     const tangent = state.curve.getTangentAt(u).normalize();
-    const side = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
-    const look = state.curve.getPointAt(Math.min(0.999, u + 0.032));
-    const chaseCam = pos.clone().add(tangent.clone().multiplyScalar(-5.0)).add(side.multiplyScalar(Math.sin(u * Math.PI * 6) * 0.72)).add(new THREE.Vector3(0, 2.15, 0));
-    camera.position.lerp(chaseCam, Math.min(1, dt * 6.4));
-    camera.lookAt(look.x, look.y + 0.78, look.z);
+    const look = state.curve.getPointAt(Math.min(0.999, u + 0.04));
+    const povCam = pos.clone().add(tangent.clone().multiplyScalar(0.92)).add(new THREE.Vector3(0, 1.08, 0));
+    camera.position.lerp(povCam, Math.min(1, dt * 12));
+    camera.lookAt(look.x, look.y + 0.7, look.z);
     return;
   }
   if (state.type === "dive") {

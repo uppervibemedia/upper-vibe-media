@@ -1224,7 +1224,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const cv = scene.userData._camVecs;
         if (beachActivityStateRef.current) {
           applyBeachActivityCamera(beachActivityStateRef.current, camera, dt);
-          if (avatarRef.current) avatarRef.current.visible = beachActivityStateRef.current.type !== "dive";
+          if (avatarRef.current) avatarRef.current.visible = beachActivityStateRef.current.type !== "dive" && beachActivityStateRef.current.type !== "coaster";
         } else if (ferrisRidingRef.current) {
           if (!cv._rl) cv._rl = { yaw: 0, pitch: 0, rt: 0 };
           const rl = cv._rl;

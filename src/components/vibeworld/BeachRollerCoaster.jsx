@@ -39,12 +39,13 @@ export function createBeachRollerCoaster(scene) {
   group.position.set(0, 0, 0);
 
   const basePoints = [
-    new THREE.Vector3(-12, 1.25, -22), new THREE.Vector3(-24, 6.8, -29),
-    new THREE.Vector3(-42, 12.4, -25), new THREE.Vector3(-55, 3.0, -16),
-    new THREE.Vector3(-38, 8.2, -9), new THREE.Vector3(-14, 13.2, -18),
-    new THREE.Vector3(12, 5.0, -29), new THREE.Vector3(38, 10.6, -25),
-    new THREE.Vector3(54, 2.7, -14), new THREE.Vector3(28, 8.8, -7),
-    new THREE.Vector3(3, 3.2, -12), new THREE.Vector3(-12, 1.25, -22),
+    new THREE.Vector3(-12, 2.6, -24), new THREE.Vector3(-22, 7.8, -31),
+    new THREE.Vector3(-38, 12.8, -30), new THREE.Vector3(-54, 6.8, -23),
+    new THREE.Vector3(-49, 10.2, -11), new THREE.Vector3(-28, 14.2, -14),
+    new THREE.Vector3(-8, 7.0, -31), new THREE.Vector3(16, 11.2, -31),
+    new THREE.Vector3(42, 8.6, -24), new THREE.Vector3(52, 5.2, -12),
+    new THREE.Vector3(30, 9.4, -9), new THREE.Vector3(4, 4.4, -15),
+    new THREE.Vector3(-12, 2.6, -24),
   ];
   const centerCurve = new THREE.CatmullRomCurve3(basePoints, true, "catmullrom", 0.55);
 
@@ -87,9 +88,9 @@ export function createBeachRollerCoaster(scene) {
   const planks = new THREE.Mesh(new THREE.BoxGeometry(8.0, 0.045, 3.75), basic("#E8D8AD", { transparent: true, opacity: 0.38 }));
   planks.position.set(0, 0.36, 0);
   const canopy = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.22, 4.5), standard("#F1DFA8"));
-  canopy.position.set(0, 2.25, 0);
+  canopy.position.set(0, 4.35, 0);
   const roof = new THREE.Mesh(new THREE.ConeGeometry(5.1, 1.0, 4), standard("#64CFE0"));
-  roof.position.set(0, 2.85, 0);
+  roof.position.set(0, 4.95, 0);
   roof.rotation.y = Math.PI / 4;
   stationGroup.add(deck, planks, canopy, roof);
   [-3.7, 3.7].forEach((x) => [-1.7, 1.7].forEach((z) => {
@@ -143,7 +144,7 @@ export function createBeachRollerCoaster(scene) {
   portalArch.rotation.z = Math.PI;
   group.add(portalArch);
   const sign = makeLabel("VIBE COASTER", "#00DDF5");
-  sign.position.set(-12, 3.95, -19.6);
+  sign.position.set(-12, 5.95, -19.6);
   group.add(sign);
   const rideSign = makeLabel("RIDE", "#FFD36E");
   rideSign.scale.set(2.4, 0.46, 1);
