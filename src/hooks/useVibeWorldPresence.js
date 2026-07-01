@@ -21,6 +21,11 @@ const BATCH_MS = 150;          // Batch incoming subscribe events every 150ms
 const POS_THRESHOLD = 0.15;    // Minimum position delta to trigger an update (was 0.05)
 const ROT_THRESHOLD = 0.08;    // Minimum rotation delta to trigger an update (was 0.02)
 
+function worldKeyForZone(zone) {
+  const value = String(zone || "").toLowerCase();
+  return value === "vibe_beach" || value.includes("beach") ? "beach" : "city";
+}
+
 /** Touch the last_heartbeat timestamp. Returns true on success. Retries once after 1s. */
 const touchHeartbeat = async (rid) => {
   const start = Date.now();
@@ -65,6 +70,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const recordIdRef = useRef(null);
   const zoneRef = useRef("");
+  const localWorldRef = useRef("city");
   const posRef = useRef({ x: 0, z: 0, rot: 0 });
   const animRef = useRef("idle");
   const mountedRef = useRef(true);
@@ -74,6 +80,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
 
   // Keep refs current without triggering re-renders
   zoneRef.current = currentZone || "";
+  localWorldRef.current = worldKeyForZone(currentZone);
   posRef.current = position || { x: 0, z: 0, rot: 0 };
   animRef.current = position?.animState || "idle";
 
@@ -262,6 +269,28 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     }
   }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    sendPosition();
+    heartbeat();
+    usersMapRef.current = Object.fromEntries(
+      Object.entries(usersMapRef.current).filter(([, u]) => worldKeyForZone(u.current_zone) === localWorldRef.current)
+    );
+    setActiveUsers(Object.values(usersMapRef.current));
+    (async () => {
+      try {
+        const cutoff = new Date(Date.now() - STALE_MS).toISOString();
+        const users = await base44.entities.VibeWorldPresence.filter({ is_online: true, last_heartbeat: { $gte: cutoff } });
+        const map = {};
+        users.forEach((u) => {
+          if (u.user_id !== user.id && worldKeyForZone(u.current_zone) === localWorldRef.current) map[u.user_id] = u;
+        });
+        usersMapRef.current = map;
+        if (mountedRef.current) setActiveUsers(Object.values(map));
+      } catch {}
+    })();
+  }, [user?.id, currentZone, sendPosition, heartbeat]);
+
   // ── Real-time entity subscription (replaces polling) ─────────────────────
   useEffect(() => {
     if (!user?.id) return;
@@ -310,6 +339,16 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         if (!d.is_online) return;
         const lastBeat = d.last_heartbeat ? new Date(d.last_heartbeat).getTime() : 0;
         if (Date.now() - lastBeat > STALE_MS) return;
+        if (worldKeyForZone(d.current_zone) !== localWorldRef.current) {
+          pendingChanges.set(event.id, { ...event, type: "delete" });
+          if (!batchTimer) {
+            batchTimer = setTimeout(() => {
+              batchTimer = null;
+              flushBatch();
+            }, BATCH_MS);
+          }
+          return;
+        }
       }
 
       pendingChanges.set(event.id, event);
@@ -332,7 +371,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         });
         const map = {};
         users.forEach((u) => {
-          if (u.user_id !== user.id) map[u.user_id] = u;
+          if (u.user_id !== user.id && worldKeyForZone(u.current_zone) === localWorldRef.current) map[u.user_id] = u;
         });
         usersMapRef.current = map;
         if (mountedRef.current) {
@@ -380,7 +419,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       for (const id in map) {
         const u = map[id];
         const lastBeat = u.last_heartbeat ? new Date(u.last_heartbeat).getTime() : 0;
-        if (now - lastBeat > STALE_MS) {
+        if (now - lastBeat > STALE_MS || worldKeyForZone(u.current_zone) !== localWorldRef.current) {
           delete map[id];
           changed = true;
         }

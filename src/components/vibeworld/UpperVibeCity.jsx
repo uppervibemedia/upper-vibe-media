@@ -83,19 +83,27 @@ function clearReturnState() {
   } catch {}
 }
 
+const BEACH_SPAWN = { x: 6, z: 16, rot: Math.PI / 2 };
+const CITY_BEACH_RETURN = { x: 7, z: 8, rot: Math.PI / 2 };
+
+function readSavedWorldMode() {
+  try { return localStorage.getItem("uvc_world_mode") === "beach" ? "beach" : "city"; } catch { return "city"; }
+}
+
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const mobileLayout = useMobileLayout(isMobile);
   const smoothMovementMode = isMobile && /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const [worldMode, setWorldMode] = useState("city");
-  const [worldSpawn, setWorldSpawn] = useState(null);
+  const initialWorldModeRef = useRef(readSavedWorldMode());
+  const [worldMode, setWorldMode] = useState(initialWorldModeRef.current);
+  const [worldSpawn, setWorldSpawn] = useState(() => initialWorldModeRef.current === "beach" ? BEACH_SPAWN : null);
   const [transportTarget, setTransportTarget] = useState(null);
   const [transportPrompt, setTransportPrompt] = useState(null);
   const [dismissedTransportTarget, setDismissedTransportTarget] = useState(null);
   const transportPadDisabledUntilRef = useRef(0);
   const transportPromptSourceRef = useRef(null);
-  const [playerPos, setPlayerPos] = useState({ x: -10, z: -4, rot: -2.55, animState: "idle" });
+  const [playerPos, setPlayerPos] = useState(() => initialWorldModeRef.current === "beach" ? { ...BEACH_SPAWN, animState: "idle" } : { x: -10, z: -4, rot: -2.55, animState: "idle" });
   // Restore saved return state (position + panel) when returning from SongPage
   const returnState = useRef(readReturnState());
   const returnStateApplied = useRef(false);
@@ -280,6 +288,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   useEffect(() => {
     window.__uvcWorldMode = worldMode;
+    try { localStorage.setItem("uvc_world_mode", worldMode); } catch {}
     return () => { window.__uvcWorldMode = null; };
   }, [worldMode]);
 
@@ -880,7 +889,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   };
 
   // ── Presence — Phase 2: track zone + position + heartbeat ─────────────
-  const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || (worldMode === "beach" ? "Upper Vibe Beach" : "Plaza");
+  const currentZoneName = worldMode === "beach" ? "vibe_beach" : (detectZone(playerPos.x, playerPos.z)?.name || "Plaza");
   const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos, {
     equippedAura,
     equippedAuraColor,
@@ -1114,14 +1123,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setNearJukebox(false);
     if (target === "beach") {
       window.dispatchEvent(new CustomEvent("uvcDailyAction", { detail: { action: "beach_visit" } }));
-      setWorldSpawn({ x: 6, z: 16, rot: Math.PI / 2 });
-      setPlayerPos({ x: 6, z: 16, rot: Math.PI / 2, animState: "idle" });
-      prevPosRef.current = { x: 6, z: 16, rot: Math.PI / 2 };
+      try { localStorage.setItem("uvc_world_mode", "beach"); } catch {}
+      setWorldSpawn(BEACH_SPAWN);
+      setPlayerPos({ ...BEACH_SPAWN, animState: "idle" });
+      prevPosRef.current = BEACH_SPAWN;
       setWorldMode("beach");
     } else {
-      setWorldSpawn({ x: 7, z: 8, rot: Math.PI / 2 });
-      setPlayerPos({ x: 7, z: 8, rot: Math.PI / 2, animState: "idle" });
-      prevPosRef.current = { x: 7, z: 8, rot: Math.PI / 2 };
+      try { localStorage.setItem("uvc_world_mode", "city"); } catch {}
+      setWorldSpawn(CITY_BEACH_RETURN);
+      setPlayerPos({ ...CITY_BEACH_RETURN, animState: "idle" });
+      prevPosRef.current = CITY_BEACH_RETURN;
       setWorldMode("city");
     }
   }, []);
