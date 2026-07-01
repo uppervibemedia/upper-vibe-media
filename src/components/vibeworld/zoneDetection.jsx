@@ -82,6 +82,12 @@ const ZONES = {
     cx: 22, cz: 12.25, radius: 6,
     icon: "ShoppingBag",
   },
+  ferriswheel: {
+    name: "Neon Vibe Wheel",
+    id: "ferriswheel",
+    cx: 0, cz: 24, radius: 10,
+    icon: "Sparkles",
+  },
   surfzone: {
     name: "Surf Zone",
     id: "surfzone",
