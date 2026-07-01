@@ -119,49 +119,6 @@ function updateArc(arc, from, to, jitter) {
   geo.attributes.position.needsUpdate = true;
 }
 
-function makeCrystalPanelTexture(text) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 160;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, 512, 160);
-  ctx.fillStyle = "rgba(0,10,24,0.58)";
-  ctx.fillRect(24, 28, 464, 104);
-  ctx.strokeStyle = "rgba(0,229,255,0.78)";
-  ctx.lineWidth = 3;
-  ctx.shadowColor = "rgba(0,229,255,0.55)";
-  ctx.shadowBlur = 12;
-  ctx.strokeRect(24, 28, 464, 104);
-  ctx.strokeStyle = "rgba(255,211,110,0.46)";
-  for (let i = 0; i < 7; i++) {
-    const x = 58 + i * 60;
-    ctx.beginPath();
-    ctx.moveTo(x, 118);
-    ctx.lineTo(x + 22, 118);
-    ctx.stroke();
-  }
-  ctx.font = text.length > 16 ? "900 28px Syne, Inter, sans-serif" : "900 34px Syne, Inter, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(235,255,255,0.94)";
-  ctx.fillText(text, 256, 82);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.minFilter = THREE.LinearFilter;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-function addCrystalUIPanel(group, text, x, y, z, rotY) {
-  const mat = new THREE.MeshBasicMaterial({ map: makeCrystalPanelTexture(text), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-  mat.userData.baseOpacity = IS_MOBILE ? 0.36 : 0.56;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(text.length > 16 ? 3.4 : 2.8, 0.86), mat);
-  mesh.position.set(x, y, z);
-  mesh.rotation.y = rotY;
-  mesh.renderOrder = 8;
-  group.add(mesh);
-  return { mesh, mat };
-}
-
 // ── Main build ────────────────────────────────────────────────────────
 export function createCrystalZone(scene) {
   const group = new THREE.Group();
@@ -214,12 +171,6 @@ export function createCrystalZone(scene) {
   midRing.renderOrder = 2;
   group.add(midRing);
 
-  const uiPanels = [
-    addCrystalUIPanel(group, "CHARGE ENERGY", 0, 2.6, -4.55, 0),
-    addCrystalUIPanel(group, "AURA CALIBRATION", -4.25, 2.0, 0.5, Math.PI / 2),
-    addCrystalUIPanel(group, "FIELD STABLE", 4.25, 2.0, 0.5, -Math.PI / 2),
-  ];
-
   // Light rays — skip on mobile (transparent additive cylinders are costly)
   if (!IS_MOBILE) {
     for (let i = 0; i < 3; i++) {
@@ -261,33 +212,6 @@ export function createCrystalZone(scene) {
   const centerGlow = new THREE.Mesh(glowGeo, glowMat);
   centerGlow.renderOrder = 4;
   group.add(centerGlow);
-
-  const holoRingMats = [];
-  const holoRings = [];
-  [2.1, 4.2, 6.1].slice(0, IS_MOBILE ? 2 : 3).forEach((y, i) => {
-    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(i === 1 ? "#A078FF" : "#00E5FF"), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-    mat.userData.baseOpacity = IS_MOBILE ? 0.16 : 0.26;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.52 + i * 0.2, 0.018, 6, IS_MOBILE ? 48 : 72), mat);
-    ring.position.y = y;
-    ring.rotation.x = Math.PI / 2 + i * 0.34;
-    ring.rotation.z = i * 0.45;
-    ring.renderOrder = 7;
-    group.add(ring);
-    holoRings.push(ring);
-    holoRingMats.push(mat);
-  });
-
-  const scanLineMats = [];
-  const scanLines = [1.5, 3.2, 5.1].map((y, i) => {
-    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(i === 1 ? "#FFD36E" : "#88EEFF"), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-    mat.userData.baseOpacity = IS_MOBILE ? 0.18 : 0.3;
-    const line = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.045), mat);
-    line.position.set(0, y, 1.28);
-    line.renderOrder = 8;
-    group.add(line);
-    scanLineMats.push(mat);
-    return line;
-  });
 
   // ── LIGHTS — mobile: 1 main + 1 ambient only; desktop: 2 per center + 7 small ──
   const bigLight = new THREE.PointLight("#88CCFF", 4.5, 20);
@@ -399,7 +323,6 @@ export function createCrystalZone(scene) {
     arcs, bigTip,
     beamLine, beamMat, beamGeo, beamPts,
     auraMesh, auraMat,
-    uiPanels, holoRings, holoRingMats, scanLines, scanLineMats,
     proximity: 0,
     activated: false,
     activatedTimer: 0,
@@ -422,9 +345,6 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ, tvSmooth = fa
     // Keep light range small when far to reduce shadow/draw cost
     cz.bigLight.distance = 10;
     cz.bigLight.intensity = 1.8;
-    cz.uiPanels?.forEach((p) => { p.mat.opacity = 0; });
-    cz.holoRingMats?.forEach((m) => { m.opacity = 0; });
-    cz.scanLineMats?.forEach((m) => { m.opacity = 0; });
     return;
   }
 
@@ -438,24 +358,6 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ, tvSmooth = fa
   }
 
   const idlePulse = Math.sin(t * 1.1) * 0.5 + 0.5;
-  const nearStrength = Math.max(0, Math.min(1, 1 - dist / 18));
-
-  cz.uiPanels?.forEach((p, i) => {
-    p.mat.opacity = p.mat.userData.baseOpacity * nearStrength * (0.82 + Math.sin(t * 1.0 + i) * 0.08);
-  });
-  cz.holoRings?.forEach((ring, i) => {
-    ring.rotation.y += (IS_MOBILE ? 0.002 : 0.0035) * (i + 1);
-    ring.rotation.z += (IS_MOBILE ? 0.001 : 0.002) * (i + 1);
-  });
-  cz.holoRingMats?.forEach((m, i) => {
-    m.opacity = m.userData.baseOpacity * nearStrength * (0.82 + Math.sin(t * 1.2 + i) * 0.1);
-  });
-  cz.scanLines?.forEach((line, i) => {
-    line.position.y = 1.3 + ((t * (0.34 + i * 0.06) + i * 1.7) % 1) * 5.1;
-  });
-  cz.scanLineMats?.forEach((m, i) => {
-    m.opacity = m.userData.baseOpacity * nearStrength * (0.72 + Math.sin(t * 1.8 + i) * 0.12);
-  });
 
   // ── Center crystal — slow rotate + subtle glow pulse ──
   cz.center.rotation.y = t * 0.07;
