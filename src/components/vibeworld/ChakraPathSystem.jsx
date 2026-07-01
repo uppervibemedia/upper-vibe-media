@@ -6,13 +6,13 @@ const Y_SYMBOL = 0.046;
 
 export const CHAKRA_PATH_POINTS = [
   { x: 0, z: -6, type: "anchor" },
-  { x: 0, z: -3.35, type: "chakra", key: "root", label: "ROOT", mantra: "LAM", color: "#FF3B30" },
-  { x: 0, z: -1.45, type: "chakra", key: "sacral", label: "SACRAL", mantra: "VAM", color: "#FF8A00" },
-  { x: 0, z: 0.45, type: "chakra", key: "solar", label: "SOLAR", mantra: "RAM", color: "#FFD36E" },
-  { x: 0, z: 2.35, type: "chakra", key: "heart", label: "HEART", mantra: "YAM", color: "#42FF9B" },
-  { x: 0, z: 4.25, type: "chakra", key: "throat", label: "THROAT", mantra: "HAM", color: "#00E5FF" },
-  { x: 0, z: 6.15, type: "chakra", key: "thirdEye", label: "THIRD EYE", mantra: "OM", color: "#4F63FF" },
-  { x: 0, z: 8.05, type: "chakra", key: "crown", label: "CROWN", mantra: "AH", color: "#C58CFF" },
+  { x: 0, z: 1.65, type: "chakra", key: "root", label: "ROOT", mantra: "LAM", color: "#FF3B30" },
+  { x: 0, z: 2.95, type: "chakra", key: "sacral", label: "SACRAL", mantra: "VAM", color: "#FF8A00" },
+  { x: 0, z: 4.25, type: "chakra", key: "solar", label: "SOLAR", mantra: "RAM", color: "#FFD36E" },
+  { x: 0, z: 5.55, type: "chakra", key: "heart", label: "HEART", mantra: "YAM", color: "#42FF9B" },
+  { x: 0, z: 6.85, type: "chakra", key: "throat", label: "THROAT", mantra: "HAM", color: "#00E5FF" },
+  { x: 0, z: 8.15, type: "chakra", key: "thirdEye", label: "THIRD EYE", mantra: "OM", color: "#4F63FF" },
+  { x: 0, z: 9.45, type: "chakra", key: "crown", label: "CROWN", mantra: "AH", color: "#C58CFF" },
   { x: 0, z: 12.25, type: "leaderboard" },
   { x: 0, z: 17.8, type: "guide" },
   { x: 0, z: 22.4, type: "ferris" },
@@ -137,7 +137,7 @@ function makePromptSprite(chakra) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0, depthWrite: false, depthTest: false }));
-  sprite.scale.set(4.9, 1.22, 1);
+  sprite.scale.set(3.7, 0.92, 1);
   sprite.position.set(chakra.x, 1.18, chakra.z);
   sprite.renderOrder = 60;
   sprite.userData.baseY = 1.18;
@@ -179,7 +179,7 @@ export function createChakraPathSystem(scene) {
   const chakras = [];
   CHAKRA_PATH_POINTS.filter((p) => p.type === "chakra").forEach((chakra, index) => {
     const symbol = new THREE.Mesh(
-      new THREE.CircleGeometry(IS_MOBILE ? 0.72 : 0.86, IS_MOBILE ? 36 : 56),
+      new THREE.CircleGeometry(IS_MOBILE ? 0.42 : 0.5, IS_MOBILE ? 28 : 40),
       new THREE.MeshBasicMaterial({
         map: createSymbolTexture(chakra),
         transparent: true,
@@ -196,7 +196,7 @@ export function createChakraPathSystem(scene) {
     symbol.userData.baseOpacity = 0.78;
 
     const halo = new THREE.Mesh(
-      new THREE.RingGeometry(IS_MOBILE ? 0.82 : 0.98, IS_MOBILE ? 0.95 : 1.12, IS_MOBILE ? 36 : 56),
+      new THREE.RingGeometry(IS_MOBILE ? 0.48 : 0.58, IS_MOBILE ? 0.57 : 0.68, IS_MOBILE ? 28 : 40),
       makeLineMat(index === 6 ? "#FFD36E" : chakra.color, 0.34)
     );
     halo.rotation.x = -Math.PI / 2;
@@ -265,7 +265,7 @@ export function animateChakraPathSystem(scene, t, playerX = 0, playerZ = 0, mobi
     const dz = playerZ - chakra.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
     const near = Math.max(0, 1 - dist / 4.2);
-    const standing = dist < 1.45;
+    const standing = dist < 1.05;
     const flowDx = flowHead.x - chakra.x;
     const flowDz = flowHead.z - chakra.z;
     const flowHit = Math.max(0, 1 - Math.sqrt(flowDx * flowDx + flowDz * flowDz) / 1.55);
