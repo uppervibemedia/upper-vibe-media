@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
+import { createCitySpiritualVisuals, animateCitySpiritualVisuals } from "./CitySpiritualVisuals";
 import createUpperVibeShop, { animateShop } from "./UpperVibeShop";
 import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition, getRiderCameraTransform } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
@@ -268,6 +269,7 @@ const createNeonSign = createZoneSign;
 export function buildPark(scene) {
   createCosmicSky(scene);
   createCitySkyline(scene);
+  createCitySpiritualVisuals(scene);
 
   const SHORELINE_Z = 32;
   const OCEAN_DEPTH = 54;
@@ -1569,6 +1571,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.lookAt(camera.position);
           }
         }
+        if (worldModeRef.current === "city" && (!isMob || frameRef.current % 8 === 0)) animateCitySpiritualVisuals(scene, t, px, pz);
         // Beach animations: lightweight shoreline in City; full Zen Beach only in Beach World.
         if (worldModeRef.current === "beach") {
           if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
