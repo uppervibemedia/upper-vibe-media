@@ -150,18 +150,18 @@ export function createFrequencyLeaderboardBoard(scene) {
   group.userData.leaderboardRows = [];
 
   const panelMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.96, depthWrite: true });
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(3.55, 4.35), panelMat);
-  panel.position.set(0, 2.48, 0);
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.45, 3.2), panelMat);
+  panel.position.set(0, 1.82, 0);
   group.add(panel);
 
   const frameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.66 });
-  [[0,4.72,0,3.85,0.08,0.08],[0,0.22,0,3.85,0.08,0.08],[-1.94,2.48,0,0.08,4.5,0.08],[1.94,2.48,0,0.08,4.5,0.08]].forEach(([x,y,z,w,h,d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), frameMat.clone()); m.position.set(x,y,z); group.add(m); });
+  [[0,3.48,0,2.75,0.07,0.07],[0,0.18,0,2.75,0.07,0.07],[-1.38,1.82,0,0.07,3.3,0.07],[1.38,1.82,0,0.07,3.3,0.07]].forEach(([x,y,z,w,h,d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), frameMat.clone()); m.position.set(x,y,z); group.add(m); });
 
   const postMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#7C3AED"), transparent: true, opacity: 0.76 });
-  [-1.52, 1.52].forEach((x) => { const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4.7, 0.16), postMat.clone()); post.position.set(x, 2.35, -0.08); group.add(post); });
+  [-1.08, 1.08].forEach((x) => { const post = new THREE.Mesh(new THREE.BoxGeometry(0.13, 3.55, 0.13), postMat.clone()); post.position.set(x, 1.75, -0.08); group.add(post); });
 
   const baseMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#07162D"), transparent: true, opacity: 0.94 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.22, 0.7), baseMat);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.18, 0.55), baseMat);
   base.position.set(0, 0.08, -0.04);
   group.add(base);
 
@@ -186,5 +186,5 @@ export function animateFrequencyLeaderboardBoard(scene, t) {
   const pulse = 0.54 + Math.sin(t * 1.15) * 0.14;
   group.children.forEach((child) => { if (child.material?.opacity && child.geometry?.type === "BoxGeometry") child.material.opacity = pulse; });
   const line = group.userData.energyLine;
-  if (line) { line.position.x = -1.75 + ((t * 1.1) % 3.5); line.material.opacity = 0.25 + Math.sin(t * 3.0) * 0.12; }
+  if (line) { line.position.x = -1.05 + ((t * 0.9) % 2.1); line.material.opacity = 0.25 + Math.sin(t * 3.0) * 0.12; }
 }

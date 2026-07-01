@@ -251,12 +251,6 @@ export function createSimpleCityShoreline(scene) {
   [-26, -14, 24].forEach((x, i) => addSimplePalm(group, x, i === 1 ? 22 : 24.5, i === 1 ? 0.82 : 0.95));
   const beachPlanet = addCityBeachPlanet(group);
 
-  const label = makeShorelineLabel("Upper Vibe Beach");
-  label.name = "upperVibeBeachSign";
-  label.position.set(-6, 3.05, 25.2);
-  label.scale.set(8.6, 2.05, 1);
-  group.add(label);
-
   scene.add(group);
   scene.userData.cityBeachPlanet = beachPlanet;
   scene.userData.cityShoreline = { group, foam, waterEdge };

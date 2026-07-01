@@ -60,7 +60,6 @@ import BeachActivityHUD from "@/components/vibeworld/BeachActivityHUD";
 import BeachPreviewNotice from "@/components/vibeworld/BeachPreviewNotice";
 import DailyCityEngagement from "@/components/vibeworld/DailyCityEngagement";
 import SacredLearningLayer from "@/components/vibeworld/SacredLearningLayer";
-import CommunityEnergyDisplay from "@/components/vibeworld/CommunityEnergyDisplay";
 import FrequencyScoreTracker from "@/components/vibeworld/FrequencyScoreTracker";
 import FrequencyScoreToast from "@/components/vibeworld/FrequencyScoreToast";
 import { beachPreviewFlags } from "@/components/vibeworld/beachPreviewFlags";
@@ -1195,12 +1194,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           mobileLayout={mobileLayout}
           hidden={stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
           userId={user?.id}
-        />
-        <CommunityEnergyDisplay
-          activeUsers={activeUsers}
-          isMobile={isMobile}
-          mobileLayout={mobileLayout}
-          hidden={worldMode !== "city" || stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
         />
         <CityCanvas
         worldMode={worldMode}
