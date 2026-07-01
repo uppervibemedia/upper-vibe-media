@@ -204,49 +204,14 @@ export function createJukebox(scene) {
     towerTop.position.set(0, 1.72, 0);
     towerGroup.add(towerTop);
 
-    // Light beam — desktop only; iPhone uses fake glow/lights instead of transparent cones.
-    if (!isMobile) {
-      const beamMat = basicMat(sx < 0 ? "#C43BFF" : "#00D4F0", 0.045);
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.38, 6.0, 8, 1, true), beamMat);
-      beam.rotation.x = 0.18;
-      beam.position.set(0, 2.2, 2.5);
-      beam.renderOrder = 1;
-      towerGroup.add(beam);
-      djBeamMats.push(beamMat);
-    }
+
   }
 
   scene.userData.djTrimMats = djTrimMats;
   scene.userData.djBeamMats = djBeamMats;
 
-  // ── Point lights — placed in WORLD space aimed toward dance floor ──
-  // Placed outside the group so they aren't rotated with the booth
-  // Offset toward dance floor from the booth position
-  const lightOffsetDist = 3.5 * SCALE;
-  const djLightCyan = new THREE.PointLight();
-  djLightCyan.color = new THREE.Color("#00D4F0");
-  djLightCyan.intensity = isMobile ? 2.7 : 4.2;
-  djLightCyan.distance = isMobile ? 11 : 15;
-  djLightCyan.position.set(
-    JUKEBOX_POS.x + TO_FLOOR_NX * lightOffsetDist,
-    2.5,
-    JUKEBOX_POS.z + TO_FLOOR_NZ * lightOffsetDist
-  );
-  scene.add(djLightCyan);
-
-  const djLightPurple = new THREE.PointLight();
-  djLightPurple.color = new THREE.Color("#C43BFF");
-  djLightPurple.intensity = isMobile ? 1.4 : 2.7;
-  djLightPurple.distance = isMobile ? 9 : 13;
-  djLightPurple.position.set(
-    JUKEBOX_POS.x + TO_FLOOR_NX * (lightOffsetDist * 0.5),
-    3.5,
-    JUKEBOX_POS.z + TO_FLOOR_NZ * (lightOffsetDist * 0.5)
-  );
-  scene.add(djLightPurple);
-
-  scene.userData.djLightCyan = djLightCyan;
-  scene.userData.djLightPurple = djLightPurple;
+  scene.userData.djLightCyan = null;
+  scene.userData.djLightPurple = null;
 
   // ── "▶ LIVE DJ" hologram sign — no subtitle, just the main label ──
   const holoCanvas = document.createElement("canvas");
@@ -359,20 +324,6 @@ export function createJukebox(scene) {
   drawNowPlaying("", "");
   scene.userData.djDrawNowPlaying = drawNowPlaying;
 
-  // ── Music pulse rings ─────────────────────────────────────────────
-  const pulseRingMats = [];
-  for (let r = 0; r < 3; r++) {
-    const prMat = basicMat(r % 2 === 0 ? "#00D4F0" : "#C43BFF", 0.07 - r * 0.015);
-    const pr = new THREE.Mesh(new THREE.RingGeometry(1.1 + r * 1.2, 1.22 + r * 1.2, 48), prMat);
-    pr.rotation.x = -Math.PI / 2;
-    pr.position.y = 0.01;
-    pr.renderOrder = 1;
-    pr.name = `djPulseRing_${r}`;
-    group.add(pr);
-    pulseRingMats.push({ mat: prMat, base: 0.07 - r * 0.015, phase: r * 1.2 });
-  }
-  scene.userData.djPulseRingMats = pulseRingMats;
-
   // ── Position and rotate so the FRONT faces the dance floor ────────
   group.position.set(JUKEBOX_POS.x, 0, JUKEBOX_POS.z);
   group.rotation.y = FACE_ANGLE;
@@ -380,7 +331,7 @@ export function createJukebox(scene) {
 
   // Store refs for animation
   scene.userData.jukebox = group;
-  scene.userData.jukeboxLight = djLightCyan;
+  scene.userData.jukeboxLight = null;
   scene.userData.jukeboxScreenMat = topGlowMat;
   scene.userData.jukeboxGlowRingMat = platRingMat;
   scene.userData.jukeboxTrimMats = djTrimMats;
