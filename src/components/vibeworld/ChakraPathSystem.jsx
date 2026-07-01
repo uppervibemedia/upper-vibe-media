@@ -6,13 +6,13 @@ const Y_SYMBOL = 0.046;
 
 export const CHAKRA_PATH_POINTS = [
   { x: 0, z: -6, type: "anchor" },
-  { x: 0, z: 1.65, type: "chakra", key: "root", label: "ROOT", mantra: "LAM", color: "#FF3B30" },
-  { x: 0, z: 2.95, type: "chakra", key: "sacral", label: "SACRAL", mantra: "VAM", color: "#FF8A00" },
-  { x: 0, z: 4.25, type: "chakra", key: "solar", label: "SOLAR", mantra: "RAM", color: "#FFD36E" },
-  { x: 0, z: 5.55, type: "chakra", key: "heart", label: "HEART", mantra: "YAM", color: "#42FF9B" },
-  { x: 0, z: 6.85, type: "chakra", key: "throat", label: "THROAT", mantra: "HAM", color: "#00E5FF" },
-  { x: 0, z: 8.15, type: "chakra", key: "thirdEye", label: "THIRD EYE", mantra: "OM", color: "#4F63FF" },
-  { x: 0, z: 9.45, type: "chakra", key: "crown", label: "CROWN", mantra: "AH", color: "#C58CFF" },
+  { x: 0, z: 2.0, type: "chakra", key: "root", label: "ROOT", mantra: "LAM", color: "#FF3B30" },
+  { x: 0, z: 3.6, type: "chakra", key: "sacral", label: "SACRAL", mantra: "VAM", color: "#FF8A00" },
+  { x: 0, z: 5.2, type: "chakra", key: "solar", label: "SOLAR", mantra: "RAM", color: "#FFD36E" },
+  { x: 0, z: 6.8, type: "chakra", key: "heart", label: "HEART", mantra: "YAM", color: "#42FF9B" },
+  { x: 0, z: 8.4, type: "chakra", key: "throat", label: "THROAT", mantra: "HAM", color: "#00E5FF" },
+  { x: 0, z: 10.0, type: "chakra", key: "thirdEye", label: "THIRD EYE", mantra: "OM", color: "#4F63FF" },
+  { x: 0, z: 11.55, type: "chakra", key: "crown", label: "CROWN", mantra: "AH", color: "#C58CFF" },
   { x: 0, z: 12.25, type: "leaderboard" },
   { x: 0, z: 17.8, type: "guide" },
   { x: 0, z: 22.4, type: "ferris" },
@@ -204,9 +204,8 @@ export function createChakraPathSystem(scene) {
     halo.renderOrder = 10;
     halo.userData.baseOpacity = 0.34;
 
-    const prompt = makePromptSprite(chakra);
-    group.add(symbol, halo, prompt);
-    chakras.push({ ...chakra, symbol, halo, prompt, phase: index * 0.55 });
+    group.add(symbol, halo);
+    chakras.push({ ...chakra, symbol, halo, prompt: null, phase: index * 0.55 });
   });
 
   const flowDots = [];
