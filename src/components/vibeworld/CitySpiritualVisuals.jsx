@@ -181,25 +181,22 @@ export function createCitySpiritualVisuals(scene) {
   const zones = [{ x: 0, z: -32 }, { x: 0, z: -6 }, { x: 12, z: 6 }, { x: -13, z: 10 }, { x: -28, z: 5 }, { x: -16, z: -13 }, { x: 0, z: -32 }];
   for (let i = 0; i < zones.length - 1; i++) addGridLine(group, zones[i], zones[i + 1], gridMat);
 
-  const groundOpacity = isMobile ? 0.18 : 0.26;
-  group.add(groundDecal(groundSymbolTexture("rings", "369"), 4.4, 7.2, -6, groundOpacity, 0.2));
-  group.add(groundDecal(groundSymbolTexture("rings", "432"), 4.2, -7.2, -6, groundOpacity, -0.15));
-  group.add(groundDecal(groundSymbolTexture("chakra", "AWARE"), 5.0, -16, -13, groundOpacity * 0.9, 0.3));
-  group.add(groundDecal(groundSymbolTexture("metatron", ""), 7.4, -28, 9, groundOpacity * 0.95, 0));
-  group.add(groundDecal(groundSymbolTexture("torus", "369"), 4.7, -23.2, 6.2, groundOpacity * 0.85, 0.5));
-  group.add(groundDecal(groundSymbolTexture("sri", "ALIGN"), 5.2, -13, 10, groundOpacity * 0.88, -0.18));
-  group.add(groundDecal(groundSymbolTexture("hex", "111"), 3.2, -6.5, -20, groundOpacity * 0.72, 0.4));
-  group.add(groundDecal(groundSymbolTexture("hex", "777"), 3.2, 12, -17, groundOpacity * 0.72, -0.2));
-  group.add(groundDecal(groundSymbolTexture("rings", "FLOW"), 3.6, 10.5, 3.5, groundOpacity * 0.7, 0.2));
-  group.add(groundDecal(groundSymbolTexture("sri", "I AM"), 4.2, -18, 16, groundOpacity * 0.76, 0.12));
-  group.add(groundDecal(groundSymbolTexture("vesica", ""), 4.0, 30, -8, groundOpacity * 0.66, 0.35));
-  group.add(groundDecal(groundSymbolTexture("seed", ""), 4.4, 27, -30, groundOpacity * 0.72, -0.2));
-  group.add(groundDecal(groundSymbolTexture("flower", ""), 4.8, -30, -24, groundOpacity * 0.7, 0.18));
-  group.add(groundDecal(groundSymbolTexture("tree", ""), 4.7, -32, -2, groundOpacity * 0.72, -0.35));
-  group.add(groundDecal(groundSymbolTexture("egg", ""), 3.9, -5, -28, groundOpacity * 0.64, 0.5));
-  group.add(groundDecal(groundSymbolTexture("fruit", ""), 4.2, 28, 6, groundOpacity * 0.68, -0.1));
-  group.add(groundDecal(groundSymbolTexture("pentagram", ""), 3.8, 17, -2, groundOpacity * 0.58, 0.28));
-  group.add(groundDecal(groundSymbolTexture("pentagon", ""), 3.7, -18, 0, groundOpacity * 0.56, -0.4));
+  const zoneSymbolSize = 7.2;
+  const zoneSymbolOpacity = isMobile ? 0.38 : 0.58;
+  [
+    ["egg", -6, -27, 0.22, 1.0],
+    ["flower", -27, -20, -0.16, 0.96],
+    ["seed", 27, -15, 0.2, 0.96],
+    ["sri", -14, 16.5, -0.28, 0.98],
+    ["chakra", -18, -8.5, 0.32, 1.0],
+    ["metatron", -30, 9.5, 0.02, 1.0],
+    ["fruit", 29, 15, -0.18, 0.94],
+    ["vesica", -8, 23, 0.38, 0.92],
+    ["pentagon", 30, -30, -0.22, 0.86],
+    ["pentagram", -31, -2, 0.12, 0.86],
+  ].forEach(([kind, x, z, rot, boost]) => {
+    group.add(groundDecal(groundSymbolTexture(kind, ""), zoneSymbolSize, x, z, zoneSymbolOpacity * boost, rot));
+  });
 
   const crystalMat = new MeshBasicMaterial({ color: new Color("#A078FF"), transparent: true, opacity: isMobile ? 0.42 : 0.62, depthWrite: false });
   [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
