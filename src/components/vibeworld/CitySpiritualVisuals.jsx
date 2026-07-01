@@ -83,6 +83,42 @@ function textTexture(text) {
   }, 512, 128);
 }
 
+function groundSymbolTexture(kind, label = "") {
+  return makeTexture((ctx, w, h) => {
+    const cx = w / 2, cy = h / 2, maxR = w * 0.38;
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,229,255,0.48)"; ctx.fillStyle = "rgba(255,222,142,0.62)"; ctx.shadowColor = "rgba(0,229,255,0.55)"; ctx.shadowBlur = 12;
+    const circle = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); };
+    const line = (a, b, c, d) => { ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); };
+    if (kind === "metatron") {
+      const pts = [[cx, cy]];
+      for (let i = 0; i < 6; i++) pts.push([cx + Math.cos(i * Math.PI / 3) * maxR * 0.55, cy + Math.sin(i * Math.PI / 3) * maxR * 0.55]);
+      pts.forEach(([x, y]) => circle(x, y, 34));
+      for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) line(pts[i][0], pts[i][1], pts[j][0], pts[j][1]);
+    } else if (kind === "sri") {
+      for (let i = 0; i < 7; i++) { const r = maxR * (0.25 + i * 0.09); const up = i % 2 === 0; ctx.beginPath(); for (let p = 0; p < 3; p++) { const a = -Math.PI / 2 + p * Math.PI * 2 / 3 + (up ? 0 : Math.PI); const x = cx + Math.cos(a) * r; const y = cy + Math.sin(a) * r; p ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); ctx.stroke(); }
+      circle(cx, cy, maxR * 0.86);
+    } else if (kind === "torus") {
+      for (let i = 0; i < 6; i++) circle(cx, cy, maxR * (0.18 + i * 0.13));
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.ellipse(cx, cy, maxR * 0.78, maxR * 0.22, a, 0, Math.PI * 2); ctx.stroke(); }
+    } else if (kind === "chakra") {
+      circle(cx, cy, maxR * 0.72); for (let i = 0; i < 7; i++) circle(cx + Math.cos(i * Math.PI * 2 / 7) * maxR * 0.46, cy + Math.sin(i * Math.PI * 2 / 7) * maxR * 0.46, 24);
+    } else if (kind === "hex") {
+      for (let x = 90; x < w - 60; x += 76) for (let y = 90; y < h - 60; y += 66) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; const px = x + Math.cos(a) * 25; const py = y + Math.sin(a) * 25; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath(); ctx.stroke(); }
+    } else {
+      for (let i = 0; i < 5; i++) circle(cx, cy, maxR * (0.18 + i * 0.16));
+      for (let i = 0; i < 9; i++) circle(cx + Math.cos(i * Math.PI * 2 / 9) * maxR * 0.62, cy + Math.sin(i * Math.PI * 2 / 9) * maxR * 0.62, 12);
+    }
+    if (label) { ctx.font = label.length > 8 ? "700 30px Syne, Inter, sans-serif" : "800 48px Syne, Inter, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.shadowColor = "rgba(212,168,67,0.55)"; ctx.fillText(label, cx, cy); }
+  }, 512, 512);
+}
+
+function groundDecal(texture, size, x, z, opacity, rot = 0) {
+  const mesh = new Mesh(new PlaneGeometry(size, size), new MeshBasicMaterial({ map: texture, transparent: true, opacity, depthWrite: false, side: DoubleSide }));
+  mesh.rotation.x = -Math.PI / 2; mesh.rotation.z = rot; mesh.position.set(x, 0.028, z); mesh.renderOrder = 4;
+  return mesh;
+}
+
 function affirmationHologram(text, x, y, z, baseOpacity) {
   const holder = new Group();
   holder.position.set(x, y, z);
@@ -123,6 +159,18 @@ export function createCitySpiritualVisuals(scene) {
   const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.14 : 0.2, depthWrite: false, side: DoubleSide });
   const zones = [{ x: 0, z: -32 }, { x: 0, z: -6 }, { x: 12, z: 6 }, { x: -13, z: 10 }, { x: -28, z: 5 }, { x: -16, z: -13 }, { x: 0, z: -32 }];
   for (let i = 0; i < zones.length - 1; i++) addGridLine(group, zones[i], zones[i + 1], gridMat);
+
+  const groundOpacity = isMobile ? 0.18 : 0.26;
+  group.add(groundDecal(groundSymbolTexture("rings", "369"), 4.4, 7.2, -6, groundOpacity, 0.2));
+  group.add(groundDecal(groundSymbolTexture("rings", "432"), 4.2, -7.2, -6, groundOpacity, -0.15));
+  group.add(groundDecal(groundSymbolTexture("chakra", "AWARE"), 5.0, -16, -13, groundOpacity * 0.9, 0.3));
+  group.add(groundDecal(groundSymbolTexture("metatron", ""), 7.4, -28, 9, groundOpacity * 0.95, 0));
+  group.add(groundDecal(groundSymbolTexture("torus", "369"), 4.7, -23.2, 6.2, groundOpacity * 0.85, 0.5));
+  group.add(groundDecal(groundSymbolTexture("sri", "ALIGN"), 5.2, -13, 10, groundOpacity * 0.88, -0.18));
+  group.add(groundDecal(groundSymbolTexture("hex", "111"), 3.2, -6.5, -20, groundOpacity * 0.72, 0.4));
+  group.add(groundDecal(groundSymbolTexture("hex", "777"), 3.2, 12, -17, groundOpacity * 0.72, -0.2));
+  group.add(groundDecal(groundSymbolTexture("rings", "FLOW"), 3.6, 10.5, 3.5, groundOpacity * 0.7, 0.2));
+  group.add(groundDecal(groundSymbolTexture("sri", "I AM"), 4.2, -18, 16, groundOpacity * 0.76, 0.12));
 
   const crystalMat = new MeshBasicMaterial({ color: new Color("#A078FF"), transparent: true, opacity: isMobile ? 0.42 : 0.62, depthWrite: false });
   [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
