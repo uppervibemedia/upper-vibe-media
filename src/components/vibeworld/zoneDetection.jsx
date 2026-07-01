@@ -101,9 +101,9 @@ const ZONES = {
     icon: "Waves",
   },
   crystalzone: {
-    name: "Crystal Zone",
+    name: "Crystal Nodes",
     id: "crystalzone",
-    cx: -28, cz: 9, radius: 8,
+    cx: 0, cz: -6, radius: 0,
     icon: "Sparkles",
   },
 };

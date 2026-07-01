@@ -11,7 +11,7 @@ import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { createMoonPhaseStagePath } from "./MoonPhasePath";
 
-import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z } from "./CrystalZone";
+import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_ZONE_NODES } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
@@ -356,7 +356,9 @@ export function buildPark(scene) {
   // 8.5.5 CRYSTAL ZONE — old Vibe Academy location
   // ═════════════════════════════════════════════════════════════
   createCrystalZone(scene);
-  createNeonSign(scene, CRYSTAL_ZONE_X, 3.2, CRYSTAL_ZONE_Z, "CRYSTAL  ZONE", "#AA66FF");
+  CRYSTAL_ZONE_NODES.forEach((node) => {
+    createNeonSign(scene, node.x, 2.6, node.z, "CRYSTAL  NODE", "#AA66FF");
+  });
 
   // ═════════════════════════════════════════════════════════════
   // 8.65. UPPER VIBE SHOP — pushed back to the sand edge
