@@ -43,11 +43,11 @@ export default function createCitySkyline(scene) {
   const isMobileSkyline = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   const windowMats = {
-    dimWarm: new MeshBasicMaterial({ color: new Color("#D8B981"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.12 : 0.16 }),
-    medWarm: new MeshBasicMaterial({ color: new Color("#E9C98D"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.22 : 0.30 }),
-    brightWarm: new MeshBasicMaterial({ color: new Color("#FFDFA5"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.34 : 0.44 }),
-    dimCool: new MeshBasicMaterial({ color: new Color("#8DB7D8"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.10 : 0.14 }),
-    medCool: new MeshBasicMaterial({ color: new Color("#9DCBEE"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.18 : 0.24 }),
+    dimWarm: new MeshBasicMaterial({ color: new Color("#D8B981"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.18 : 0.24 }),
+    medWarm: new MeshBasicMaterial({ color: new Color("#E9C98D"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.33 : 0.45 }),
+    brightWarm: new MeshBasicMaterial({ color: new Color("#FFDFA5"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.51 : 0.66 }),
+    dimCool: new MeshBasicMaterial({ color: new Color("#8DB7D8"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.15 : 0.21 }),
+    medCool: new MeshBasicMaterial({ color: new Color("#9DCBEE"), depthWrite: false, transparent: true, opacity: isMobileSkyline ? 0.27 : 0.36 }),
   };
 
   const storeMats = {
