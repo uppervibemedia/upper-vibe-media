@@ -219,9 +219,11 @@ export function createCitySpiritualVisuals(scene) {
   });
 
   const wallVisuals = [];
-  const addWallVisual = (visual, range = 42) => {
+  const addWallVisual = (visual, range = 42, alwaysVisible = false) => {
     visual.userData.baseOpacity = visual.material?.opacity ?? 1;
     visual.userData.visualRange = isMobile ? Math.min(range, 32) : range;
+    visual.userData.alwaysVisible = alwaysVisible;
+    if (alwaysVisible) visual.visible = true;
     group.add(visual);
     wallVisuals.push(visual);
   };
@@ -236,21 +238,17 @@ export function createCitySpiritualVisuals(scene) {
     ["777", 8.15, "rgba(0,229,255,0.82)"],
     ["888", 9.05, "rgba(255,222,142,0.82)"],
   ];
-  const moonTex = moonTexture();
-  const waveTex = waveTexture();
-  const panelOpacity = isMobile ? 0.2 : 0.3;
-  addWallVisual(decal(flowerTex, 3.25, 3.25, [-37.08, 6.2, -25], [0, Math.PI / 2, 0], panelOpacity), 38);
-  addWallVisual(decal(flowerTex, 3.05, 3.05, [37.08, 6.1, -12], [0, -Math.PI / 2, 0], panelOpacity), 38);
-  addWallVisual(decal(flowerTex, 3.35, 3.35, [14, 7.6, -37.08], [0, 0, 0], isMobile ? 0.18 : 0.28), 44);
-  addWallVisual(decal(flowerTex, 2.8, 2.8, [-30, 5.9, -37.08], [0, 0, 0], isMobile ? 0.16 : 0.24), 38);
-  addWallVisual(decal(windowTex, 4.0, 2.35, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.14 : 0.22), 34);
-  addWallVisual(decal(windowTex, 4.0, 2.35, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.14 : 0.22), 34);
-  addWallVisual(decal(windowTex, 4.3, 2.5, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.13 : 0.2), 40);
+  const panelOpacity = isMobile ? 0.24 : 0.34;
+  addWallVisual(decal(flowerTex, 3.25, 3.25, [-37.08, 6.2, -25], [0, Math.PI / 2, 0], panelOpacity), 38, true);
+  addWallVisual(decal(flowerTex, 3.05, 3.05, [37.08, 6.1, -12], [0, -Math.PI / 2, 0], panelOpacity), 38, true);
+  addWallVisual(decal(flowerTex, 3.35, 3.35, [14, 7.6, -37.08], [0, 0, 0], isMobile ? 0.22 : 0.32), 44, true);
+  addWallVisual(decal(flowerTex, 2.8, 2.8, [-30, 5.9, -37.08], [0, 0, 0], isMobile ? 0.2 : 0.28), 38, true);
+  addWallVisual(decal(windowTex, 4.0, 2.35, [-37.1, 9.2, -11], [0, Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
+  addWallVisual(decal(windowTex, 4.0, 2.35, [37.1, 9.2, -24], [0, -Math.PI / 2, 0], isMobile ? 0.17 : 0.25), 34, true);
+  addWallVisual(decal(windowTex, 4.3, 2.5, [-18, 9.4, -37.1], [0, 0, 0], isMobile ? 0.16 : 0.23), 40, true);
   angelMural.forEach(([num, y, color]) => {
     addWallVisual(decal(angelNumberTexture(num, color), 1.35, 0.5, [-37.14, y, -4], [0, Math.PI / 2, 0], isMobile ? 0.24 : 0.36), 36);
   });
-  addWallVisual(decal(moonTex, 4.7, 1.34, [37.12, 6.6, 5.5], [0, -Math.PI / 2, 0], isMobile ? 0.2 : 0.28), 34);
-  addWallVisual(decal(waveTex, 4.8, 1.8, [37.12, 5.75, -27], [0, -Math.PI / 2, 0], isMobile ? 0.16 : 0.24), 36);
   const signOpacity = isMobile ? 0.22 : 0.34;
   [
     ["Protect Your Peace", 3.25, [-37.13, 4.6, -18], [0, Math.PI / 2, 0]],
@@ -280,10 +278,18 @@ export function createCitySpiritualVisuals(scene) {
 
   const words = ["ALIGN", "RECEIVE", "TRUST", "FLOW", "CALM", "FOCUS", "ACTIVATE", "I AM", "BECOME", "HARMONIZE", "ENERGY FIRST", "STAY ALIGNED", "I AM READY", "HIGHER SELF", "ABUNDANCE FLOWS", "CLARITY NOW"];
   const spots = [[-9, 1.9, -18], [9, 1.9, -15], [-20, 2.2, -4], [17, 2.1, 9.5], [-7, 2.25, 10.5], [22, 2.2, -23], [-28, 2.3, 2], [27, 2.3, -2], [0, 2.1, -21], [-13, 2.35, 3], [12, 2.25, 2], [-24, 2.35, 13], [24, 2.35, -8]];
+  const fixedAffirmations = [
+    ["Protect Your Peace", 24, 2.3, -27],
+    ["Energy Leads", 31, 2.25, -13],
+    ["Become The Frequency", -24, 2.3, -27],
+    ["Calm Is Power", -31, 2.25, -13],
+    ["Focus Is Currency", -31, 2.35, 21],
+    ["Peace Is Power", 31, 2.35, 22],
+  ];
   const shuffledWords = [...words].sort(() => Math.random() - 0.5);
   const shuffledSpots = [...spots].sort(() => Math.random() - 0.5);
-  const count = isMobile ? 7 : 9;
-  const affirmations = shuffledSpots.slice(0, count).map((spot, i) => [shuffledWords[i % shuffledWords.length], ...spot]);
+  const ambientCount = isMobile ? 5 : 6;
+  const affirmations = [...fixedAffirmations, ...shuffledSpots.slice(0, ambientCount).map((spot, i) => [shuffledWords[i % shuffledWords.length], ...spot])];
   group.userData.affirmations = affirmations.map(([text, x, y, z]) => { const h = affirmationHologram(text, x, y, z, isMobile ? 0.56 : 0.74); group.add(h); return h; });
 
   scene.add(group); scene.userData.citySpiritualVisuals = group;
@@ -302,6 +308,10 @@ export function animateCitySpiritualVisuals(scene, t, px, pz) {
     h.children.forEach((side) => { side.material.opacity = opacity; });
   });
   (group.userData.wallVisuals || []).forEach((visual) => {
+    if (visual.userData.alwaysVisible) {
+      visual.visible = true;
+      return;
+    }
     const dx = visual.position.x - px, dz = visual.position.z - pz;
     const range = visual.userData.visualRange || 38;
     visual.visible = dx * dx + dz * dz < range * range;
