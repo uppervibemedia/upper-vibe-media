@@ -212,6 +212,7 @@ export function createCitySpiritualVisuals(scene) {
   ].forEach(([kind, x, z, rot, boost]) => {
     group.add(groundDecal(groundSymbolTexture(kind, ""), zoneSymbolSize, x, z, zoneSymbolOpacity * boost, rot));
   });
+  group.add(groundDecal(groundSymbolTexture("metatron", ""), 10.5, 23, -3, zoneSymbolOpacity * 1.08, 0.12));
 
   const crystalMat = new MeshBasicMaterial({ color: new Color("#A078FF"), transparent: true, opacity: isMobile ? 0.42 : 0.62, depthWrite: false });
   [[-22, 10.4, -34], [24, 9.2, -34], [34, 8.4, -2], [-34, 7.8, 3]].forEach(([x, y, z], i) => { const c = new Mesh(new ConeGeometry(0.38, 1.9, 5), crystalMat); c.position.set(x, y, z); c.rotation.y = i * 0.8; group.add(c); });
