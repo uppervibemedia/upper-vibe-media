@@ -31,7 +31,7 @@ function drawCoverCache(video, imgCache) {
   const coverUrl = video?.thumbnail_url
     || (video?.youtube_video_id
       ? `https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`
-      : video?.cover_url || null);
+      : null);
 
   // Dark cinematic background
   const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
@@ -125,8 +125,8 @@ function drawCoverCache(video, imgCache) {
   const badgeY = frameY + frameH + 12;
   ctx.font = "bold 9px 'Inter', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillStyle = video?.kind === "fallback_cover" ? "rgba(255,211,110,0.42)" : "rgba(0,220,255,0.46)";
-  ctx.fillText(video?.label || "UPPER VIBE STAGE", frameCX, badgeY);
+  ctx.fillStyle = "rgba(0,220,255,0.35)";
+  ctx.fillText("NOW SHOWING", frameCX, badgeY);
 
   const title = video?.title || "";
   if (title) {
@@ -261,14 +261,14 @@ export default function StageCoverVisualizer({ onReady, video, audioIntensityRef
 
   // Preload thumbnail and rebuild cover cache when video changes
   useEffect(() => {
-    const id = video?.stableKey || video?.youtube_video_id || video?.title || null;
+    const id = video?.youtube_video_id || video?.title || null;
     if (id && id !== prevVideoIdRef.current) {
       prevVideoIdRef.current = id;
       coverCacheVideoId = null; // Force cache rebuild
       const url = video?.thumbnail_url
         || (video?.youtube_video_id
           ? `https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`
-          : video?.cover_url || null);
+          : null);
       if (url) {
         const img = new Image();
         img.crossOrigin = "anonymous";
@@ -310,7 +310,7 @@ export default function StageCoverVisualizer({ onReady, video, audioIntensityRef
       lastDrawRef.current = nowMs;
       const t = nowMs * 0.001 - startTimeRef.current;
       const curVideo = videoRef.current || {};
-      const curVideoId = curVideo.stableKey || curVideo.youtube_video_id || curVideo.title || "";
+      const curVideoId = curVideo.youtube_video_id || curVideo.title || "";
 
       // Rebuild cover cache only when video changes
       if (!coverCacheCanvas || coverCacheVideoId !== curVideoId) {
