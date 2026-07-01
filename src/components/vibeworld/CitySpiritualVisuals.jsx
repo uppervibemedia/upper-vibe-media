@@ -177,9 +177,24 @@ export function createCitySpiritualVisuals(scene) {
   group.add(decal(waveTexture(), 6.4, 3.0, [35.86, 4.8, 4], rotWest, isMobile ? 0.38 : 0.58));
   group.add(decal(waveTexture(), 5.4, 2.6, [-26, 4.2, -35.85], rotSouth, isMobile ? 0.34 : 0.52));
 
-  const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.14 : 0.2, depthWrite: false, side: DoubleSide });
-  const zones = [{ x: 0, z: -32 }, { x: 0, z: -6 }, { x: 12, z: 6 }, { x: -13, z: 10 }, { x: -28, z: 5 }, { x: -16, z: -13 }, { x: 0, z: -32 }];
+  const gridMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: isMobile ? 0.2 : 0.3, depthWrite: false, side: DoubleSide });
+  gridMat.userData.baseOpacity = isMobile ? 0.2 : 0.3;
+  group.userData.energyGridMat = gridMat;
+  const zones = [
+    { x: -6, z: -27 },
+    { x: -27, z: -20 },
+    { x: -18, z: -8.5 },
+    { x: -30, z: 9.5 },
+    { x: -14, z: 16.5 },
+    { x: -8, z: 23 },
+    { x: 29, z: 15 },
+    { x: 27, z: -15 },
+    { x: 30, z: -30 },
+    { x: -6, z: -27 },
+  ];
   for (let i = 0; i < zones.length - 1; i++) addGridLine(group, zones[i], zones[i + 1], gridMat);
+  addGridLine(group, { x: -18, z: -8.5 }, { x: 27, z: -15 }, gridMat);
+  addGridLine(group, { x: -14, z: 16.5 }, { x: 29, z: 15 }, gridMat);
 
   const zoneSymbolSize = 7.2;
   const zoneSymbolOpacity = isMobile ? 0.38 : 0.58;
@@ -210,6 +225,11 @@ export function createCitySpiritualVisuals(scene) {
 export function animateCitySpiritualVisuals(scene, t, px, pz) {
   const group = scene.userData.citySpiritualVisuals;
   if (!group?.userData?.affirmations) return;
+  const energyGridMat = group.userData.energyGridMat;
+  if (energyGridMat) {
+    const base = energyGridMat.userData.baseOpacity || 0.24;
+    energyGridMat.opacity = base * (0.72 + Math.sin(t * 1.4) * 0.18);
+  }
   group.userData.affirmations.forEach((h) => {
     const dx = h.position.x - px, dz = h.position.z - pz, d2 = dx * dx + dz * dz;
     const near = d2 < 16 * 16;
