@@ -182,9 +182,14 @@ export function createCitySpiritualVisuals(scene) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   const floorSymbols = [
-    ["metatron", 11.8, -24, 3, 0.24, 0.12],
-    ["tree", 9.5, -7, 15, 0.22, 0.16],
-    ["vesica", 9.5, 15, -15, 0.22, -0.18],
+    ["metatron", 11.4, -24, 3, 0.22, 0.12],
+    ["tree", 9.8, -7, 15, 0.2, 0.16],
+    ["vesica", 10.0, 15, -15, 0.2, -0.18],
+    ["seed", 9.6, 18, 19, 0.18, 0.08],
+    ["egg", 9.6, -25, 18, 0.18, -0.1],
+    ["torus", 10.2, 0, 18, 0.18, 0],
+    ["sri", 9.4, -31, -19, 0.17, 0.14],
+    ["flower", 9.4, 31, -18, 0.17, -0.12],
   ];
   group.userData.groundSymbols = floorSymbols.map(([kind, size, x, z, opacity, rot]) => {
     const sym = groundDecal(groundSymbolTexture(kind), size, x, z, isMobile ? opacity * 0.78 : opacity, rot);
