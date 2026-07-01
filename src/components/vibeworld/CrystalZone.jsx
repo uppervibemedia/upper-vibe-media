@@ -10,7 +10,7 @@ export const CRYSTAL_ZONE_NODES = [
 ];
 export const CRYSTAL_ZONE_X = 0;
 export const CRYSTAL_ZONE_Z = -10;
-export const CRYSTAL_ZONE_RADIUS = 4.2;
+export const CRYSTAL_ZONE_RADIUS = 5.2;
 
 const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
@@ -88,7 +88,7 @@ function createCrystalNode(node, index) {
     depthWrite: true,
     side: THREE.DoubleSide,
   });
-  const baseDisc = new THREE.Mesh(new THREE.CircleGeometry(2.7, IS_MOBILE ? 28 : 48), baseMat);
+  const baseDisc = new THREE.Mesh(new THREE.CircleGeometry(3.6, IS_MOBILE ? 32 : 56), baseMat);
   baseDisc.rotation.x = -Math.PI / 2;
   baseDisc.position.y = 0.02;
   baseDisc.renderOrder = 1;
@@ -101,7 +101,7 @@ function createCrystalNode(node, index) {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
-  const outerRing = new THREE.Mesh(new THREE.RingGeometry(2.25, 2.5, IS_MOBILE ? 28 : 48), outerRingMat);
+  const outerRing = new THREE.Mesh(new THREE.RingGeometry(3.05, 3.35, IS_MOBILE ? 32 : 56), outerRingMat);
   outerRing.rotation.x = -Math.PI / 2;
   outerRing.position.y = 0.035;
   outerRing.renderOrder = 2;
@@ -114,20 +114,20 @@ function createCrystalNode(node, index) {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
-  const innerRing = new THREE.Mesh(new THREE.RingGeometry(0.82, 1.02, 6), innerRingMat);
+  const innerRing = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.48, 6), innerRingMat);
   innerRing.rotation.x = -Math.PI / 2;
   innerRing.position.y = 0.045;
   innerRing.renderOrder = 2;
   group.add(innerRing);
 
-  const centerGeo = crystalGeo(0.62, 4.4, 8);
+  const centerGeo = crystalGeo(0.78, 5.2, 8);
   const centerMat = makeCrystalMat("#C8E8FF", "#5577FF", 0.42);
   const center = new THREE.Mesh(centerGeo, centerMat);
   center.name = "crystalNodeCore";
   center.renderOrder = 5;
   group.add(center);
 
-  const glowGeo = crystalGeo(0.78, 4.8, 8);
+  const glowGeo = crystalGeo(0.98, 5.6, 8);
   const glowMat = makeGlowShell("#88BBFF", 0.08);
   const centerGlow = new THREE.Mesh(glowGeo, glowMat);
   centerGlow.renderOrder = 4;

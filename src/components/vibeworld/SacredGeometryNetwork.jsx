@@ -100,10 +100,10 @@ function addConnection(group, a, b, y, color = "#7DEBFF") {
   const dx = b.x - a.x;
   const dz = b.z - a.z;
   const len = Math.sqrt(dx * dx + dz * dz);
-  const baseOpacity = IS_MOBILE ? 0.18 : 0.26;
+  const baseOpacity = IS_MOBILE ? 0.24 : 0.34;
   const mat = new MeshBasicMaterial({ color: new Color(color), transparent: true, opacity: baseOpacity, depthWrite: false, side: DoubleSide });
   mat.userData.baseOpacity = baseOpacity;
-  const line = new Mesh(new PlaneGeometry(len, IS_MOBILE ? 0.09 : 0.12), mat);
+  const line = new Mesh(new PlaneGeometry(len, IS_MOBILE ? 0.16 : 0.22), mat);
   line.rotation.x = -Math.PI / 2;
   line.rotation.z = -Math.atan2(dz, dx);
   line.position.set((a.x + b.x) / 2, y - 0.006, (a.z + b.z) / 2);
@@ -112,9 +112,9 @@ function addConnection(group, a, b, y, color = "#7DEBFF") {
   group.add(line);
   group.userData.lines.push(line);
 
-  if (!IS_MOBILE || group.userData.flowDots.length < 10) {
-    const dotMat = new MeshBasicMaterial({ color: new Color("#FFD36E"), transparent: true, opacity: IS_MOBILE ? 0.34 : 0.46, depthWrite: false, side: DoubleSide });
-    const dot = new Mesh(new PlaneGeometry(0.52, 0.16), dotMat);
+  if (group.userData.flowDots.length < (IS_MOBILE ? 8 : 14)) {
+    const dotMat = new MeshBasicMaterial({ color: new Color("#FFD36E"), transparent: true, opacity: IS_MOBILE ? 0.30 : 0.42, depthWrite: false, side: DoubleSide });
+    const dot = new Mesh(new PlaneGeometry(0.58, 0.18), dotMat);
     dot.rotation.copy(line.rotation);
     dot.position.set(a.x, y + 0.004, a.z);
     dot.renderOrder = 5;
@@ -125,35 +125,68 @@ function addConnection(group, a, b, y, color = "#7DEBFF") {
 }
 
 const CITY_NODES = [
-  { kind: "metatron", x: 0, z: -6, size: 4.6, color: "#A8F8FF" },
-  { kind: "egg", x: -6, z: -27, size: 4.4, color: "#7DEBFF" },
-  { kind: "flower", x: -24, z: -22, size: 4.2, color: "#B58CFF" },
-  { kind: "chakra", x: -25, z: -6, size: 4.1, color: "#FFD36E" },
-  { kind: "tree", x: -14, z: 6, size: 4.1, color: "#7DEBFF" },
-  { kind: "vesica", x: 4, z: 11, size: 4.0, color: "#B58CFF" },
-  { kind: "fruit", x: 24, z: 4, size: 4.2, color: "#FFD36E" },
-  { kind: "seed", x: 27, z: -14, size: 4.2, color: "#7DEBFF" },
-  { kind: "pentagon", x: 18, z: -27, size: 4.1, color: "#B58CFF" },
-  { kind: "pentagram", x: -32, z: 3, size: 3.9, color: "#A8F8FF" },
+  { key: "westCrystal", kind: "hexagon", x: -30, z: -10, size: 6.4, color: "#7DEBFF", opacity: IS_MOBILE ? 0.34 : 0.44 },
+  { key: "eastCrystal", kind: "hexagon", x: 30, z: -10, size: 6.4, color: "#B58CFF", opacity: IS_MOBILE ? 0.34 : 0.44 },
+  { key: "danceCore", kind: "metatron", x: 0, z: -6, size: 9.2, color: "#A8F8FF", opacity: IS_MOBILE ? 0.20 : 0.28 },
+  { key: "stage", kind: "egg", x: 0, z: -29, size: 5.0, color: "#7DEBFF", opacity: IS_MOBILE ? 0.22 : 0.32 },
+  { key: "lounge", kind: "flower", x: -22, z: -25, size: 4.8, color: "#B58CFF", opacity: IS_MOBILE ? 0.22 : 0.30 },
+  { key: "library", kind: "seed", x: 22, z: -20, size: 4.8, color: "#7DEBFF", opacity: IS_MOBILE ? 0.22 : 0.30 },
+  { key: "vibeCheck", kind: "tree", x: -16, z: -13, size: 4.4, color: "#FFD36E", opacity: IS_MOBILE ? 0.20 : 0.28 },
+  { key: "visualizer", kind: "vesica", x: -13, z: 10, size: 4.6, color: "#7DEBFF", opacity: IS_MOBILE ? 0.20 : 0.28 },
+  { key: "beachGate", kind: "fruit", x: 12, z: 8, size: 4.8, color: "#FFD36E", opacity: IS_MOBILE ? 0.20 : 0.28 },
+  { key: "ferris", kind: "pentagon", x: 29, z: 8, size: 4.6, color: "#B58CFF", opacity: IS_MOBILE ? 0.20 : 0.28 },
+  { key: "westSpoke", kind: "circle", x: -30, z: 6, size: 4.3, color: "#A8F8FF", opacity: IS_MOBILE ? 0.18 : 0.25 },
+  { key: "eastSpoke", kind: "circle", x: 30, z: 6, size: 4.3, color: "#A8F8FF", opacity: IS_MOBILE ? 0.18 : 0.25 },
+];
+
+const CITY_CONNECTIONS = [
+  ["westCrystal", "danceCore", "#7DEBFF"], ["eastCrystal", "danceCore", "#B58CFF"],
+  ["westCrystal", "stage", "#7DEBFF"], ["eastCrystal", "stage", "#7DEBFF"],
+  ["westCrystal", "lounge", "#B58CFF"], ["eastCrystal", "library", "#7DEBFF"],
+  ["westCrystal", "vibeCheck", "#FFD36E"], ["eastCrystal", "ferris", "#B58CFF"],
+  ["danceCore", "stage", "#7DEBFF"], ["danceCore", "visualizer", "#7DEBFF"], ["danceCore", "beachGate", "#FFD36E"],
+  ["visualizer", "westSpoke", "#7DEBFF"], ["beachGate", "eastSpoke", "#FFD36E"],
+  ["westSpoke", "westCrystal", "#A8F8FF"], ["eastSpoke", "eastCrystal", "#A8F8FF"],
+  ["lounge", "stage", "#B58CFF"], ["library", "stage", "#7DEBFF"],
+  ["visualizer", "beachGate", "#A8F8FF"], ["westCrystal", "eastCrystal", "#A8F8FF"],
 ];
 
 const BEACH_NODES = [
-  { kind: "flower", x: -5, z: 2, size: 5.0, color: "#7DEBFF" },
-  { kind: "circle", x: -41, z: -13, size: 4.2, color: "#B58CFF" },
-  { kind: "triangle", x: -20, z: -7, size: 4.0, color: "#FFD36E" },
-  { kind: "hexagon", x: 10, z: -18, size: 4.2, color: "#7DEBFF" },
-  { kind: "pentagon", x: 34, z: -8, size: 4.1, color: "#B58CFF" },
-  { kind: "vesica", x: 44, z: 8, size: 4.0, color: "#FFD36E" },
-  { kind: "seed", x: 27, z: 24, size: 4.1, color: "#7DEBFF" },
-  { kind: "tree", x: -8, z: 28, size: 4.0, color: "#B58CFF" },
-  { kind: "metatron", x: -44, z: 14, size: 4.2, color: "#A8F8FF" },
-  { kind: "fruit", x: -28, z: 8, size: 4.0, color: "#FFD36E" },
+  { key: "returnGate", kind: "flower", x: 0, z: 2, size: 5.8, color: "#7DEBFF", opacity: IS_MOBILE ? 0.24 : 0.34 },
+  { key: "westWater", kind: "circle", x: -41, z: -13, size: 4.4, color: "#B58CFF", opacity: IS_MOBILE ? 0.18 : 0.26 },
+  { key: "westSand", kind: "triangle", x: -20, z: -7, size: 4.3, color: "#FFD36E", opacity: IS_MOBILE ? 0.18 : 0.26 },
+  { key: "north", kind: "hexagon", x: 10, z: -18, size: 4.4, color: "#7DEBFF", opacity: IS_MOBILE ? 0.18 : 0.26 },
+  { key: "eastSand", kind: "pentagon", x: 34, z: -8, size: 4.3, color: "#B58CFF", opacity: IS_MOBILE ? 0.18 : 0.26 },
+  { key: "eastWater", kind: "vesica", x: 44, z: 8, size: 4.2, color: "#FFD36E", opacity: IS_MOBILE ? 0.18 : 0.26 },
+  { key: "southEast", kind: "seed", x: 27, z: 24, size: 4.4, color: "#7DEBFF", opacity: IS_MOBILE ? 0.18 : 0.26 },
+  { key: "south", kind: "tree", x: -8, z: 28, size: 4.3, color: "#B58CFF", opacity: IS_MOBILE ? 0.18 : 0.26 },
+  { key: "southWest", kind: "metatron", x: -44, z: 14, size: 4.4, color: "#A8F8FF", opacity: IS_MOBILE ? 0.18 : 0.26 },
+];
+
+const BEACH_CONNECTIONS = [
+  ["returnGate", "westSand", "#FFD36E"], ["returnGate", "north", "#7DEBFF"], ["returnGate", "eastSand", "#B58CFF"],
+  ["westSand", "westWater", "#B58CFF"], ["eastSand", "eastWater", "#FFD36E"],
+  ["westWater", "southWest", "#A8F8FF"], ["eastWater", "southEast", "#7DEBFF"],
+  ["southWest", "south", "#B58CFF"], ["south", "southEast", "#7DEBFF"],
+  ["westSand", "south", "#FFD36E"], ["eastSand", "south", "#FFD36E"],
 ];
 
 export function createSacredGeometryNetwork(scene, mode) {
   const group = new Group();
   group.name = `sacredGeometryNetwork_${mode}`;
   group.userData = { mode, nodes: [], lines: [], flowDots: [] };
+  const y = mode === "beach" ? 0.055 : 0.052;
+  const nodes = mode === "beach" ? BEACH_NODES : CITY_NODES;
+  const connections = mode === "beach" ? BEACH_CONNECTIONS : CITY_CONNECTIONS;
+  const byKey = new Map(nodes.map((node) => [node.key, node]));
+
+  nodes.forEach((node) => addNode(group, node, y));
+  connections.forEach(([aKey, bKey, color]) => {
+    const a = byKey.get(aKey);
+    const b = byKey.get(bKey);
+    if (a && b) addConnection(group, a, b, y, color);
+  });
+
   scene.add(group);
   scene.userData.sacredGeometryNetwork = group;
 }
