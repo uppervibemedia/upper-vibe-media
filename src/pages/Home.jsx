@@ -27,7 +27,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 import RecentlyPlayedRow from "../components/home/RecentlyPlayedRow";
 import LatestMusicSection from "../components/home/LatestMusicSection";
-const UpperVibeCityPreview = lazy(() => import("../components/vibeworld/UpperVibeCityPreview"));
+import UpperVibeCityPreview from "../components/vibeworld/UpperVibeCityPreview";
 const YourFrequencyFeed = lazy(() => import("../components/home/YourFrequencyFeed"));
 const ListenerFrequencyDashboard = lazy(() => import("../components/home/ListenerFrequencyDashboard"));
 import SectionHeader from "../components/shared/SectionHeader";
