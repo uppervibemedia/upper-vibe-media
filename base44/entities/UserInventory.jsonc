@@ -7,7 +7,7 @@
     },
     "item_id": {
       "type": "string",
-      "description": "Unique item identifier from inventoryConfig"
+      "description": "Unique item identifier from inventoryConfig/shopConfig"
     },
     "item_name": {
       "type": "string"
@@ -19,6 +19,7 @@
         "aura",
         "nameplate",
         "hoverboard",
+        "movement_gear",
         "badge",
         "clothing",
         "emote"

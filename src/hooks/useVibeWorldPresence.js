@@ -53,7 +53,7 @@ function getLifetimeOrbs() {
 
 export default function useVibeWorldPresence(user, currentZone, position, equippedState = {}, liveState = {}, livePositionRef = null) {
   const {
-    equippedAura = "", equippedAuraColor = "", equippedHoverboard = "",
+    equippedAura = "", equippedAuraColor = "", equippedHoverboard = "", equippedMovementGear = "",
     equippedNameplate = "", equippedBadge = "", equippedClothing = "",
     avatarTypeKey = "", avatarSkinTone = "", avatarStyle = "", avatarOutfitColor = "", avatarHairStyle = "",
   } = equippedState;
@@ -61,11 +61,15 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     isDancing = false,
     personalHoverboardActive: liveHoverboardActive = false,
     isPlayingNeonSurf = false,
+    jetpackActive = false,
+    jetpackMode = "off",
   } = liveState;
   // Effective riding flags: personal hoverboard OR Neon Surf riding
   const isRidingPersonal = liveHoverboardActive;
   const isRidingNeonSurf = isPlayingNeonSurf;
   const anyRiding = isRidingPersonal || isRidingNeonSurf;
+  const isJetpacking = !!jetpackActive;
+  const jetpackAirborne = jetpackMode === "flying" || jetpackMode === "falling";
   const [activeUsers, setActiveUsers] = useState([]);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const recordIdRef = useRef(null);
@@ -75,7 +79,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
   const animRef = useRef("idle");
   const mountedRef = useRef(true);
   // Track last-sent state so movement and appearance changes broadcast immediately.
-  const lastSentRef = useRef({ x: Infinity, y: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "", dancing: false, riding: false, neonSurf: false, aura: "", auraColor: "", hoverboard: "", nameplate: "", badge: "", clothing: "", avatarKey: "", skin: "", hair: "", style: "", outfit: "" });
+  const lastSentRef = useRef({ x: Infinity, y: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "", dancing: false, riding: false, neonSurf: false, jetpack: false, jetpackMode: "", aura: "", auraColor: "", hoverboard: "", movementGear: "", nameplate: "", badge: "", clothing: "", avatarKey: "", skin: "", hair: "", style: "", outfit: "" });
   const sendInFlightRef = useRef(false);
   const usersMapRef = useRef({});
 
@@ -111,7 +115,9 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     // Derive effective animation state from live state
     // Phase-order: dance > riding > walking > idle
     let anim = baseAnim;
-    if (isRidingPersonal) anim = "hbRiding";
+    if (jetpackAirborne) anim = jetpackMode === "falling" ? "jetpackFalling" : "jetpackFlying";
+    else if (isJetpacking && jetpackMode === "cooldown") anim = "jetpackCooldown";
+    else if (isRidingPersonal) anim = "hbRiding";
     else if (isRidingNeonSurf) anim = "neonSurf";
     else if (isDancing) anim = "dancing";
 
@@ -130,9 +136,12 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       dancing === last.dancing &&
       riding === last.riding &&
       neonSurf === last.neonSurf &&
+      isJetpacking === last.jetpack &&
+      jetpackMode === last.jetpackMode &&
       equippedAura === last.aura &&
       equippedAuraColor === last.auraColor &&
       equippedHoverboard === last.hoverboard &&
+      equippedMovementGear === last.movementGear &&
       equippedNameplate === last.nameplate &&
       equippedBadge === last.badge &&
       equippedClothing === last.clothing &&
@@ -150,9 +159,12 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       dancing,
       riding,
       neonSurf,
+      jetpack: isJetpacking,
+      jetpackMode,
       aura: equippedAura || "",
       auraColor: equippedAuraColor || "",
       hoverboard: equippedHoverboard || "",
+      movementGear: equippedMovementGear || "",
       nameplate: equippedNameplate || "",
       badge: equippedBadge || "",
       clothing: equippedClothing || "",
@@ -184,6 +196,9 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         personal_hoverboard_active: riding,
         is_playing_neon_surf: neonSurf,
         equipped_hoverboard: equippedHoverboard || "",
+        equipped_movement_gear: equippedMovementGear || "",
+        jetpack_active: isJetpacking,
+        jetpack_mode: jetpackActive ? jetpackMode : "off",
         equipped_aura: equippedAura || "",
         equipped_aura_color: equippedAuraColor || "",
         equipped_nameplate: equippedNameplate || "",
@@ -197,12 +212,12 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     } finally {
       sendInFlightRef.current = false;
     }
-  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedMovementGear, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf, isJetpacking, jetpackAirborne, jetpackActive, jetpackMode]);
 
   // Broadcast avatar/item changes immediately so other people see updates without refreshing.
   useEffect(() => {
     sendPosition();
-  }, [sendPosition, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [sendPosition, equippedAura, equippedAuraColor, equippedHoverboard, equippedMovementGear, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf, isJetpacking, jetpackAirborne, jetpackMode]);
 
   // ── Full heartbeat (slower — online status + full identity) ──────────────
   const isBroadcastingRef = useRef(false);
@@ -234,7 +249,9 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       pos_z: posRef.current.z || 0,
       rotation: posRef.current.rot || 0,
       // Derive effective animation state from live state
-      animation_state: isRidingPersonal ? "hbRiding" :
+      animation_state: jetpackAirborne ? (jetpackMode === "falling" ? "jetpackFalling" : "jetpackFlying") :
+        isJetpacking && jetpackMode === "cooldown" ? "jetpackCooldown" :
+        isRidingPersonal ? "hbRiding" :
         isRidingNeonSurf ? "neonSurf" :
         isDancing ? "dancing" :
         animRef.current || "idle",
@@ -244,6 +261,9 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       equipped_aura: equippedAura || "",
       equipped_aura_color: equippedAuraColor || "",
       equipped_hoverboard: equippedHoverboard || "",
+      equipped_movement_gear: equippedMovementGear || "",
+      jetpack_active: isJetpacking,
+      jetpack_mode: jetpackActive ? jetpackMode : "off",
       equipped_nameplate: equippedNameplate,
       equipped_badge: equippedBadge,
       equipped_clothing: equippedClothing,
@@ -262,20 +282,23 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         const rec = await base44.entities.VibeWorldPresence.create(payload);
         recordIdRef.current = rec.id;
       }
-      const dancing = isDancing, riding = isRidingPersonal, neonSurf = isRidingNeonSurf;
+      const dancing = isDancing, riding = isRidingPersonal, neonSurf = isRidingNeonSurf, jetpack = isJetpacking;
       lastSentRef.current = {
         x: posRef.current.x || 0,
         y: posRef.current.y || 0,
         z: posRef.current.z || 0,
         rot: posRef.current.rot || 0,
         zone: zoneRef.current,
-        anim: riding ? "hbRiding" : neonSurf ? "neonSurf" : dancing ? "dancing" : animRef.current || "idle",
+        anim: jetpackAirborne ? (jetpackMode === "falling" ? "jetpackFalling" : "jetpackFlying") : jetpack && jetpackMode === "cooldown" ? "jetpackCooldown" : riding ? "hbRiding" : neonSurf ? "neonSurf" : dancing ? "dancing" : animRef.current || "idle",
         dancing,
         riding,
         neonSurf,
+        jetpack,
+        jetpackMode,
         aura: equippedAura || "",
         auraColor: equippedAuraColor || "",
         hoverboard: equippedHoverboard || "",
+        movementGear: equippedMovementGear || "",
         nameplate: equippedNameplate || "",
         badge: equippedBadge || "",
         clothing: equippedClothing || "",
@@ -292,7 +315,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     } catch (err) {
       console.warn("[VibeWorldPresence] heartbeat failed — record may not exist:", err?.message);
     }
-  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedMovementGear, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarHairStyle, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf, isJetpacking, jetpackAirborne, jetpackActive, jetpackMode]);
 
   useEffect(() => {
     if (!user?.id) return;

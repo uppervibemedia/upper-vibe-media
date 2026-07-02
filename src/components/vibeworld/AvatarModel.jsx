@@ -254,9 +254,44 @@ function applyEmotePose(entry, dt) {
 
 // ─── PUBLIC: updateAvatarAnimation ───────────────────────────
 // isHoverboarding: when true, locks avatar in idle pose — feet stay planted on board.
-export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
+export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false, isJetpackFlying = false) {
   if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
+
+  // Jetpack mode: freeze in a hover pose — no walking/running animation in air
+  if (isJetpackFlying) {
+    if (entry.clips.idle) {
+      crossFade(entry, "idle", 0.22);
+      entry.clips.idle.setEffectiveTimeScale(0.0);
+    } else if (entry.clips.walk) {
+      crossFade(entry, "walk", 0.22);
+      entry.clips.walk.setEffectiveTimeScale(0.0);
+    }
+    const model = entry.root.getObjectByName("avatarModel");
+    if (model && !entry._jetpackPoseBones) {
+      const bones = {};
+      model.traverse((obj) => {
+        if (!obj.isBone) return;
+        const n = obj.name.toLowerCase();
+        if ((n.includes("upper") || n.includes("arm")) && (n.includes("left") || n.endsWith("l"))) bones.armL = bones.armL || obj;
+        if ((n.includes("upper") || n.includes("arm")) && (n.includes("right") || n.endsWith("r"))) bones.armR = bones.armR || obj;
+        if ((n.includes("leg") || n.includes("thigh") || n.includes("upleg")) && (n.includes("left") || n.endsWith("l"))) bones.legL = bones.legL || obj;
+        if ((n.includes("leg") || n.includes("thigh") || n.includes("upleg")) && (n.includes("right") || n.endsWith("r"))) bones.legR = bones.legR || obj;
+        if (n.includes("spine") || n.includes("chest")) bones.spine = bones.spine || obj;
+        if (n.includes("head")) bones.head = bones.head || obj;
+      });
+      entry._jetpackPoseBones = bones;
+    }
+    const b = entry._jetpackPoseBones;
+    const hover = Math.sin((entry._jetpackHoverT = (entry._jetpackHoverT || 0) + dt * 4.0)) * 0.06;
+    if (b?.armL) { b.armL.rotation.x = -0.45 + hover; b.armL.rotation.z = 0.38; }
+    if (b?.armR) { b.armR.rotation.x = -0.45 + hover; b.armR.rotation.z = -0.38; }
+    if (b?.legL) { b.legL.rotation.x = 0.18; b.legL.rotation.z = 0.04; }
+    if (b?.legR) { b.legR.rotation.x = 0.18; b.legR.rotation.z = -0.04; }
+    if (b?.spine) b.spine.rotation.x = -0.12;
+    if (b?.head) b.head.rotation.x = 0.06;
+    return;
+  }
 
   // Hoverboard mode: freeze in idle — no walking/running animation at all
   if (isHoverboarding) {

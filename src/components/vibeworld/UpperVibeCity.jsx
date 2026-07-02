@@ -124,6 +124,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Personal hoverboard: owned item, equipped from Inventory only ───────
   const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
   const [equippedBoard, setEquippedBoard] = useState(null);
+  const [equippedMovementGear, setEquippedMovementGear] = useState(null);
   const [equippedAura, setEquippedAura] = useState(null); // item id of equipped aura glow
   const [equippedAuraColor, setEquippedAuraColor] = useState(null); // hex color for sync
   const [equippedNameplate, setEquippedNameplate] = useState(null);
@@ -156,7 +157,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const [auraActive, setAuraActive] = useState(false);
 
-  const hbRiding = personalHoverboardActive && !jetpackActive;
   // Crystal Zone — decorative landmark only, no interaction state needed
   const rendererRef = useRef(null);
   const [sessionCoins, setSessionCoins] = useState(() => getSessionCoins());
@@ -247,6 +247,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [jetpackActive, setJetpackActive] = useState(false);
   const [jetpackFlyRequest, setJetpackFlyRequest] = useState(null);
   const [jetpackStatus, setJetpackStatus] = useState({ mode: "off", cooldownRemaining: 0, flightRemaining: 0 });
+  const hbRiding = personalHoverboardActive && !jetpackActive;
+  const jetpackEquipped = equippedMovementGear === "shop_jetpack";
   const hoverboardDashRewardedRef = useRef(null);
 
 
@@ -519,9 +521,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (category === 'hoverboard') {
         if (equipped) {
           setEquippedBoard(itemId);
+          setEquippedMovementGear(null);
+          setJetpackActive(false);
         } else if (equippedBoard === itemId) {
           setEquippedBoard(null);
           setPersonalHoverboardActive(false); // Force dismount if board is unequipped
+        }
+      }
+      if (category === 'movement_gear') {
+        if (equipped) {
+          setEquippedMovementGear(itemId);
+          setEquippedBoard(null);
+          setPersonalHoverboardActive(false);
+          setHoverboardDashActive(false);
+        } else if (equippedMovementGear === itemId) {
+          setEquippedMovementGear(null);
+          setJetpackActive(false);
         }
       }
       if (category === 'avatar_glow') {
@@ -539,7 +554,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       window.removeEventListener("vibeCoinsShopPurchase", onShop);
       window.removeEventListener('inventoryUpdate', onInventoryUpdate);
     }
-  }, [equippedBoard]);
+  }, [equippedBoard, equippedMovementGear]);
 
   // ── Avatar config derived from user data ──────────────────────────────
   // avatarTypeKey: read from sessionStorage (set by AvatarSetup or WorldGate on entry)
@@ -873,12 +888,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [worldMode]);
 
   const equipJetpack = useCallback(() => {
+    if (!jetpackEquipped) return;
     setHoverboardDashActive(false);
     setPersonalHoverboardActive(false);
     setJetpackActive(true);
     setJetpackStatus({ mode: "ready", cooldownRemaining: 0, flightRemaining: 0 });
     try { navigator?.vibrate?.(16); } catch {}
-  }, []);
+  }, [jetpackEquipped]);
 
   const putAwayVehicle = useCallback(() => {
     if (jetpackActive) {
@@ -890,7 +906,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [jetpackActive]);
 
   const requestJetpackFly = useCallback(() => {
-    if (!jetpackActive) return;
+    if (!jetpackEquipped) return;
+    if (!jetpackActive) {
+      setHoverboardDashActive(false);
+      setPersonalHoverboardActive(false);
+      setJetpackActive(true);
+    }
     setJetpackFlyRequest({ id: Date.now() });
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -908,7 +929,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         osc.start(); osc.stop(ctx.currentTime + 0.36);
       }
     } catch {}
-  }, [jetpackActive]);
+  }, [jetpackActive, jetpackEquipped]);
 
   const handleStartBeachActivity = useCallback((type) => {
     if (!type || beachActivityHud?.active) return;
@@ -1009,7 +1030,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     equippedAura,
     equippedAuraColor,
     equippedHoverboard: equippedBoard,
-    personalHoverboardActive,
+    equippedMovementGear,
     equippedNameplate,
     equippedBadge,
     equippedClothing,
@@ -1021,6 +1042,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, {
     isDancing,
     personalHoverboardActive,
+    jetpackActive,
+    jetpackMode: jetpackStatus.mode,
   }, rawPosRef);
 
   // ── Follow System ─────────────────────────────────────────────────────
@@ -1348,7 +1371,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           }}
           onRemoteAvatarClick={handleRemoteAvatarClick}
           retintRef={retintInWorldRef}
-          onPositionChange={(x, z, rot) => {
+          onPositionChange={(x, z, rot, y = 0, jetpackMode = "off") => {
             { 
               const dfDx = x - DANCE_FLOOR_CX;
               const dfDz = z - DANCE_FLOOR_CZ;
@@ -1360,8 +1383,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const dx = x - prev.x;
             const dz = z - prev.z;
             const speed = Math.sqrt(dx * dx + dz * dz);
-            const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
-            rawPosRef.current = { x, y: 0, z, rot, animState };
+            const airborneJetpack = jetpackMode === "flying" || jetpackMode === "falling" || y > 0.18;
+            const animState = airborneJetpack ? (jetpackMode === "falling" ? "jetpackFalling" : "jetpackFlying") : isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
+            rawPosRef.current = { x, y, z, rot, animState };
             // Stop auto-dance as soon as the player starts moving
             if (isDancingRef.current && speed > 0.015) {
               setIsDancing(false);
@@ -1373,7 +1397,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const rotThreshold = smoothMovementMode ? 0.12 : 0.05;
             if (Math.abs(dx) < posThreshold && Math.abs(dz) < posThreshold && Math.abs(rot - prevRot) < rotThreshold) return;
             prevPosRef.current = { x, z, rot };
-            setPlayerPos({ x, z, rot, animState });
+            setPlayerPos({ x, y, z, rot, animState });
           }}
           onJukeboxProximity={(near, vol) => {
             setNearJukebox(worldMode === "city" && near);
@@ -1814,7 +1838,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         jetpackStatus={jetpackStatus}
         vehicleMode={jetpackActive ? "jetpack" : "hoverboard"}
         canUsePersonalBoard={(hoverboardDashActive || !!equippedBoard) && !personalHoverboardActive && !jetpackActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
-        canUseJetpack={!personalHoverboardActive && !jetpackActive && !hoverboardDashActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && worldMode === "city"}
+        canUseJetpack={jetpackEquipped && !personalHoverboardActive && !jetpackActive && !hoverboardDashActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && worldMode === "city"}
         lockPutAway={hoverboardDashActive && !jetpackActive}
       />
 

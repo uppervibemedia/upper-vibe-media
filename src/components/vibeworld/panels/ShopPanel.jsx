@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ShoppingBag, Check, Zap, Rocket, Sparkles, Badge, Award } from "lucide-react";
+import { X, ShoppingBag, Check, Zap, Rocket, Sparkles, Badge, Award, Flame } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { loadWallet, getWalletBalance, getWalletLifetime, spendCoins } from "../wallet/vibeCoinWallet";
-import { loadInventory, equipItem } from "../inventory/inventoryService";
+import { loadInventory, equipItem, unequipItem } from "../inventory/inventoryService";
 import { SHOP_ITEMS, SHOP_CATEGORIES, getShopItem } from "./shopConfig";
 import { getCategoryLabel } from "../inventory/inventoryConfig";
+
+const sameEquipGroup = (a, b) => {
+  const auraGroup = ["avatar_glow", "aura"];
+  const movementGroup = ["hoverboard", "movement_gear"];
+  return a === b || (auraGroup.includes(a) && auraGroup.includes(b)) || (movementGroup.includes(a) && movementGroup.includes(b));
+};
 
 const ItemPreview = ({ config }) => {
   if (!config) return "🎁";
@@ -14,7 +20,8 @@ const ItemPreview = ({ config }) => {
     Sparkles,
     Badge,
     Award,
-    Zap
+    Zap,
+    Flame
   }[config.preview_icon];
 
   if (Icon) return <Icon className="w-6 h-6" />;
@@ -57,7 +64,7 @@ export default function ShopPanel({ open, onClose, isMobile, user, currentUserId
     if (processing) return;
     if (owned[item.id]) return; // already owned (non-consumable)
     if (balance < item.price) {
-      setMessage("Not enough Vibe Coins.");
+      setMessage("Not enough Vibe Coins");
       setTimeout(() => setMessage(null), 2500);
       return;
     }
@@ -65,7 +72,7 @@ export default function ShopPanel({ open, onClose, isMobile, user, currentUserId
 
     const result = await spendCoins(userId, item.price, "shop_purchase", item.id);
     if (!result.success) {
-      setMessage("Not enough Vibe Coins.");
+      setMessage("Not enough Vibe Coins");
       setTimeout(() => setMessage(null), 2500);
       setProcessing(null);
       return;
@@ -100,12 +107,16 @@ export default function ShopPanel({ open, onClose, isMobile, user, currentUserId
     setProcessing(itemId);
     const cat = record.item_category;
     const willEquip = !record.equipped;
-    await equipItem(userId, record.id, cat, inventoryRecords);
+    if (willEquip) await equipItem(userId, record.id, cat, inventoryRecords);
+    else await unequipItem(record.id);
+    window.dispatchEvent(new CustomEvent('inventoryUpdate', {
+      detail: { itemId, equipped: willEquip, category: cat }
+    }));
     // Update local owned state
     setOwned((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((k) => {
-        if (next[k].item_category === cat) next[k] = { ...next[k], equipped: false };
+        if (sameEquipGroup(next[k].item_category, cat)) next[k] = { ...next[k], equipped: false };
       });
       if (next[itemId]) next[itemId] = { ...next[itemId], equipped: willEquip };
       return next;

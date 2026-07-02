@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Package, RefreshCw, Rocket, Sparkles, Badge, Award, Zap } from "lucide-react";
+import { X, Package, RefreshCw, Rocket, Sparkles, Badge, Award, Zap, Flame } from "lucide-react";
 import { getCategoryLabel, getItemConfig, isPersonalHoverboard } from "./inventoryConfig";
 import { loadInventory, equipItem, unequipItem } from "./inventoryService";
 import { getShopItem } from "../panels/shopConfig";
@@ -9,6 +9,7 @@ import { getWalletBalance, getWalletLifetime } from "../wallet/vibeCoinWallet";
 const CATEGORY_TABS = [
   { id: "all", label: "All", emoji: "📦", categories: null },
   { id: "hoverboards", label: "Hoverboards", emoji: "🛹", categories: ["hoverboard"] },
+  { id: "gear", label: "Movement Gear", emoji: "🚀", categories: ["movement_gear"] },
   { id: "auras", label: "Auras", emoji: "✨", categories: ["avatar_glow", "aura"] },
   { id: "nameplates", label: "Nameplates", emoji: "🪪", categories: ["nameplate"] },
   { id: "badges", label: "Badges", emoji: "🏅", categories: ["badge"] },
@@ -16,7 +17,8 @@ const CATEGORY_TABS = [
 
 const sameEquipGroup = (a, b) => {
   const auraGroup = ["avatar_glow", "aura"];
-  return a === b || (auraGroup.includes(a) && auraGroup.includes(b));
+  const movementGroup = ["hoverboard", "movement_gear"];
+  return a === b || (auraGroup.includes(a) && auraGroup.includes(b)) || (movementGroup.includes(a) && movementGroup.includes(b));
 };
 
 const itemConfigFor = (record) => getItemConfig(record.item_id) || getShopItem(record.item_id) || null;
@@ -32,6 +34,7 @@ const getDisplayName = (record, config) => {
 
 const getUsageNote = (record, config) => {
   if (record.item_category === "hoverboard") return "City free-roam";
+  if (record.item_category === "movement_gear") return "Premium movement gear";
   if (record.item_category === "avatar_glow" || record.item_category === "aura") return "Avatar aura effect";
   if (record.item_category === "nameplate") return "Profile name display";
   if (record.item_category === "badge") return "Profile badge";
@@ -48,6 +51,7 @@ const ItemPreview = ({ record, config }) => {
       </div>
     );
   }
+  if (record.item_category === "movement_gear") return <Flame className="w-6 h-6" />;
   if (record.item_category === "avatar_glow" || record.item_category === "aura") {
     return <div style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${color}`, boxShadow: `0 0 18px ${color}99, inset 0 0 12px ${color}55`, display: "flex", alignItems: "center", justifyContent: "center" }}><Sparkles className="w-3.5 h-3.5" /></div>;
   }
@@ -56,7 +60,7 @@ const ItemPreview = ({ record, config }) => {
   }
   if (record.item_category === "badge") return <Award className="w-6 h-6" />;
 
-  const Icon = { Rocket, Sparkles, Badge, Award, Zap }[config?.preview_icon] || Package;
+  const Icon = { Rocket, Sparkles, Badge, Award, Zap, Flame }[config?.preview_icon] || Package;
   return <Icon className="w-6 h-6" />;
 };
 
@@ -257,10 +261,11 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
                   const config = itemConfigFor(record);
                   const isEquipping = equipping === record.id;
                   const isBoard = record.item_category === "hoverboard" || isPersonalHoverboard(record.item_id);
+                  const isMovementGear = record.item_category === "movement_gear";
                   const displayName = getDisplayName(record, config);
                   const usageNote = getUsageNote(record, config);
                   const rarity = config?.rarity || "common";
-                  const equippedColor = isBoard ? "#00E5FF" : "#c4aaff";
+                  const equippedColor = isBoard ? "#00E5FF" : isMovementGear ? "#FFD36E" : "#c4aaff";
                   const label = isEquipping ? "…" : (record.equipped ? "Equipped" : "Equip");
                   return (
                     <div
@@ -296,7 +301,7 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
                           {getCategoryLabel(record.item_category)}
                           <span style={{ marginLeft: "6px", color: rarity === "rare" || rarity === "epic" ? "#FFD700" : "rgba(255,255,255,0.32)" }}>• {rarity}</span>
                         </div>
-                        <div style={{ fontSize: "10px", color: isBoard ? "rgba(0,229,255,0.58)" : "rgba(255,255,255,0.32)", lineHeight: 1.25 }}>
+                        <div style={{ fontSize: "10px", color: isBoard ? "rgba(0,229,255,0.58)" : isMovementGear ? "rgba(255,211,110,0.62)" : "rgba(255,255,255,0.32)", lineHeight: 1.25 }}>
                           {usageNote}
                         </div>
                       </div>

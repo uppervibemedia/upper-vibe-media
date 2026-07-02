@@ -8,7 +8,8 @@ import { STARTER_ITEMS } from "./inventoryConfig";
 
 const sameEquipGroup = (a, b) => {
   const auraGroup = ["avatar_glow", "aura"];
-  return a === b || (auraGroup.includes(a) && auraGroup.includes(b));
+  const movementGroup = ["hoverboard", "movement_gear"];
+  return a === b || (auraGroup.includes(a) && auraGroup.includes(b)) || (movementGroup.includes(a) && movementGroup.includes(b));
 };
 
 // ── Load all inventory records for user ──────────────────────

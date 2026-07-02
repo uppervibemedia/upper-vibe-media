@@ -38,6 +38,18 @@ export const SHOP_ITEMS = [
     rarity: "rare",
   },
 
+  // ── Movement Gear ─────────────────────────────────────────────
+  {
+    id: "shop_jetpack",
+    name: "Jetpack",
+    category: "movement_gear",
+    price: 5000,
+    description: "Fly through Upper Vibe City with a futuristic back-mounted jetpack.",
+    preview_icon: "Flame",
+    preview_color: "#FFD36E",
+    rarity: "premium",
+  },
+
   // ── Avatar Glows ──────────────────────────────────────────────
   {
     id: "shop_glow_starter",
@@ -115,6 +127,7 @@ export const SHOP_ITEMS = [
 
 export const SHOP_CATEGORIES = [
   { id: "hoverboard",  label: "Hoverboards", emoji: "🛹" },
+  { id: "movement_gear", label: "Movement Gear", emoji: "🚀" },
   { id: "avatar_glow", label: "Auras",        emoji: "✨" },
   { id: "nameplate",   label: "Nameplates",   emoji: "🪪" },
   { id: "badge",       label: "Badges",        emoji: "🏅" },

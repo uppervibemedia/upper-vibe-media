@@ -47,7 +47,7 @@
     "pos_y": {
       "type": "number",
       "default": 0,
-      "description": "World Y position"
+      "description": "World Y position including jetpack flight height"
     },
     "pos_z": {
       "type": "number",
@@ -69,6 +69,10 @@
         "dancing",
         "hbRiding",
         "neonSurf",
+        "jetpackFlying",
+        "jetpackFalling",
+        "jetpackCooldown",
+        "jetpackLanded",
         "busy",
         "watching"
       ],
@@ -99,6 +103,27 @@
       "type": "boolean",
       "default": false,
       "description": "Whether this user is currently riding a personal hoverboard"
+    },
+    "equipped_movement_gear": {
+      "type": "string",
+      "description": "Movement gear item id e.g. shop_jetpack, empty if none"
+    },
+    "jetpack_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the jetpack is currently deployed"
+    },
+    "jetpack_mode": {
+      "type": "string",
+      "enum": [
+        "off",
+        "ready",
+        "flying",
+        "falling",
+        "cooldown",
+        "landed"
+      ],
+      "default": "off"
     },
     "equipped_nameplate": {
       "type": "string",

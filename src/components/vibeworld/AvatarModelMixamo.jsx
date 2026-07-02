@@ -893,11 +893,38 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   return entry;
 }
 
-export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false, emoteId = null) {
+export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false, emoteId = null, isJetpackFlying = false) {
   if (!entry) return;
 
   const model = entry.root?.getObjectByName("avatarModel");
   const p = model?.userData;
+
+  if (isJetpackFlying) {
+    const lerpSpeed = Math.min(1, 6.4 * dt);
+    const parts = p?._animParts;
+    if (parts) {
+      if (parts.armL) {
+        parts.armL.rotation.x += (-0.38 - parts.armL.rotation.x) * lerpSpeed;
+        parts.armL.rotation.z += (0.42 - parts.armL.rotation.z) * lerpSpeed;
+      }
+      if (parts.armR) {
+        parts.armR.rotation.x += (-0.38 - parts.armR.rotation.x) * lerpSpeed;
+        parts.armR.rotation.z += (-0.42 - parts.armR.rotation.z) * lerpSpeed;
+      }
+      if (parts.legL) {
+        parts.legL.rotation.x += (0.16 - parts.legL.rotation.x) * lerpSpeed;
+        parts.legL.rotation.z += (0.03 - parts.legL.rotation.z) * lerpSpeed;
+      }
+      if (parts.legR) {
+        parts.legR.rotation.x += (0.16 - parts.legR.rotation.x) * lerpSpeed;
+        parts.legR.rotation.z += (-0.03 - parts.legR.rotation.z) * lerpSpeed;
+      }
+      if (parts.torsoGroup) parts.torsoGroup.rotation.x += (-0.10 - parts.torsoGroup.rotation.x) * lerpSpeed;
+      if (parts.headGroup) parts.headGroup.rotation.x += (0.04 - parts.headGroup.rotation.x) * lerpSpeed;
+    }
+    if (p) p._blend = (p._blend || 0) * (1 - lerpSpeed * 0.55);
+    return;
+  }
 
   if (isHoverboarding) {
     // Smooth blend into hoverboard stance — lerp toward target pose

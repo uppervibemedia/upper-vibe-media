@@ -89,15 +89,7 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
     const flying = jetpackStatus?.mode === "flying";
     const falling = jetpackStatus?.mode === "falling";
     const flyDisabled = isJetpack && (cooldown > 0 || flying || falling);
-    const primaryLabel = isJetpack
-      ? flying
-        ? `Flying ${jetpackStatus?.flightRemaining || 0}s`
-        : falling
-          ? "Landing"
-          : cooldown > 0
-            ? `Fly ${cooldown}s`
-            : "Fly"
-      : `Jump${!isMobile ? " · Space" : ""}`;
+    const primaryLabel = isJetpack ? "Fly" : `Jump${!isMobile ? " · Space" : ""}`;
     return (
       <>
         <motion.div
@@ -122,7 +114,7 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
               boxShadow: "0 0 16px rgba(0,229,255,0.32)",
             }}
             disabled={flyDisabled}
-            title={isJetpack ? "Fly" : "Jump (Spacebar)"}
+            title={isJetpack && cooldown > 0 ? `Cooldown ${cooldown}s` : isJetpack ? "Fly" : "Jump (Spacebar)"}
           >
             {isJetpack ? <Flame className="w-3.5 h-3.5" /> : <span className="text-sm leading-none">↥</span>}
             {primaryLabel}
@@ -199,23 +191,21 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
       )}
       {canUseJetpack && (
         <button
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={onEquipJetpack}
-          className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+          onTouchStart={(e) => { e.stopPropagation(); onFly?.(); }}
+          onClick={onFly}
+          className="flex items-center justify-center gap-1.5 rounded-full font-black text-[11px] tracking-wider transition-all hover:brightness-110 active:scale-95"
           style={{
-            width: 'auto',
-            padding: '6px 12px',
-            opacity: 1,
-            background: "linear-gradient(135deg,#FFD36E88,#FF4FC388,#7C3AED88)",
-            border: "1px solid rgba(255,211,110,0.35)",
+            width: isPortraitMobile ? portraitJumpWidth : (isMobile ? 118 : 140),
+            height: isPortraitMobile ? portraitJumpHeight : (isMobile ? 54 : 54),
+            background: "linear-gradient(135deg,#FFD36E,#FF4FC3,#7C3AED)",
+            border: "1px solid rgba(255,211,110,0.45)",
             color: "#fff",
-            minHeight: isMobile ? 36 : 40,
             touchAction: "manipulation",
-            boxShadow: "0 0 14px rgba(255,79,195,0.22)",
+            boxShadow: "0 0 16px rgba(255,79,195,0.28)",
           }}
         >
-          <Flame className="w-3 h-3" />
-          Jetpack
+          <Flame className="w-3.5 h-3.5" />
+          Fly
         </button>
       )}
     </motion.div>

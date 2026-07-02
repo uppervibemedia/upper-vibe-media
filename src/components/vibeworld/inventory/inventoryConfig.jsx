@@ -6,6 +6,7 @@
 
 export const INVENTORY_CATEGORIES = [
   { id: "hoverboard",   label: "Hoverboards",     emoji: "🛹" },
+  { id: "movement_gear", label: "Movement Gear",  emoji: "🚀" },
   { id: "avatar_glow",  label: "Aura Glows",      emoji: "✨" },
   { id: "aura",         label: "Aura Effects",    emoji: "🌀" },
   { id: "nameplate",    label: "Nameplates",      emoji: "🪪" },

@@ -442,7 +442,7 @@ function buildFemale(colors) {
 // Called once per frame by updateTestAvatarAnimation.
 // Animates groups by setting rotation.x — fully compatible with
 // existing movement/camera system (we never touch the controller root).
-export function updateTestAvatarAnimation(entry, speed, isDancing, dt) {
+export function updateTestAvatarAnimation(entry, speed, isDancing, dt, isJetpackFlying = false) {
   if (!entry?.root) return;
 
   const model = entry.root.getObjectByName("avatarModel");
@@ -456,6 +456,18 @@ export function updateTestAvatarAnimation(entry, speed, isDancing, dt) {
 
   const PI = Math.PI;
   const sin = Math.sin;
+
+  if (isJetpackFlying) {
+    if (p.legL) p.legL.rotation.x = 0.18;
+    if (p.legR) p.legR.rotation.x = 0.18;
+    if (p.bootL) p.bootL.rotation.x = 0.08;
+    if (p.bootR) p.bootR.rotation.x = 0.08;
+    if (p.armL) { p.armL.rotation.x = -0.34; p.armL.rotation.z = 0.38; }
+    if (p.armR) { p.armR.rotation.x = -0.34; p.armR.rotation.z = -0.38; }
+    if (p.torsoGroup) p.torsoGroup.position.y = 0.84 + sin(t * 4) * 0.01;
+    if (p.headGroup) p.headGroup.rotation.x = 0.04;
+    return;
+  }
 
   // Determine state
   const isRun  = speed > 0.5;

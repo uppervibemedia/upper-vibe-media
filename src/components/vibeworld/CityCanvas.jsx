@@ -1006,8 +1006,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         const hoverboardAirborne = hoverboardJumpOffsetRef.current > 0.03;
 
-        const JETPACK_MAX_HEIGHT = 5.2;
-        const JETPACK_ASCEND_SPEED = 1.35;
+        const JETPACK_MAX_HEIGHT = 10.4;
+        const JETPACK_ASCEND_SPEED = 2.7;
         const JETPACK_DESCEND_ACCEL = -5.6;
         const JETPACK_SOFT_DESCENT = -2.25;
         let jetpackFlyingNow = false;
@@ -1021,9 +1021,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         if (jetpackModeRef.current === "flying") {
           jetpackFlyingNow = true;
-          if (!jetpackActiveRef.current || t >= jetpackFlightEndsAtRef.current || jetpackHeightRef.current >= JETPACK_MAX_HEIGHT) {
+          if (!jetpackActiveRef.current || t >= jetpackFlightEndsAtRef.current) {
             jetpackModeRef.current = "falling";
             jetpackCooldownEndsAtRef.current = t + 5;
+          } else if (jetpackHeightRef.current >= JETPACK_MAX_HEIGHT) {
+            jetpackVelocityRef.current = 0;
+            jetpackHeightRef.current = JETPACK_MAX_HEIGHT;
           } else {
             jetpackVelocityRef.current += (JETPACK_ASCEND_SPEED - jetpackVelocityRef.current) * Math.min(1, moveDt * 5.5);
           }
@@ -1040,8 +1043,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (jetpackModeRef.current === "flying" || jetpackModeRef.current === "falling") {
           jetpackHeightRef.current = Math.max(0, Math.min(JETPACK_MAX_HEIGHT, jetpackHeightRef.current + jetpackVelocityRef.current * moveDt));
           if (jetpackHeightRef.current >= JETPACK_MAX_HEIGHT && jetpackModeRef.current === "flying") {
-            jetpackModeRef.current = "falling";
-            jetpackCooldownEndsAtRef.current = t + 5;
+            jetpackHeightRef.current = JETPACK_MAX_HEIGHT;
+            jetpackVelocityRef.current = Math.min(0, jetpackVelocityRef.current);
           }
         }
         if (!jetpackActiveRef.current && jetpackModeRef.current === "flying") {
@@ -1304,7 +1307,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
-          try { onPosCbRef.current(px, pz, rot); } catch {}
+          try { onPosCbRef.current(px, pz, rot, py, jetpackModeRef.current); } catch {}
         }
 
         // ── Transport pad + Jukebox proximity ──
@@ -1444,14 +1447,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
         const actAnim = beachActivityStateRef.current;
-        const activityAnimSpeed = actAnim?.type === "surf" ? 0.02 : actAnim?.type === "dive" ? 0.02 : speed;
+        const jetpackAirborne = jetpackHeightRef.current > 0.08 || jetpackModeRef.current === "flying" || jetpackModeRef.current === "falling";
+        const activityAnimSpeed = jetpackAirborne ? 0 : actAnim?.type === "surf" ? 0.02 : actAnim?.type === "dive" ? 0.02 : speed;
         if (avatarEntry?._isMixamo) {
           // Mixamo Xbot GLB avatar — same logic as soldier, including hoverboard freeze
           const emoteId = isDancingRef.current ? (activeEmoteRef.current?.id || "dance") : null;
-          updateMixamoAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt, hbRidingRef.current, emoteId);
+          updateMixamoAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt, hbRidingRef.current, emoteId, jetpackAirborne);
         } else if (avatarEntry?._isTestAvatar) {
           // Procedural test avatars (male/female) — no mixer/clips
-          updateTestAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt);
+          updateTestAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt, jetpackAirborne);
         } else {
           // Current avatar — original GLB animation system, completely unchanged
           if (avatarEntry && isDancingRef.current) {
@@ -1466,7 +1470,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             avatarEntry._emoteTimer = 0;
             avatarEntry._emoteBones = null;
           }
-          if (avatarEntry) updateAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt, hbRidingRef.current);
+          if (avatarEntry) updateAvatarAnimation(avatarEntry, activityAnimSpeed, isDancingRef.current, moveDt, hbRidingRef.current, jetpackAirborne);
         }
 
         // ── Aura glow animation ─────────────────────────────
@@ -1906,7 +1910,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           let entry = remoteMap[remote.user_id];
           if (entry && entry.signature !== remoteSignature) {
             const remoteEntry = entry.group?.userData?._avatarEntry;
-            if (remoteEntry) detachHoverboard(remoteEntry);
+            if (remoteEntry) { detachHoverboard(remoteEntry); detachJetpack(remoteEntry); }
             unbindAura(entry.group);
             if (entry.group) {
               scene.remove(entry.group);
@@ -1977,7 +1981,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             g.position.x += rdx * alpha;
             g.position.z += rdz * alpha;
           }
-          g.position.y = SPAWN[1];
+          const remoteTargetY = Number.isFinite(Number(remote.pos_y)) ? Number(remote.pos_y) : SPAWN[1];
+          if (Math.abs(remoteTargetY - g.position.y) > 8 || !entry._settledY) {
+            g.position.y = remoteTargetY;
+            entry._settledY = true;
+          } else {
+            g.position.y += (remoteTargetY - g.position.y) * Math.min(1, 10 * dt);
+          }
 
           // Smooth shortest-path rotation so avatars face their travel direction cleanly.
           const rotDiff = normalizeAngleDiff(targetRot, g.rotation.y);
@@ -1993,22 +2003,27 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const remoteEntry = g.userData._avatarEntry;
           const animState = remote.animation_state || remote.animationState || "idle";
           const remoteIsDancing = animState === "dance" || animState === "dancing" || !!remote.is_dancing;
-          const remoteIsHoverboarding = animState === "hbRiding" || animState === "neonSurf" || !!remote.personal_hoverboard_active || !!remote.is_playing_neon_surf;
+          const remoteJetpackMode = remote.jetpack_mode || (animState === "jetpackFalling" ? "falling" : animState === "jetpackCooldown" ? "cooldown" : animState === "jetpackFlying" ? "flying" : "off");
+          const remoteHasJetpack = remote.equipped_movement_gear === "shop_jetpack" || !!remote.jetpack_active || animState?.startsWith?.("jetpack");
+          const remoteJetpackAirborne = remoteHasJetpack && (remoteJetpackMode === "flying" || remoteJetpackMode === "falling" || g.position.y > SPAWN[1] + 0.08);
+          const remoteIsHoverboarding = !remoteHasJetpack && (animState === "hbRiding" || animState === "neonSurf" || !!remote.personal_hoverboard_active || !!remote.is_playing_neon_surf);
           // Neon Surf is separate — remote animation stays normal, no hoverboard attach
           if (remoteEntry) {
           if (remoteEntry._isMixamo) {
             const emergeId = remoteIsDancing ? "dance" : null;
-            updateMixamoAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
-              remoteIsHoverboarding ? true : false, emergeId);
+            updateMixamoAvatarAnimation(remoteEntry, remoteJetpackAirborne ? 0 : vel * 15, remoteIsDancing, dt,
+              remoteIsHoverboarding ? true : false, emergeId, remoteJetpackAirborne);
           } else {
-            updateAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
-              remoteIsHoverboarding ? true : false);
+            updateAvatarAnimation(remoteEntry, remoteJetpackAirborne ? 0 : vel * 15, remoteIsDancing, dt,
+              remoteIsHoverboarding ? true : false, remoteJetpackAirborne);
           }
           // Smoothly lerp avatar Y up when hoverboarding, back down when not.
           // A hard set (SPAWN[1] → SPAWN[1]+0.15) creates an instantaneous
           // jump that looks like the board "flickers on and off" to observers.
-          const targetY = remoteIsHoverboarding ? SPAWN[1] + 0.15 : SPAWN[1];
-          g.position.y += (targetY - g.position.y) * Math.min(1, 8 * dt);
+          if (remoteIsHoverboarding) {
+            const targetY = SPAWN[1] + 0.15;
+            g.position.y += (targetY - g.position.y) * Math.min(1, 8 * dt);
+          }
           }
 
           // ── Remote aura sync ────────────────────────────
@@ -2017,8 +2032,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const hasAura = !!remote.equipped_aura;
           const auraKey = remote.equipped_aura || "";
           const auraColor = remote.equipped_aura_color || "";
-          const isRidingHb = !!remote.personal_hoverboard_active;
-          const isRidingNeon = !!remote.is_playing_neon_surf;
+          const isRidingHb = !!remote.personal_hoverboard_active && !remoteHasJetpack;
+          const isRidingNeon = !!remote.is_playing_neon_surf && !remoteHasJetpack;
           const auraChanged = !prevS || prevS.hasAura !== hasAura || prevS.auraKey !== auraKey || prevS.auraColor !== auraColor;
           if (auraChanged) {
             if (hasAura) bindAura(g, auraKey, auraColor || null);
@@ -2030,7 +2045,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // won't detach immediately. Only detach after 6+ consecutive false frames.
           const prevRiding = prevS?.isRiding;
           const gc = prevS || {};
-          if (isRidingHb) {
+          if (remoteHasJetpack && remoteEntry) {
+            detachHoverboard(remoteEntry);
+            attachJetpack(remoteEntry);
+            animateJetpack(remoteEntry, t, remoteJetpackMode === "flying" || remoteJetpackMode === "falling", remoteJetpackMode === "falling" ? 0.45 : 1);
+          } else if (remoteEntry) {
+            detachJetpack(remoteEntry);
+          }
+
+          if (isRidingHb && !remoteHasJetpack) {
             gc.rideGraceCounter = 0;
             if (!prevRiding) attachHoverboard(remoteEntry);
           } else if (prevRiding) {
@@ -2040,7 +2063,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             // Wasn't riding before either — noop
           }
 
-          rs[remote.user_id] = { hasAura, auraKey, auraColor, isRiding: isRidingHb, isDancing: remoteIsDancing };
+          rs[remote.user_id] = { hasAura, auraKey, auraColor, isRiding: isRidingHb, hasJetpack: remoteHasJetpack, jetpackMode: remoteJetpackMode, isDancing: remoteIsDancing };
         }
 
         // Despawn avatars that are no longer present
@@ -2052,7 +2075,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             if (rs) {
               // Detach hoverboard + aura before removing the group from the scene
               const remoteEntry = entry.group?.userData?._avatarEntry;
-              if (remoteEntry) detachHoverboard(remoteEntry);
+              if (remoteEntry) { detachHoverboard(remoteEntry); detachJetpack(remoteEntry); }
               unbindAura(entry.group);
               delete remoteHbStateRef.current[id];
             }
