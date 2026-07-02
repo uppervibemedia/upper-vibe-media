@@ -28,6 +28,8 @@ let djCatalogLoadedAt = 0;
 const DJ_CATALOG_TTL_MS = 60 * 1000;
 let recentDjTrackIds = [];
 const DJ_RECENT_LIMIT = 8;
+let lastDanceFloorExitAt = 0;
+let lastExitedDjTrackId = null;
 const listeners = new Set();
 
 function isIOS() {
@@ -307,6 +309,18 @@ export function startLiveDj() {
     return;
   }
   applyDjSource();
+  if (!djUsesLiveStream && djTracks.length > 1 && lastExitedDjTrackId && currentDjTrack?.id === lastExitedDjTrackId && Date.now() - lastDanceFloorExitAt < 90_000) {
+    const idx = djTracks.findIndex((track) => track.id === lastExitedDjTrackId);
+    const nextTrack = djTracks[(idx + 1) % djTracks.length];
+    if (nextTrack?.audio_url) {
+      audio.src = nextTrack.audio_url;
+      audio.dataset.cityDjSrc = nextTrack.audio_url;
+      audio.currentTime = 0;
+      audio.load();
+      currentDjTrack = nextTrack;
+      rememberDjTrack(nextTrack);
+    }
+  }
   audio.muted = false;
   audio.volume = DJ_TARGET_VOLUME;
   audio.play().catch(() => {});
@@ -333,6 +347,8 @@ export function enterCityDanceFloor() {
 
 export function leaveCityDanceFloor() {
   if (cityAudioMode === "globalMusic" || cityAudioMode === "leavingDanceFloor") return;
+  lastDanceFloorExitAt = Date.now();
+  lastExitedDjTrackId = currentDjTrack?.id || null;
   cityAudioMode = "leavingDanceFloor";
   emit();
   pauseLiveDjImmediately();

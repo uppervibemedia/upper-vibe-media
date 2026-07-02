@@ -69,6 +69,17 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
   const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [equipping, setEquipping] = useState(null); // item id being processed
+  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
+
+  useEffect(() => {
+    const onResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
 
   const fetchItems = useCallback(async () => {
     if (!user?.id) return;
@@ -157,8 +168,8 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
             transition={{ type: "spring", damping: 26, stiffness: 280 }}
             style={{
               width: "100%",
-              maxWidth: isMobile ? "100%" : "480px",
-              maxHeight: isMobile ? "88dvh" : "78vh",
+              maxWidth: isMobile ? "100%" : "640px",
+              maxHeight: isMobile ? (isLandscape ? "96dvh" : "88dvh") : "min(86vh, 720px)",
               marginLeft: "env(safe-area-inset-left, 0px)",
               marginRight: "env(safe-area-inset-right, 0px)",
               background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
@@ -207,12 +218,14 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
                 display: "flex",
                 gap: "8px",
                 padding: "10px 16px",
-                overflowX: "auto",
-                whiteSpace: "nowrap",
+                overflowX: isMobile ? "auto" : "visible",
+                overflowY: "visible",
+                whiteSpace: isMobile ? "nowrap" : "normal",
+                flexWrap: isMobile ? "nowrap" : "wrap",
                 WebkitOverflowScrolling: "touch",
                 flexShrink: 0,
-                scrollbarWidth: "none",
-                touchAction: "pan-x",
+                scrollbarWidth: isMobile ? "none" : "auto",
+                touchAction: isMobile ? "pan-x" : "auto",
               }}
             >
               {CATEGORY_TABS.map((cat) => (

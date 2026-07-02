@@ -1376,8 +1376,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               const dfDx = x - DANCE_FLOOR_CX;
               const dfDz = z - DANCE_FLOOR_CZ;
               const isInsideDanceFloor = worldMode === "city" && Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_ENTER_R;
-              rawDfRef.current = isInsideDanceFloor;
-              danceFloorFrameRef.current = { x, z, onDanceFloor: isInsideDanceFloor };
+              const isWalkingOnDanceFloor = isInsideDanceFloor && !personalHoverboardActive && !jetpackActive && !hoverboardDashActive && y < 0.15;
+              rawDfRef.current = isWalkingOnDanceFloor;
+              danceFloorFrameRef.current = { x, z, onDanceFloor: isWalkingOnDanceFloor };
             }
             const prev = prevPosRef.current;
             const dx = x - prev.x;

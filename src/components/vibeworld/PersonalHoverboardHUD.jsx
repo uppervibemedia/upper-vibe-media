@@ -53,23 +53,23 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
   const putAwayStyle = isMobile && isLandscape
     ? {
         position: 'fixed',
-        right: 'calc(10px + env(safe-area-inset-right, 0px))',
-        top: 'calc(92px + env(safe-area-inset-top, 0px))',
+        right: 'calc(24px + env(safe-area-inset-right, 0px))',
+        bottom: 'calc(98px + env(safe-area-inset-bottom, 0px))',
         pointerEvents: 'auto',
       }
     : isMobile
       ? {
           position: 'fixed',
-          right: 'calc(10px + env(safe-area-inset-right, 0px))',
-          top: 'calc(106px + env(safe-area-inset-top, 0px))',
+          right: 'calc(18px + env(safe-area-inset-right, 0px))',
+          bottom: mobileLayout ? `${Math.max((mobileLayout.sa?.bottom || 0) + 72, mobileLayout.playerBottom + 60)}px` : 'calc(94px + env(safe-area-inset-bottom, 0px))',
           pointerEvents: 'auto',
         }
       : {
           position: 'fixed',
-          right: 'calc(6px + env(safe-area-inset-right, 0px))',
-          top: 'calc(114px + env(safe-area-inset-top, 0px))',
+          right: 'calc(24px + env(safe-area-inset-right, 0px))',
+          bottom: 'calc(198px + env(safe-area-inset-bottom, 0px))',
           pointerEvents: 'auto',
-          zIndex: 40,
+          zIndex: 58,
         };
 
   const rideStyle = {
@@ -148,7 +148,7 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
               }}
             >
               <Ban className="w-3 h-3" />
-              Put Away
+              Inventory
             </button>
           </motion.div>
         )}

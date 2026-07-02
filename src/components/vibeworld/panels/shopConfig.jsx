@@ -43,7 +43,7 @@ export const SHOP_ITEMS = [
     id: "shop_jetpack",
     name: "Jetpack",
     category: "movement_gear",
-    price: 5000,
+    price: 1000,
     description: "Fly through Upper Vibe City with a futuristic back-mounted jetpack.",
     preview_icon: "Flame",
     preview_color: "#FFD36E",
