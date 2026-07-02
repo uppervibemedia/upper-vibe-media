@@ -1203,7 +1203,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
           while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
           // Cap per-frame step to 0.06 rad — prevents frame spikes on 180° turns
-          const step = Math.min(Math.abs(yawDelta) * Math.min(1, moveDt * 3.5), 0.16) * Math.sign(yawDelta);
+          const recenterSpeed = (window.innerWidth > window.innerHeight) ? 5.2 : 3.9;
+          const step = Math.min(Math.abs(yawDelta) * Math.min(1, moveDt * recenterSpeed), 0.20) * Math.sign(yawDelta);
           camYawRef.current += step;
         } else if (!isMobileRef.current && speed > 0.05 && !userTouchingCamRef.current) {
           // Desktop: maintain camera behind avatar without dragging behind turns

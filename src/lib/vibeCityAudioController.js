@@ -24,6 +24,8 @@ let djUsesLiveStream = false;
 let djTracks = [];
 let currentDjTrack = null;
 let preloadPromise = null;
+let djCatalogLoadedAt = 0;
+const DJ_CATALOG_TTL_MS = 60 * 1000;
 let recentDjTrackIds = [];
 const DJ_RECENT_LIMIT = 8;
 const listeners = new Set();
@@ -167,10 +169,12 @@ function applyDjSource() {
 }
 
 export async function preloadCityDj() {
-  if (preloadPromise) return preloadPromise;
+  if (preloadPromise && Date.now() - djCatalogLoadedAt < DJ_CATALOG_TTL_MS) return preloadPromise;
+  if (djReady && Date.now() - djCatalogLoadedAt < DJ_CATALOG_TTL_MS) return Promise.resolve();
   preloadPromise = (async () => {
     try {
       ensureDjAudio();
+      djTracks = [];
       const playlists = await base44.entities.DJPlaylist.list("-updatedAt", 20);
       const active = playlists.find((p) => p.isActive);
       if (active?.trackIds?.length) {
@@ -180,15 +184,21 @@ export async function preloadCityDj() {
         const seed = `${active.id || "dj"}|${active.updatedAt || ""}|${active.trackIds.join("|")}`;
         djTracks = buildSharedDjShuffle(orderedTracks, seed);
       }
+      if (!djTracks.length) {
+        const latest = await base44.entities.Track.filter({ status: "published" }, "-created_date", 100);
+        djTracks = buildSharedDjShuffle(latest.filter((t) => t.audio_url).slice(0, 24), "latest-approved-catalog");
+      }
       recentDjTrackIds = [];
       djUsesLiveStream = djTracks.length === 0;
       djReady = true;
+      djCatalogLoadedAt = Date.now();
       applyDjSource();
       emit();
     } catch {
       djTracks = [];
       djUsesLiveStream = true;
       djReady = true;
+      djCatalogLoadedAt = Date.now();
       applyDjSource();
       emit();
     }

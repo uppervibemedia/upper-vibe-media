@@ -6,7 +6,8 @@ export default function TransportConfirmModal({ open, title, body, onEnter, onCa
   return (
     <div
       data-beach-portal-prompt
-      className="absolute left-1/2 -translate-x-1/2 z-[260] rounded-2xl border px-4 py-3 text-center shadow-2xl"
+      data-camera-scroll-lock="true"
+      className="fixed left-1/2 -translate-x-1/2 z-[260] rounded-2xl border px-4 py-3 text-center shadow-2xl"
       style={{
         bottom: "calc(104px + env(safe-area-inset-bottom, 0px))",
         width: "min(340px, calc(100vw - 32px))",

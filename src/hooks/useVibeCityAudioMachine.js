@@ -20,7 +20,9 @@ export default function useVibeCityAudioMachine({ isUserInsideDanceFloor, defaul
 
   useEffect(() => {
     preloadCityDj();
-    return subscribeCityAudio(setDebugSnapshot);
+    const refresh = setInterval(() => preloadCityDj(), 60 * 1000);
+    const unsubscribe = subscribeCityAudio(setDebugSnapshot);
+    return () => { clearInterval(refresh); unsubscribe(); };
   }, []);
 
   useEffect(() => {

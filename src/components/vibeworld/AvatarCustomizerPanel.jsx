@@ -110,7 +110,8 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
             exit={{ scale: 0.92, opacity: 0, y: 20 }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className="relative w-full mx-3"
-            style={{ maxWidth: 760, maxHeight: "92vh" }}
+            data-camera-scroll-lock="true"
+            style={{ maxWidth: 760, maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px)" }}
             onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
@@ -144,7 +145,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
               </div>
 
               {/* Body — two-column desktop, stack mobile */}
-              <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden" style={{ maxHeight: "calc(92vh - 130px)" }}>
+              <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden" style={{ maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 146px)" }}>
 
                 {/* LEFT: preview */}
                 <div

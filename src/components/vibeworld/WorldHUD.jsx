@@ -483,13 +483,14 @@ export default function WorldHUD({
             className="absolute z-[57] pointer-events-auto"
             style={{
               bottom: isMobile && djCardBottomPx !== null
-                ? djCardBottomPx
+                ? Math.max(72, djCardBottomPx - (isPortrait ? 4 : 30))
                 : isMobile
-                  ? "calc(env(safe-area-inset-bottom, 0px) + 14.5rem)"
-                  : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: isMobile ? "min(calc(100vw - 120px), 144px)" : "168px",
+                  ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                  : "calc(env(safe-area-inset-bottom, 0px) + 8.5rem)",
+              left: isMobile && !isPortrait ? "auto" : "50%",
+              right: isMobile && !isPortrait ? "calc(env(safe-area-inset-right, 0px) + 10px)" : "auto",
+              transform: isMobile && !isPortrait ? "none" : "translateX(-50%)",
+              width: isMobile ? (isPortrait ? "112px" : "94px") : "136px",
             }}
           >
             <button
@@ -514,7 +515,7 @@ export default function WorldHUD({
               }}
             >
               {/* Cover art — 16:9 thumbnail */}
-              <div className="relative w-full" style={{ aspectRatio: "16/9", maxHeight: isMobile ? "60px" : "95px", overflow: "hidden" }}>
+              <div className="relative w-full" style={{ aspectRatio: "16/9", maxHeight: isMobile ? (isPortrait ? "42px" : "32px") : "72px", overflow: "hidden" }}>
                 {djTrack.cover_url ? (
                   <img src={djTrack.cover_url} alt={djTrack.title}
                     className="w-full h-full object-cover block" />
@@ -536,8 +537,8 @@ export default function WorldHUD({
               </div>
 
               {/* Track info */}
-              <div className="px-2 pt-1 pb-2">
-                <p className="font-heading font-black text-white text-[10px] leading-tight truncate">{djTrack.title}</p>
+              <div className="px-1.5 pt-1 pb-1.5">
+                <p className="font-heading font-black text-white leading-tight truncate" style={{ fontSize: isMobile && !isPortrait ? 8 : 9 }}>{djTrack.title}</p>
                 <div className="flex items-center justify-between mt-0.5">
                   <p className="text-[8px] truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
                     {djTrack.artist_display || "Upper Vibe Media"}

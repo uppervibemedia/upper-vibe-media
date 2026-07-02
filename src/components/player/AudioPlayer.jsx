@@ -168,8 +168,8 @@ export default function AudioPlayer() {
   const isRamRadio = ramActive && ramState.audioType === "liveStream";
   const myVibeTrack = !isRamRadio ? ramState.currentTrack : null;
   const nextMyVibeTrack = upNext?.find((track) => track?.audio_url) || null;
-  const displayTrack = isRamRadio ? null : (myVibeTrack || currentRadioSong || nextMyVibeTrack || ramState.lastTrack || currentTrack);
-  const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
+  const displayTrack = isRamRadio ? null : (currentTrack || myVibeTrack || currentRadioSong || nextMyVibeTrack || ramState.lastTrack);
+  const effectiveIsPlaying = currentTrack ? isPlaying : (ramActive ? ramState.isPlaying : false);
 
   // Normalize cover art from various field names
   const displayCover = displayTrack?.coverArt || displayTrack?.cover_url || displayTrack?.image || displayTrack?.artwork || null;

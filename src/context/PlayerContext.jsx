@@ -45,6 +45,7 @@ import {
   trackSongPlay, trackSongPause, trackSongComplete,
   streamStart, streamPause, streamEnd, streamSetMeta,
 } from "@/lib/analytics";
+import { stopAll as stopRadioAudio } from "@/lib/radioAudioManager";
 
 const PlayerContext = createContext(null);
 
@@ -1092,6 +1093,10 @@ export function PlayerProvider({ children }) {
     }
 
     const url = playableTrack.audio_url;
+
+    // Any direct song Play button should own the global player immediately.
+    // Stop RadioAudioManager first so old My Vibe/Live state cannot mask this song in the player UI.
+    try { stopRadioAudio(); } catch {}
 
     // Wire Web Audio graph for visualiser — called inside user gesture (iOS-safe).
     // Reset failure count so a confirmed gesture always gets a retry attempt.

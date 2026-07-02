@@ -220,7 +220,7 @@ export default function AcademyPanel({ open, onClose, isMobile, mode = "beach", 
   const level = academyTitle(completedCount + (progress.dailyStreak || 0) + symbolsActivated);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col" data-camera-scroll-lock="true" style={{ zIndex: 72, height: isMobile ? "min(92dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8px))" : "74vh", paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : 0, background: config.bg, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: `1px solid ${config.accent}30`, borderBottom: "none", pointerEvents: "auto" }}>
+    <div className="fixed bottom-0 rounded-t-3xl overflow-hidden flex flex-col" data-camera-scroll-lock="true" style={{ zIndex: 72, left: isMobile ? "env(safe-area-inset-left, 0px)" : "50%", right: isMobile ? "env(safe-area-inset-right, 0px)" : "auto", transform: isMobile ? "none" : "translateX(-50%)", width: isMobile ? "auto" : "min(920px, calc(100vw - 48px))", height: isMobile ? "100dvh" : "78vh", paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : 0, background: config.bg, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: `1px solid ${config.accent}30`, borderBottom: "none", pointerEvents: "auto" }}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${config.accent}18`, border: `1px solid ${config.accent}38` }}><GraduationCap className="w-4 h-4" style={{ color: config.accent }} /></div>

@@ -280,7 +280,11 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
       className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
       style={{
         zIndex: 70,
-        height: isMobile ? "min(90dvh, 100dvh)" : "75vh",
+        left: isMobile ? "env(safe-area-inset-left, 0px)" : "50%",
+        right: isMobile ? "env(safe-area-inset-right, 0px)" : "auto",
+        transform: isMobile ? "none" : "translateX(-50%)",
+        width: isMobile ? "auto" : "min(860px, calc(100vw - 48px))",
+        height: isMobile ? "100dvh" : "82vh",
         maxHeight: "100dvh",
         background: "rgba(10,12,22,0.98)",
         backdropFilter: "blur(24px)",
@@ -291,7 +295,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0" style={{ paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 12px)" : undefined }}>
         <div className="flex items-center gap-2">
           {phase === "assessment" && qIndex > 0 ? (
             <button onClick={handleBack}
@@ -522,7 +526,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
 
       {/* Footer buttons */}
       {(phase === "view" || phase === "result") && (
-        <div className="flex-shrink-0 px-5 py-4 border-t border-white/5 space-y-2">
+        <div className="flex-shrink-0 px-5 py-4 border-t border-white/5 space-y-2" style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 12px)" : undefined }}>
           {phase === "view" && (
             <button
               onTouchStart={(e) => e.stopPropagation()}

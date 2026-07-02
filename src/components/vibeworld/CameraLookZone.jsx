@@ -65,10 +65,14 @@ export default function CameraLookZone({ mobileInputRef }) {
       lastXRef.current = touch.clientX;
       lastYRef.current = touch.clientY;
 
-      const sensitivity = 0.008;
+      const viewportWidth = window.visualViewport?.width || window.innerWidth;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const isLandscape = viewportWidth > viewportHeight;
+      const hSensitivity = isLandscape ? 0.0125 : 0.008;
+      const vSensitivity = isLandscape ? 0.010 : 0.008;
       mobileInputRef.current._camActive = true;
-      mobileInputRef.current.camDx = dx * sensitivity;
-      mobileInputRef.current.camDy = dy * sensitivity;
+      mobileInputRef.current.camDx = dx * hSensitivity;
+      mobileInputRef.current.camDy = dy * vSensitivity;
     };
 
     const onEnd = (e) => {

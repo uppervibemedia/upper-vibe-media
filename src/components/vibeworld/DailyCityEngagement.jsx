@@ -342,17 +342,13 @@ export default function DailyCityEngagement({
   const questItems = (daily?.quest || []).map((id) => TASKS.find((t) => t.id === id)).filter(Boolean);
   const completedCount = questItems.filter((t) => daily?.completed?.[t.id]).length;
   const intention = INTENTIONS.find((i) => i.id === daily?.intention);
-  const top = isMobile && mobileLayout ? mobileLayout.sa.top + (mobileLayout.isLandscape ? 46 : 92) : 92;
-  const panelMaxHeight = isMobile && mobileLayout
-    ? mobileLayout.isLandscape
-      ? `calc(100dvh - ${top + mobileLayout.sa.bottom + 12}px)`
-      : `calc(100dvh - ${top + mobileLayout.actionBottom + 12}px)`
-    : "min(70dvh, 560px)";
+  const top = isMobile ? 0 : 92;
+  const panelMaxHeight = isMobile ? "100dvh" : "min(70dvh, 560px)";
 
   if (!daily) return null;
 
   return (
-    <div className="absolute left-1/2 z-[66] pointer-events-none" style={{ top, transform: "translateX(-50%)", width: isMobile ? "min(92vw, 360px)" : 360 }}>
+    <div className={isMobile ? "fixed z-[66] pointer-events-none" : "absolute left-1/2 z-[66] pointer-events-none"} style={isMobile ? { top, left: "env(safe-area-inset-left, 0px)", right: "env(safe-area-inset-right, 0px)", bottom: 0, width: "auto" } : { top, transform: "translateX(-50%)", width: 360 }}>
       <AnimatePresence mode="wait">
         {expanded ? (
           <motion.div
@@ -360,8 +356,9 @@ export default function DailyCityEngagement({
             initial={{ opacity: 0, y: -12, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.96 }}
-            className="pointer-events-auto rounded-3xl overflow-hidden"
-            style={{ maxHeight: panelMaxHeight, overflowY: "auto", background: "rgba(5,6,18,0.86)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.45), 0 0 34px rgba(0,229,255,0.12)" }}
+            className="pointer-events-auto overflow-hidden"
+            data-camera-scroll-lock="true"
+            style={{ height: isMobile ? "100dvh" : "auto", maxHeight: panelMaxHeight, overflowY: "auto", paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : 0, paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : 0, borderRadius: isMobile ? 0 : 24, background: "rgba(5,6,18,0.96)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.45), 0 0 34px rgba(0,229,255,0.12)" }}
           >
             <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-white/5">
               <div>

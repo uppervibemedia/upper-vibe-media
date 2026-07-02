@@ -38,9 +38,9 @@ export default function SymbolActivatorCard({
 
   return (
     <div
-      className="fixed left-1/2 z-[68] pointer-events-auto rounded-3xl overflow-hidden"
+      className="fixed z-[68] pointer-events-auto overflow-hidden"
       data-camera-scroll-lock="true"
-      style={{ transform: "translateX(-50%)", top: panelTop, bottom: panelBottom, width: isMobile ? (isLandscape ? "min(82vw, 560px)" : "min(92vw, 380px)") : 380, maxHeight: isMobile ? "none" : "50vh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "rgba(5,6,18,0.93)", border: "1px solid rgba(0,229,255,0.24)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.52), 0 0 34px rgba(0,229,255,0.16)" }}
+      style={{ left: isMobile ? "env(safe-area-inset-left, 0px)" : "50%", right: isMobile ? "env(safe-area-inset-right, 0px)" : "auto", transform: isMobile ? "none" : "translateX(-50%)", top: isMobile ? "0" : panelTop, bottom: isMobile ? "0" : panelBottom, width: isMobile ? "auto" : 380, maxHeight: isMobile ? "none" : "50vh", borderRadius: isMobile ? 0 : 24, paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : 0, paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : 0, overflowY: "auto", WebkitOverflowScrolling: "touch", background: "rgba(5,6,18,0.97)", border: "1px solid rgba(0,229,255,0.24)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.52), 0 0 34px rgba(0,229,255,0.16)" }}
     >
       <div className="flex items-start gap-3 p-4">
         <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(0,229,255,0.12)", color: "#00E5FF" }}><Icon className="w-4 h-4" /></div>
