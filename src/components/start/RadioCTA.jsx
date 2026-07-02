@@ -79,7 +79,7 @@ function NewestTrackCard({ track, onPlay, isPlaying }) {
       onClick={handleClick}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97] text-left"
+      className="start-newest-card relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97] text-left"
       style={{ width: 124, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", scrollSnapAlign: "start", WebkitTapHighlightColor: "transparent", touchAction: "pan-x", userSelect: "none" }}
       aria-label={`Play ${track.title}`}
     >
@@ -183,16 +183,31 @@ export default function RadioCTA() {
   const label = showPlaying ? "My Vibe Playing" : "My Vibe Pick";
 
   return (
-    <section className="flex flex-col gap-3 rounded-3xl relative overflow-hidden" style={{ background: rgba(0.06), border: `1px solid ${rgba(0.35)}`, boxShadow: `0 0 24px rgba(${r},0.1)` }}>
+    <section className="start-radio-cta flex flex-col gap-3 rounded-3xl relative overflow-hidden" style={{ background: rgba(0.06), border: `1px solid ${rgba(0.35)}`, boxShadow: `0 0 24px rgba(${r},0.1)` }}>
+      <style>{`
+        @media (max-width: 430px) and (orientation: portrait) {
+          .start-radio-inner { padding: 12px !important; gap: 10px !important; }
+          .start-radio-current { border-radius: 16px !important; }
+          .start-radio-row { gap: 10px !important; padding: 10px !important; }
+          .start-radio-cover { width: 88px !important; }
+          .start-newest-card { width: 108px !important; }
+        }
+        @media (max-width: 390px) and (orientation: portrait), (max-height: 740px) and (orientation: portrait) {
+          .start-radio-inner { padding: 10px !important; gap: 8px !important; }
+          .start-radio-row { gap: 8px !important; padding: 9px !important; }
+          .start-radio-cover { width: 80px !important; }
+          .start-newest-card { width: 100px !important; }
+        }
+      `}</style>
       <div className="absolute pointer-events-none" style={{ inset: 0, background: `radial-gradient(ellipse at top, rgba(${r},0.1) 0%, transparent 70%)`, zIndex: 0 }} />
-      <div className="relative z-10 flex flex-col gap-3 p-4">
+      <div className="start-radio-inner relative z-10 flex flex-col gap-3 p-4">
         {showTrack && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${rgba(0.3)}` }}>
+          <div className="start-radio-current rounded-2xl overflow-hidden" style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${rgba(0.3)}` }}>
             <div className="px-3 pt-3 pb-0">
               <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: primaryColor, fontFamily: "var(--font-heading)" }}>{label}</span>
             </div>
-            <div className="flex items-center gap-3 p-3">
-              <button type="button" onClick={handlePlayCta} className="flex-shrink-0 rounded-xl overflow-hidden relative active:scale-[0.98]" style={{ width: 106, aspectRatio: "1 / 1", background: rgba(0.1), border: `1px solid ${rgba(0.2)}`, padding: 0, WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }} aria-label={showPlaying ? `Pause ${showTrack.title}` : `Play ${showTrack.title}`}>
+            <div className="start-radio-row flex items-center gap-3 p-3">
+              <button type="button" onClick={handlePlayCta} className="start-radio-cover flex-shrink-0 rounded-xl overflow-hidden relative active:scale-[0.98]" style={{ width: 106, aspectRatio: "1 / 1", background: rgba(0.1), border: `1px solid ${rgba(0.2)}`, padding: 0, WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }} aria-label={showPlaying ? `Pause ${showTrack.title}` : `Play ${showTrack.title}`}>
                 {showTrack.cover_url ? <img src={optimizedImageUrl(showTrack.cover_url, 260)} alt={showTrack.title} loading="eager" fetchPriority="high" decoding="async" draggable="false" className="w-full h-full object-cover object-center" /> : (
                   <div className="w-full h-full flex items-center justify-center"><Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} /></div>
                 )}

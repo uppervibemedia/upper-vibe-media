@@ -434,7 +434,7 @@ export default function Start() {
           style={{ background: "rgba(0,144,200,0.07)" }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-md px-5 flex flex-col gap-10" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2.25rem)", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 9.5rem)" }}>
+      <div className="relative z-10 w-full max-w-md px-5 flex flex-col gap-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 9.5rem)" }}>
 
         {/* ── HERO ── */}
         <section className="flex flex-col items-center text-center gap-5">
