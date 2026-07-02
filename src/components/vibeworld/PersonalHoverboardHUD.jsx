@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Rocket, Ban } from 'lucide-react';
+import { Rocket, Ban, Flame } from 'lucide-react';
 
-export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle, onJump, personalHoverboardActive, canUsePersonalBoard, lockPutAway = false }) {
+export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle, onJump, onEquipJetpack, onFly, personalHoverboardActive, canUsePersonalBoard, canUseJetpack = false, jetpackActive = false, jetpackStatus = null, vehicleMode = "hoverboard", lockPutAway = false }) {
   const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
 
   useEffect(() => {
@@ -16,7 +16,9 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
   }, []);
 
   // Hide until an equipped board can be used, but keep the put-away control visible while riding.
-  if (!canUsePersonalBoard && !personalHoverboardActive) return null;
+  const vehicleActive = personalHoverboardActive || jetpackActive;
+  const isJetpack = vehicleMode === "jetpack" || jetpackActive;
+  if (!canUsePersonalBoard && !canUseJetpack && !vehicleActive) return null;
 
   const isPortraitMobile = isMobile && !isLandscape;
   const portraitPlayerRight = mobileLayout ? mobileLayout.playerLeft + mobileLayout.playerMaxWidth + 18 : 0;
@@ -82,7 +84,20 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
     pointerEvents: 'auto',
   };
 
-  if (personalHoverboardActive) {
+  if (vehicleActive) {
+    const cooldown = Math.max(0, jetpackStatus?.cooldownRemaining || 0);
+    const flying = jetpackStatus?.mode === "flying";
+    const falling = jetpackStatus?.mode === "falling";
+    const flyDisabled = isJetpack && (cooldown > 0 || flying || falling);
+    const primaryLabel = isJetpack
+      ? flying
+        ? `Flying ${jetpackStatus?.flightRemaining || 0}s`
+        : falling
+          ? "Landing"
+          : cooldown > 0
+            ? `Fly ${cooldown}s`
+            : "Fly"
+      : `Jump${!isMobile ? " · Space" : ""}`;
     return (
       <>
         <motion.div
@@ -94,22 +109,23 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
           style={jumpStyle}
         >
           <button
-            onTouchStart={(e) => { e.stopPropagation(); onJump?.(); }}
-            onClick={onJump}
+            onTouchStart={(e) => { e.stopPropagation(); if (!flyDisabled) (isJetpack ? onFly?.() : onJump?.()); }}
+            onClick={() => { if (!flyDisabled) (isJetpack ? onFly?.() : onJump?.()); }}
             className="flex items-center justify-center gap-1.5 rounded-full font-black text-[11px] tracking-wider transition-all hover:brightness-110 active:scale-95"
             style={{
               width: isPortraitMobile ? portraitJumpWidth : (isMobile ? 118 : 140),
               height: isPortraitMobile ? portraitJumpHeight : (isMobile ? 54 : 54),
-              background: "linear-gradient(135deg,#00E5FF,#A078FF)",
-              border: "1px solid rgba(0,229,255,0.5)",
+              background: flyDisabled ? "rgba(255,255,255,0.10)" : (isJetpack ? "linear-gradient(135deg,#FFD36E,#FF4FC3,#7C3AED)" : "linear-gradient(135deg,#00E5FF,#A078FF)"),
+              border: flyDisabled ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(0,229,255,0.5)",
               color: "#fff",
               touchAction: "manipulation",
               boxShadow: "0 0 16px rgba(0,229,255,0.32)",
             }}
-            title="Jump (Spacebar)"
+            disabled={flyDisabled}
+            title={isJetpack ? "Fly" : "Jump (Spacebar)"}
           >
-            <span className="text-sm leading-none">↥</span>
-            Jump{!isMobile ? " · Space" : ""}
+            {isJetpack ? <Flame className="w-3.5 h-3.5" /> : <span className="text-sm leading-none">↥</span>}
+            {primaryLabel}
           </button>
         </motion.div>
 
@@ -160,25 +176,48 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
         gap: 8,
       }}
     >
-      <button
-        onTouchStart={(e) => e.stopPropagation()}
-        onClick={onToggle}
-        className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-        style={{
-          width: 'auto',
-          padding: '6px 12px',
-          opacity: 1,
-          background: "linear-gradient(135deg,#00B8D488,#00D4F088)",
-          border: "1px solid rgba(0,212,240,0.4)",
-          color: "#fff",
-          minHeight: isMobile ? 36 : 40,
-          touchAction: "manipulation",
-          boxShadow: "0 0 14px rgba(0,212,240,0.25)",
-        }}
-      >
-        <Rocket className="w-3 h-3" />
-        Ride Hoverboard
-      </button>
+      {canUsePersonalBoard && (
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={onToggle}
+          className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+          style={{
+            width: 'auto',
+            padding: '6px 12px',
+            opacity: 1,
+            background: "linear-gradient(135deg,#00B8D488,#00D4F088)",
+            border: "1px solid rgba(0,212,240,0.4)",
+            color: "#fff",
+            minHeight: isMobile ? 36 : 40,
+            touchAction: "manipulation",
+            boxShadow: "0 0 14px rgba(0,212,240,0.25)",
+          }}
+        >
+          <Rocket className="w-3 h-3" />
+          Ride Hoverboard
+        </button>
+      )}
+      {canUseJetpack && (
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={onEquipJetpack}
+          className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+          style={{
+            width: 'auto',
+            padding: '6px 12px',
+            opacity: 1,
+            background: "linear-gradient(135deg,#FFD36E88,#FF4FC388,#7C3AED88)",
+            border: "1px solid rgba(255,211,110,0.35)",
+            color: "#fff",
+            minHeight: isMobile ? 36 : 40,
+            touchAction: "manipulation",
+            boxShadow: "0 0 14px rgba(255,79,195,0.22)",
+          }}
+        >
+          <Flame className="w-3 h-3" />
+          Jetpack
+        </button>
+      )}
     </motion.div>
   );
 }

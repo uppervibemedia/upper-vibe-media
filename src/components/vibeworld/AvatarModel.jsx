@@ -513,6 +513,90 @@ export function detachHoverboard(entry) {
   entry._hbBoard = null;
 }
 
+export function attachJetpack(entry) {
+  if (!entry?.root) return;
+  if (entry.root.getObjectByName("avatarJetpack")) return;
+
+  const pack = new THREE.Group();
+  pack.name = "avatarJetpack";
+
+  const shellMat = new THREE.MeshStandardMaterial({ color: new THREE.Color("#090A18"), roughness: 0.18, metalness: 0.9 });
+  const cyanMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.78, depthWrite: false });
+  const purpleMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#C43BFF"), transparent: true, opacity: 0.55, depthWrite: false });
+  const flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#FFD36E"), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.54, 0.12), shellMat);
+  spine.position.set(0, 0, 0);
+  pack.add(spine);
+
+  [-0.17, 0.17].forEach((x) => {
+    const tank = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.42, 6, 12), shellMat.clone());
+    tank.position.set(x, 0.01, 0.015);
+    tank.rotation.x = Math.PI / 2;
+    pack.add(tank);
+
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.42, 0.014), cyanMat.clone());
+    stripe.position.set(x, 0.01, 0.086);
+    pack.add(stripe);
+
+    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.07, 0.10, 10), purpleMat.clone());
+    nozzle.position.set(x, -0.34, 0.03);
+    pack.add(nozzle);
+
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.32, 12), flameMat.clone());
+    flame.rotation.x = Math.PI;
+    flame.position.set(x, -0.55, 0.03);
+    flame.visible = false;
+    pack.add(flame);
+    if (!pack.userData.flames) pack.userData.flames = [];
+    pack.userData.flames.push(flame);
+  });
+
+  const core = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.30, 0.018), cyanMat.clone());
+  core.position.set(0, 0.06, 0.092);
+  pack.add(core);
+  pack.userData.coreMat = core.material;
+
+  const glow = new THREE.PointLight(new THREE.Color("#00E5FF"), 0.45, 3.0);
+  glow.position.set(0, -0.15, 0.08);
+  pack.add(glow);
+  pack.userData.glow = glow;
+
+  pack.position.set(0, 1.02, -0.24);
+  pack.rotation.set(0, 0, 0);
+  pack.scale.set(0.92, 0.92, 0.92);
+  entry.root.add(pack);
+  entry._jetpack = pack;
+}
+
+export function detachJetpack(entry) {
+  if (!entry?.root) return;
+  const pack = entry.root.getObjectByName("avatarJetpack");
+  if (pack) {
+    pack.traverse((obj) => {
+      obj.geometry?.dispose?.();
+      if (obj.material) (Array.isArray(obj.material) ? obj.material : [obj.material]).forEach((m) => m?.dispose?.());
+    });
+    entry.root.remove(pack);
+  }
+  entry._jetpack = null;
+}
+
+export function animateJetpack(entry, t, flying = false, intensity = 0) {
+  const pack = entry?._jetpack || entry?.root?.getObjectByName("avatarJetpack");
+  if (!pack) return;
+  const pulse = Math.sin(t * 8.0) * 0.5 + 0.5;
+  const power = flying ? Math.max(0.25, intensity || 1) : 0;
+  if (pack.userData.coreMat) pack.userData.coreMat.opacity = flying ? 0.78 + pulse * 0.18 : 0.42 + pulse * 0.10;
+  if (pack.userData.glow) pack.userData.glow.intensity = flying ? 1.15 + pulse * 0.55 : 0.35 + pulse * 0.12;
+  (pack.userData.flames || []).forEach((flame, i) => {
+    flame.visible = flying;
+    if (flame.material) flame.material.opacity = flying ? 0.36 + pulse * 0.32 : 0;
+    flame.scale.setScalar(flying ? 0.82 + pulse * 0.28 + power * 0.18 + i * 0.02 : 0.75);
+  });
+  pack.position.y = 1.02 + Math.sin(t * 2.5) * 0.01;
+}
+
 // ─── PUBLIC: retintAvatar ─────────────────────────────────────
 // suitColor: hex string e.g. "#00AADD" — applied directly to outfit/armor materials
 // Skips skin-toned materials (face, hands, neck) and shadow discs

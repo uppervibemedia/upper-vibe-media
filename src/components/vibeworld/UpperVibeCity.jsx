@@ -156,7 +156,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const [auraActive, setAuraActive] = useState(false);
 
-  const hbRiding = personalHoverboardActive;
+  const hbRiding = personalHoverboardActive && !jetpackActive;
   // Crystal Zone — decorative landmark only, no interaction state needed
   const rendererRef = useRef(null);
   const [sessionCoins, setSessionCoins] = useState(() => getSessionCoins());
@@ -244,6 +244,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [hoverboardDashSessionId, setHoverboardDashSessionId] = useState(null);
   const [hoverboardDashStats, setHoverboardDashStats] = useState(null);
   const [hoverboardDashResults, setHoverboardDashResults] = useState(null);
+  const [jetpackActive, setJetpackActive] = useState(false);
+  const [jetpackFlyRequest, setJetpackFlyRequest] = useState(null);
+  const [jetpackStatus, setJetpackStatus] = useState({ mode: "off", cooldownRemaining: 0, flightRemaining: 0 });
   const hoverboardDashRewardedRef = useRef(null);
 
 
@@ -862,11 +865,50 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setHoverboardDashResults(null);
     setHoverboardDashSessionId(session);
     setHoverboardDashStats({ sessionId: session, ringsCollected: 0, totalRings: 16, combo: 0, longestCombo: 0, distance: 0, coinsEarned: 0, score: 0, bestScore: 0, remaining: 75 });
+    setJetpackActive(false);
     setPersonalHoverboardActive(true);
     setHoverboardDashActive(true);
     setAnyBlockingUIOpen(false);
     try { navigator?.vibrate?.(20); } catch {}
   }, [worldMode]);
+
+  const equipJetpack = useCallback(() => {
+    setHoverboardDashActive(false);
+    setPersonalHoverboardActive(false);
+    setJetpackActive(true);
+    setJetpackStatus({ mode: "ready", cooldownRemaining: 0, flightRemaining: 0 });
+    try { navigator?.vibrate?.(16); } catch {}
+  }, []);
+
+  const putAwayVehicle = useCallback(() => {
+    if (jetpackActive) {
+      setJetpackActive(false);
+      setJetpackStatus((prev) => ({ ...prev, mode: "off" }));
+      return;
+    }
+    setPersonalHoverboardActive((p) => !p);
+  }, [jetpackActive]);
+
+  const requestJetpackFly = useCallback(() => {
+    if (!jetpackActive) return;
+    setJetpackFlyRequest({ id: Date.now() });
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(120, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(72, ctx.currentTime + 0.24);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.035, ctx.currentTime + 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.34);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.36);
+      }
+    } catch {}
+  }, [jetpackActive]);
 
   const handleStartBeachActivity = useCallback((type) => {
     if (!type || beachActivityHud?.active) return;
@@ -1380,6 +1422,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           hbRiding={hbRiding}
           personalHoverboardActive={personalHoverboardActive}
           hoverboardJumpRequest={hoverboardJumpRequest}
+          jetpackActive={jetpackActive}
+          jetpackFlyRequest={jetpackFlyRequest}
+          onJetpackStatusChange={setJetpackStatus}
           beachActivityRequest={beachActivityRequest}
           beachActivityExitRequest={beachActivityExitRequest}
           ferrisRiding={ferrisRiding}
@@ -1760,11 +1805,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <PersonalHoverboardHUD 
         isMobile={isMobile} 
         mobileLayout={mobileLayout}
-        onToggle={() => setPersonalHoverboardActive(p => !p)}
+        onToggle={putAwayVehicle}
         onJump={() => setHoverboardJumpRequest({ id: Date.now() })}
+        onEquipJetpack={equipJetpack}
+        onFly={requestJetpackFly}
         personalHoverboardActive={personalHoverboardActive}
-        canUsePersonalBoard={(hoverboardDashActive || !!equippedBoard) && !personalHoverboardActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
-        lockPutAway={hoverboardDashActive}
+        jetpackActive={jetpackActive}
+        jetpackStatus={jetpackStatus}
+        vehicleMode={jetpackActive ? "jetpack" : "hoverboard"}
+        canUsePersonalBoard={(hoverboardDashActive || !!equippedBoard) && !personalHoverboardActive && !jetpackActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
+        canUseJetpack={!personalHoverboardActive && !jetpackActive && !hoverboardDashActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && worldMode === "city"}
+        lockPutAway={hoverboardDashActive && !jetpackActive}
       />
 
       {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}

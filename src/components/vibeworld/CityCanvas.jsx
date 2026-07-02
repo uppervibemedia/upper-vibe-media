@@ -16,7 +16,7 @@ import { createChakraPathSystem, animateChakraPathSystem } from "./ChakraPathSys
 import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_ZONE_NODES } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
-import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
+import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard, attachJetpack, detachJetpack, animateJetpack } from "./AvatarModel.jsx";
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 import { createZoneSign } from "./ZoneSign";
@@ -553,7 +553,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, equippedAuraColor = null, hoverboardDashActive = false, hoverboardDashSessionId = null, onHoverboardDashUpdate, onHoverboardDashComplete, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, jetpackActive = false, jetpackFlyRequest = null, onJetpackStatusChange, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, equippedAuraColor = null, hoverboardDashActive = false, hoverboardDashSessionId = null, onHoverboardDashUpdate, onHoverboardDashComplete, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -581,6 +581,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   onHoverboardDashUpdateRef.current = onHoverboardDashUpdate;
   const onHoverboardDashCompleteRef = useRef(onHoverboardDashComplete);
   onHoverboardDashCompleteRef.current = onHoverboardDashComplete;
+  const jetpackActiveRef = useRef(false);
+  jetpackActiveRef.current = jetpackActive;
+  const pendingJetpackFlyRef = useRef(false);
+  const jetpackHeightRef = useRef(0);
+  const jetpackVelocityRef = useRef(0);
+  const jetpackModeRef = useRef("ready");
+  const jetpackFlightEndsAtRef = useRef(0);
+  const jetpackCooldownEndsAtRef = useRef(0);
+  const onJetpackStatusChangeRef = useRef(onJetpackStatusChange);
+  onJetpackStatusChangeRef.current = onJetpackStatusChange;
 
   // Update the in-world "Now Playing" display whenever djTrack changes
   useEffect(() => {
@@ -675,6 +685,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   useEffect(() => {
     if (hoverboardJumpRequest?.id) pendingHoverboardJumpRef.current = true;
   }, [hoverboardJumpRequest?.id]);
+
+  useEffect(() => {
+    if (jetpackFlyRequest?.id) pendingJetpackFlyRef.current = true;
+  }, [jetpackFlyRequest?.id]);
+
+  useEffect(() => {
+    const entry = avatarEntryRef.current;
+    if (!entry) return;
+    if (jetpackActive) attachJetpack(entry);
+    else detachJetpack(entry);
+  }, [jetpackActive]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -949,7 +970,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         let rot = avatarRotRef.current;
         const vel = velocityRef.current;
 
-        const jumpEnabled = personalHoverboardActiveRef.current && hbRidingRef.current && !ferrisRidingRef.current && !lockedRef.current;
+        const jumpEnabled = personalHoverboardActiveRef.current && hbRidingRef.current && !jetpackActiveRef.current && !ferrisRidingRef.current && !lockedRef.current;
         const jumpGrounded = hoverboardJumpOffsetRef.current <= 0.001 && !hoverboardJumpingRef.current;
         if (pendingHoverboardJumpRef.current) {
           if (jumpEnabled && jumpGrounded && t - lastHoverboardJumpTimeRef.current >= HOVERBOARD_JUMP_COOLDOWN) {
@@ -984,6 +1005,58 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           hoverboardLandingBounceRef.current *= Math.max(0, 1 - moveDt * 8);
         }
         const hoverboardAirborne = hoverboardJumpOffsetRef.current > 0.03;
+
+        const JETPACK_MAX_HEIGHT = 5.2;
+        const JETPACK_ASCEND_SPEED = 1.35;
+        const JETPACK_DESCEND_ACCEL = -5.6;
+        const JETPACK_SOFT_DESCENT = -2.25;
+        let jetpackFlyingNow = false;
+        if (pendingJetpackFlyRef.current) {
+          if (jetpackActiveRef.current && !lockedRef.current && !ferrisRidingRef.current && jetpackModeRef.current !== "flying" && t >= jetpackCooldownEndsAtRef.current) {
+            jetpackModeRef.current = "flying";
+            jetpackFlightEndsAtRef.current = t + 5;
+            jetpackVelocityRef.current = Math.max(jetpackVelocityRef.current, 0.65);
+          }
+          pendingJetpackFlyRef.current = false;
+        }
+        if (jetpackModeRef.current === "flying") {
+          jetpackFlyingNow = true;
+          if (!jetpackActiveRef.current || t >= jetpackFlightEndsAtRef.current || jetpackHeightRef.current >= JETPACK_MAX_HEIGHT) {
+            jetpackModeRef.current = "falling";
+            jetpackCooldownEndsAtRef.current = t + 5;
+          } else {
+            jetpackVelocityRef.current += (JETPACK_ASCEND_SPEED - jetpackVelocityRef.current) * Math.min(1, moveDt * 5.5);
+          }
+        }
+        if (jetpackModeRef.current === "falling") {
+          jetpackVelocityRef.current = Math.max(JETPACK_SOFT_DESCENT, jetpackVelocityRef.current + JETPACK_DESCEND_ACCEL * moveDt);
+          if (jetpackHeightRef.current <= 0.001) {
+            jetpackHeightRef.current = 0;
+            jetpackVelocityRef.current = 0;
+            jetpackModeRef.current = t < jetpackCooldownEndsAtRef.current ? "cooldown" : "ready";
+          }
+        }
+        if (jetpackModeRef.current === "cooldown" && t >= jetpackCooldownEndsAtRef.current) jetpackModeRef.current = "ready";
+        if (jetpackModeRef.current === "flying" || jetpackModeRef.current === "falling") {
+          jetpackHeightRef.current = Math.max(0, Math.min(JETPACK_MAX_HEIGHT, jetpackHeightRef.current + jetpackVelocityRef.current * moveDt));
+          if (jetpackHeightRef.current >= JETPACK_MAX_HEIGHT && jetpackModeRef.current === "flying") {
+            jetpackModeRef.current = "falling";
+            jetpackCooldownEndsAtRef.current = t + 5;
+          }
+        }
+        if (!jetpackActiveRef.current && jetpackModeRef.current === "flying") {
+          jetpackModeRef.current = "falling";
+          jetpackCooldownEndsAtRef.current = Math.max(jetpackCooldownEndsAtRef.current, t + 5);
+        }
+        if (frameRef.current % 6 === 0) {
+          onJetpackStatusChangeRef.current?.({
+            mode: jetpackActiveRef.current ? jetpackModeRef.current : "off",
+            height: jetpackHeightRef.current,
+            flying: jetpackFlyingNow,
+            flightRemaining: Math.max(0, Math.ceil(jetpackFlightEndsAtRef.current - t)),
+            cooldownRemaining: Math.max(0, Math.ceil(jetpackCooldownEndsAtRef.current - t)),
+          });
+        }
 
         // ─── RIGHT-CLICK / CAM DRAG (desktop) ───────────────
         if (mouse.down && mouse.button === 2 && !lockedRef.current) {
@@ -1146,6 +1219,27 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           ? resolveBeachBounds(px, pz, 0.3, hbRidingRef.current)
           : resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
 
+        if (worldModeRef.current === "city" && jetpackHeightRef.current > 0.2) {
+          const noFlyZones = [
+            { x: 0, z: -32, r: 7.4 },
+            { x: WHEEL_X, z: WHEEL_Z, r: 6.2 },
+            { x: -22, z: -26, r: 5.8 },
+            { x: 0, z: 12.25, r: 3.8 },
+            { x: 22, z: 12.25, r: 4.8 },
+            { x: -28, z: 5, r: 4.8 },
+          ];
+          for (const zone of noFlyZones) {
+            const dx = px - zone.x;
+            const dz = pz - zone.z;
+            const dist = Math.sqrt(dx * dx + dz * dz) || 0.001;
+            if (dist < zone.r) {
+              px = zone.x + (dx / dist) * zone.r;
+              pz = zone.z + (dz / dist) * zone.r;
+              if (jetpackModeRef.current === "flying") jetpackModeRef.current = "falling";
+            }
+          }
+        }
+
         const activeBeachActivity = beachActivityStateRef.current;
         if (activeBeachActivity) {
           const activityInput = isMobileRef.current
@@ -1172,7 +1266,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ── Optional launch arc bridge; city launch/orb gameplay is currently disabled for performance. ──
         const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
         if (!beachActivityStateRef.current) {
-          py = SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current;
+          py = SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current + jetpackHeightRef.current;
         }
 
         avatarRotRef.current = rot;
@@ -1377,6 +1471,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ── Aura glow animation ─────────────────────────────
         animateAura(avatarEntry, t);
+        if (jetpackActiveRef.current && avatarEntryRef.current && !avatarEntryRef.current._jetpack) attachJetpack(avatarEntryRef.current);
+        animateJetpack(avatarEntryRef.current, t, jetpackModeRef.current === "flying", Math.min(1, jetpackHeightRef.current / 3));
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
@@ -2014,6 +2110,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Detach hoverboard + aura on unmount
         if (avatarEntryRef.current) {
           detachHoverboard(avatarEntryRef.current);
+          detachJetpack(avatarEntryRef.current);
           if (equippedAuraRef.current) unbindAura(avatarEntryRef.current.root);
         }
         if (beachActivityStateRef.current) {
@@ -2071,9 +2168,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   // Hoverboard attach/detach; ferris ride hides avatar to avoid blocking ride-cam view
   useEffect(() => {
     const entry = avatarEntryRef.current;
-    if (hbRiding) { if (entry) attachHoverboard(entry); }
+    if (hbRiding && !jetpackActive) { if (entry) attachHoverboard(entry); }
     else { if (entry) detachHoverboard(entry); }
-  }, [hbRiding]);
+  }, [hbRiding, jetpackActive]);
   useEffect(() => {
     if (!ferrisRiding) {
       if (avatarRef.current) avatarRef.current.visible = true;
