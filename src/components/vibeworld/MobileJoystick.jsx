@@ -48,10 +48,18 @@ export default function MobileJoystick({ onMove }) {
     onMoveRef.current?.(0, 0);
   }, [layout?.isLandscape, scheduleVisual]);
 
-  // Attach native (non-passive) touch listeners directly to the DOM node
+  // Native capture listeners claim the whole left movement zone, not just the visible knob.
+  // This keeps landscape/PWA movement working even when transparent HUD layers sit above the canvas.
   useEffect(() => {
-    const el = divRef.current;
-    if (!el) return;
+    const isInteractive = (e) => {
+      const path = e.composedPath?.() || [];
+      return path.some((el) => {
+        if (!el?.tagName) return false;
+        if (el.closest?.('[data-camera-scroll-lock="true"]')) return true;
+        const tag = el.tagName;
+        return tag === "BUTTON" || tag === "A" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.getAttribute?.("role") === "button";
+      });
+    };
 
     const updateFromTouch = (touch) => {
       const L = layoutRef.current;
@@ -66,17 +74,19 @@ export default function MobileJoystick({ onMove }) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 1) { dx /= dist; dy /= dist; }
 
-      // Movement ref updates immediately; React visual state is rAF-throttled.
       onMoveRef.current?.(dx, dy);
       scheduleVisual(dx * L.joystick.maxR, -dy * L.joystick.maxR, dist > 0.12);
     };
 
     const onStart = (e) => {
       if (activeIdRef.current !== null) return;
+      const L = layoutRef.current;
+      const t = e.changedTouches[0];
+      if (!L || !t) return;
+      const leftEnd = L.controlZones?.leftEnd ?? (L.vw * 0.44);
+      if (t.clientX > leftEnd || isInteractive(e)) return;
       e.preventDefault();
       e.stopPropagation();
-      const t = e.changedTouches[0];
-      if (!t) return;
       activeIdRef.current = t.identifier;
       updateFromTouch(t);
       try { navigator?.vibrate?.(10); } catch {}
@@ -85,6 +95,7 @@ export default function MobileJoystick({ onMove }) {
     const onMove = (e) => {
       if (activeIdRef.current === null) return;
       e.preventDefault();
+      e.stopPropagation();
 
       let touch = null;
       for (let i = 0; i < e.touches.length; i++) {
@@ -108,21 +119,32 @@ export default function MobileJoystick({ onMove }) {
       }
       if (!found) return;
       e.preventDefault();
+      e.stopPropagation();
       activeIdRef.current = null;
       scheduleVisual(0, 0, false);
       onMoveRef.current?.(0, 0);
     };
 
-    el.addEventListener("touchstart", onStart, { passive: false });
-    el.addEventListener("touchmove", onMove, { passive: false });
-    el.addEventListener("touchend", onEnd, { passive: false });
-    el.addEventListener("touchcancel", onEnd, { passive: false });
+    const reset = () => {
+      activeIdRef.current = null;
+      scheduleVisual(0, 0, false);
+      onMoveRef.current?.(0, 0);
+    };
+
+    window.addEventListener("touchstart", onStart, { passive: false, capture: true });
+    window.addEventListener("touchmove", onMove, { passive: false, capture: true });
+    window.addEventListener("touchend", onEnd, { passive: false, capture: true });
+    window.addEventListener("touchcancel", onEnd, { passive: false, capture: true });
+    window.addEventListener("orientationchange", reset, { passive: true });
+    window.visualViewport?.addEventListener("resize", reset, { passive: true });
 
     return () => {
-      el.removeEventListener("touchstart", onStart);
-      el.removeEventListener("touchmove", onMove);
-      el.removeEventListener("touchend", onEnd);
-      el.removeEventListener("touchcancel", onEnd);
+      window.removeEventListener("touchstart", onStart, true);
+      window.removeEventListener("touchmove", onMove, true);
+      window.removeEventListener("touchend", onEnd, true);
+      window.removeEventListener("touchcancel", onEnd, true);
+      window.removeEventListener("orientationchange", reset);
+      window.visualViewport?.removeEventListener("resize", reset);
     };
   }, [scheduleVisual]);  // attach once — handlers read from refs
 

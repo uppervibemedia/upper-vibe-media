@@ -27,7 +27,9 @@ export default function SymbolActivatorCard({
   if (!activeCard) return null;
   const type = activeCard.activation?.type || "lesson";
   const Icon = TYPE_ICONS[type] || Sparkles;
-  const bottom = isMobile && mobileLayout ? mobileLayout.actionBottom + 132 : 190;
+  const isLandscape = !!(isMobile && mobileLayout?.isLandscape);
+  const panelTop = isMobile ? `calc(env(safe-area-inset-top, 0px) + ${isLandscape ? 42 : 68}px)` : "auto";
+  const panelBottom = isMobile ? `calc(env(safe-area-inset-bottom, 0px) + ${isLandscape ? 14 : 96}px)` : 190;
   const headline = activeCard.reward
     ? activeCard.statusTitle || "Reward Activated"
     : activeCard.alreadyActivated
@@ -36,8 +38,9 @@ export default function SymbolActivatorCard({
 
   return (
     <div
-      className="absolute left-1/2 z-[68] pointer-events-auto rounded-3xl overflow-hidden"
-      style={{ transform: "translateX(-50%)", bottom, width: isMobile ? "min(88vw, 350px)" : 380, maxHeight: isMobile ? "44dvh" : "50vh", overflowY: "auto", background: "rgba(5,6,18,0.93)", border: "1px solid rgba(0,229,255,0.24)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.52), 0 0 34px rgba(0,229,255,0.16)" }}
+      className="fixed left-1/2 z-[68] pointer-events-auto rounded-3xl overflow-hidden"
+      data-camera-scroll-lock="true"
+      style={{ transform: "translateX(-50%)", top: panelTop, bottom: panelBottom, width: isMobile ? (isLandscape ? "min(82vw, 560px)" : "min(92vw, 380px)") : 380, maxHeight: isMobile ? "none" : "50vh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "rgba(5,6,18,0.93)", border: "1px solid rgba(0,229,255,0.24)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.52), 0 0 34px rgba(0,229,255,0.16)" }}
     >
       <div className="flex items-start gap-3 p-4">
         <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(0,229,255,0.12)", color: "#00E5FF" }}><Icon className="w-4 h-4" /></div>

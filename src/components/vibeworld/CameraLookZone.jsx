@@ -25,8 +25,12 @@ export default function CameraLookZone({ mobileInputRef }) {
       if (touchIdRef.current !== null) return;
       const t = e.changedTouches[0];
       if (!t) return;
-      // Only claim right-side (≥40vw). Left side → joystick.
-      if (t.clientX < window.innerWidth * 0.40) return;
+      // Only claim the right-side camera zone. Left side stays reserved for movement.
+      const viewportWidth = window.visualViewport?.width || window.innerWidth;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const isLandscape = viewportWidth > viewportHeight;
+      const cameraStart = viewportWidth * (isLandscape ? 0.48 : 0.40);
+      if (t.clientX < cameraStart) return;
       // Skip if touch targets an interactive element (button, anchor, input).
       // composedPath() reveals the real touch target even during capture phase
       // — without this, the capture listener claims EVERY right-side touch and
@@ -93,12 +97,16 @@ export default function CameraLookZone({ mobileInputRef }) {
     window.addEventListener("touchmove", onMove, { passive: false, capture: true });
     window.addEventListener("touchend", onEnd, { passive: false, capture: true });
     window.addEventListener("touchcancel", onCancel, { passive: true, capture: true });
+    window.addEventListener("orientationchange", onCancel, { passive: true });
+    window.visualViewport?.addEventListener("resize", onCancel, { passive: true });
 
     return () => {
-      window.removeEventListener("touchstart", onStart);
-      window.removeEventListener("touchmove", onMove);
-      window.removeEventListener("touchend", onEnd);
-      window.removeEventListener("touchcancel", onCancel);
+      window.removeEventListener("touchstart", onStart, true);
+      window.removeEventListener("touchmove", onMove, true);
+      window.removeEventListener("touchend", onEnd, true);
+      window.removeEventListener("touchcancel", onCancel, true);
+      window.removeEventListener("orientationchange", onCancel);
+      window.visualViewport?.removeEventListener("resize", onCancel);
     };
   }, []);
 

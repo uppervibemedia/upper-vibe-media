@@ -384,7 +384,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
   };
 
   if (hidden) return null;
-  const top = isMobile && mobileLayout ? mobileLayout.sa.top + 250 : 220;
+  const top = isMobile && mobileLayout ? mobileLayout.sa.top + (mobileLayout.isLandscape ? 56 : 210) : 220;
   const holdProgress = candidate && activationStarted ? Math.min(1, ((holdTick || performance.now()) - activationStarted) / 3000) : 0;
 
   return (

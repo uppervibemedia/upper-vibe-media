@@ -342,8 +342,12 @@ export default function DailyCityEngagement({
   const questItems = (daily?.quest || []).map((id) => TASKS.find((t) => t.id === id)).filter(Boolean);
   const completedCount = questItems.filter((t) => daily?.completed?.[t.id]).length;
   const intention = INTENTIONS.find((i) => i.id === daily?.intention);
-  const top = isMobile && mobileLayout ? mobileLayout.sa.top + 92 : 92;
-  const panelMaxHeight = isMobile && mobileLayout ? `calc(100dvh - ${top + mobileLayout.actionBottom + 12}px)` : "min(70dvh, 560px)";
+  const top = isMobile && mobileLayout ? mobileLayout.sa.top + (mobileLayout.isLandscape ? 46 : 92) : 92;
+  const panelMaxHeight = isMobile && mobileLayout
+    ? mobileLayout.isLandscape
+      ? `calc(100dvh - ${top + mobileLayout.sa.bottom + 12}px)`
+      : `calc(100dvh - ${top + mobileLayout.actionBottom + 12}px)`
+    : "min(70dvh, 560px)";
 
   if (!daily) return null;
 

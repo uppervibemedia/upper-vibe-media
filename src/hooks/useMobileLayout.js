@@ -88,11 +88,11 @@ function computeLayout() {
 
   // Joystick bottom edge sits just above the safe-area home bar with a small gap
   const joyCYFromBottom = isLandscape
-    ? sa.bottom + 16 + joyHalfSize
+    ? Math.max(sa.bottom + 24 + joyHalfSize, vh * 0.28)
     : sa.bottom + 12 + joyHalfSize;
 
-  // Absolute cy from top of visual viewport
-  const joyCYAbsolute = vh - joyCYFromBottom;
+  // Absolute cy from top of visual viewport; clamp away from notch/home-bar after rotation.
+  const joyCYAbsolute = Math.max(sa.top + joyHalfSize + 12, Math.min(vh - sa.bottom - joyHalfSize - 12, vh - joyCYFromBottom));
 
   // ── Mini player position ────────────────────────────────────────
   // Portrait: player sits bottom-LEFT but ABOVE the joystick with 24px gap.
@@ -157,6 +157,10 @@ function computeLayout() {
     actionBottom,
     djCardBottom,
     launchHudBottom,
+    controlZones: {
+      leftEnd: isLandscape ? Math.min(vw * 0.46, joyCX + joyHalfSize + 112) : vw * 0.44,
+      cameraStart: isLandscape ? vw * 0.48 : vw * 0.40,
+    },
   };
 }
 

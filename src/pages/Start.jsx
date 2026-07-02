@@ -420,11 +420,12 @@ export default function Start() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center"
+      className="min-h-[100dvh] flex flex-col items-center overflow-x-hidden"
       style={{
         background: "linear-gradient(160deg,#06060f 0%,#090914 55%,#04040d 100%)",
         WebkitOverflowScrolling: "touch",
         fontFamily: "var(--font-body)",
+        width: "100%",
       }}
     >
       {/* Lightweight static ambient — no fixed positioning, reduced blur for mobile perf */}
@@ -433,7 +434,7 @@ export default function Start() {
           style={{ background: "rgba(0,144,200,0.07)" }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-md px-5 pb-16 pt-10 flex flex-col gap-10">
+      <div className="relative z-10 w-full max-w-md px-5 flex flex-col gap-10" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2.25rem)", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 9.5rem)" }}>
 
         {/* ── HERO ── */}
         <section className="flex flex-col items-center text-center gap-5">

@@ -155,6 +155,13 @@ body {
   /* Smooth momentum scrolling on iOS */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  overflow-x: hidden;
+}
+
+html,
+body,
+#root {
+  min-height: 100dvh;
 }
 
 /* PWA standalone — add extra top padding for status bar */

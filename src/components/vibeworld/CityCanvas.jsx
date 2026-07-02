@@ -112,7 +112,7 @@ function getCityQuality() {
     lowMemory,
     qualityLevel,
     currentLevel: qualityLevel,
-    pixelRatio: qualityLevel === "mobile" ? (isIOS ? 0.85 : 0.95) : 1.25,
+    pixelRatio: qualityLevel === "mobile" ? (isIOS ? 1.35 : 1.25) : 1.5,
     farClip: qualityLevel === "mobile" ? 104 : 140,
     antialias: qualityLevel === "high",
     shadowMapSize: qualityLevel === "mobile" ? 384 : 1024,

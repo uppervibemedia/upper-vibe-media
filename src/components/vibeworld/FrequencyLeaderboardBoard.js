@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { base44 } from "@/api/base44Client";
 
-const BOARD_W = 768;
-const BOARD_H = 1536;
+const BOARD_W = 1024;
+const BOARD_H = 2048;
 
 function fitText(ctx, text, maxWidth, startSize, weight = 900, family = "Inter, sans-serif", minSize = 20) {
   let size = startSize;
@@ -25,17 +25,17 @@ function drawBoard(ctx, rows = [], loading = false) {
   ctx.strokeStyle = "rgba(181,140,255,0.55)"; ctx.lineWidth = 4; ctx.strokeRect(54, 54, BOARD_W - 108, BOARD_H - 108);
 
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0,229,255,0.9)"; ctx.shadowBlur = 20;
-  ctx.fillStyle = "#DFFBFF"; fitText(ctx, "FREQUENCY", 620, 54, 900, "Syne, Inter, sans-serif", 34); ctx.fillText("FREQUENCY", BOARD_W / 2, 116);
-  ctx.fillStyle = "#00E5FF"; fitText(ctx, "LEADERBOARD", 620, 54, 900, "Syne, Inter, sans-serif", 32); ctx.fillText("LEADERBOARD", BOARD_W / 2, 178);
-  ctx.shadowBlur = 8;
-  ctx.fillStyle = "rgba(255,211,110,0.92)"; ctx.font = "800 26px Inter, sans-serif"; ctx.fillText("LIVE TOP 5", BOARD_W / 2, 238);
+  ctx.shadowColor = "rgba(0,229,255,0.42)"; ctx.shadowBlur = 10;
+  ctx.fillStyle = "#F2FDFF"; fitText(ctx, "FREQUENCY", 830, 74, 900, "Syne, Inter, sans-serif", 44); ctx.fillText("FREQUENCY", BOARD_W / 2, 154);
+  ctx.fillStyle = "#7DEBFF"; fitText(ctx, "LEADERBOARD", 830, 70, 900, "Syne, Inter, sans-serif", 42); ctx.fillText("LEADERBOARD", BOARD_W / 2, 232);
+  ctx.shadowBlur = 4;
+  ctx.fillStyle = "rgba(255,211,110,0.96)"; ctx.font = "900 36px Inter, sans-serif"; ctx.fillText("LIVE TOP 5", BOARD_W / 2, 315);
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(255,255,255,0.52)"; ctx.font = "800 20px Inter, sans-serif";
-  ctx.textAlign = "left"; ctx.fillText("RANK", 86, 318);
-  ctx.fillText("VIBE NAME", 188, 318);
-  ctx.textAlign = "right"; ctx.fillText("SCORE", 678, 318);
+  ctx.fillStyle = "rgba(255,255,255,0.62)"; ctx.font = "900 30px Inter, sans-serif";
+  ctx.textAlign = "left"; ctx.fillText("RANK", 112, 430);
+  ctx.fillText("VIBE NAME", 250, 430);
+  ctx.textAlign = "right"; ctx.fillText("SCORE", 906, 430);
 
   if (loading) {
     ctx.textAlign = "center";
@@ -57,13 +57,13 @@ function drawBoard(ctx, rows = [], loading = false) {
   }
 
   rows.slice(0, 5).forEach((row, i) => {
-    const y = 410 + i * 180;
+    const y = 550 + i * 225;
     const isTop = i === 0;
-    const grad = ctx.createLinearGradient(76, y - 54, 692, y + 54);
-    grad.addColorStop(0, isTop ? "rgba(255,211,110,0.18)" : "rgba(0,229,255,0.09)");
-    grad.addColorStop(1, "rgba(124,58,237,0.10)");
+    const grad = ctx.createLinearGradient(96, y - 76, 928, y + 76);
+    grad.addColorStop(0, isTop ? "rgba(255,211,110,0.22)" : "rgba(0,229,255,0.12)");
+    grad.addColorStop(1, "rgba(124,58,237,0.13)");
     ctx.fillStyle = grad;
-    roundRect(ctx, 72, y - 60, 624, 116, 24);
+    roundRect(ctx, 92, y - 78, 840, 152, 30);
     ctx.fill();
     ctx.strokeStyle = isTop ? "rgba(255,211,110,0.42)" : "rgba(0,229,255,0.22)";
     ctx.lineWidth = 3;
@@ -71,23 +71,24 @@ function drawBoard(ctx, rows = [], loading = false) {
 
     ctx.textAlign = "center";
     ctx.fillStyle = isTop ? "#FFD36E" : "#DFFBFF";
-    fitText(ctx, `#${i + 1}`, 78, 42, 900, "Syne, Inter, sans-serif", 24);
-    ctx.fillText(`#${i + 1}`, 122, y);
+    fitText(ctx, `#${i + 1}`, 104, 58, 900, "Syne, Inter, sans-serif", 32);
+    ctx.fillText(`#${i + 1}`, 158, y);
 
-    const username = String(row.username || "Vibe User").trim() || "Vibe User";
+    let username = String(row.username || "Vibe User").trim() || "Vibe User";
+    if (username.length > 16) username = username.slice(0, 15) + "…";
     ctx.textAlign = "left";
     ctx.fillStyle = "#FFFFFF";
-    fitText(ctx, username, 302, 36, 900, "Syne, Inter, sans-serif", 20);
-    ctx.fillText(username, 184, y - 18);
-    ctx.fillStyle = "rgba(0,229,255,0.75)";
-    ctx.font = "800 18px Inter, sans-serif";
-    ctx.fillText("Frequency Score", 186, y + 26);
+    fitText(ctx, username, 440, 54, 900, "Syne, Inter, sans-serif", 30);
+    ctx.fillText(username, 246, y - 22);
+    ctx.fillStyle = "rgba(125,235,255,0.88)";
+    ctx.font = "900 26px Inter, sans-serif";
+    ctx.fillText("Frequency Score", 248, y + 34);
 
     ctx.textAlign = "right";
     ctx.fillStyle = isTop ? "#FFD36E" : "#FFFFFF";
     const score = Math.round(row.all_time_score || 0).toLocaleString();
-    fitText(ctx, score, 160, 38, 900, "Syne, Inter, sans-serif", 22);
-    ctx.fillText(score, 670, y - 2);
+    fitText(ctx, score, 220, 56, 900, "Syne, Inter, sans-serif", 30);
+    ctx.fillText(score, 898, y - 4);
   });
 
   ctx.textAlign = "center";
@@ -117,6 +118,7 @@ function makeBoardTexture(rows = [], loading = true) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
   return tex;
 }
 
@@ -150,9 +152,9 @@ export function createFrequencyLeaderboardBoard(scene) {
   group.userData.nextLeaderboardRefresh = 0;
   group.userData.leaderboardRows = [];
 
-  const panelMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.96, depthWrite: true });
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.45, 3.2), panelMat);
-  panel.position.set(0, 1.82, 0);
+  const panelMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.98, depthWrite: true });
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.75, 3.55), panelMat);
+  panel.position.set(0, 1.92, 0);
   group.add(panel);
 
   const frameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.66 });
