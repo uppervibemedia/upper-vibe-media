@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Play, Pause, SkipForward, Music2 } from "lucide-react";
 import FreqBadge from "@/components/shared/FreqBadge";
@@ -53,15 +53,38 @@ function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
 }
 
 function NewestTrackCard({ track, onPlay, isPlaying }) {
+  const dragRef = useRef({ x: 0, y: 0, dragging: false });
+
+  const handlePointerDown = (e) => {
+    dragRef.current = { x: e.clientX, y: e.clientY, dragging: false };
+  };
+
+  const handlePointerMove = (e) => {
+    const dx = Math.abs(e.clientX - dragRef.current.x);
+    const dy = Math.abs(e.clientY - dragRef.current.y);
+    if (dx > 8 || dy > 8) dragRef.current.dragging = true;
+  };
+
+  const handleClick = (e) => {
+    if (dragRef.current.dragging) {
+      e.preventDefault();
+      return;
+    }
+    onPlay(track);
+  };
+
   return (
     <button
-      onClick={() => onPlay(track)}
-      className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.95] text-left"
-      style={{ width: 116, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", scrollSnapAlign: "start", WebkitTapHighlightColor: "transparent" }}
+      type="button"
+      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97] text-left"
+      style={{ width: 124, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", scrollSnapAlign: "start", WebkitTapHighlightColor: "transparent", touchAction: "pan-x", userSelect: "none" }}
       aria-label={`Play ${track.title}`}
     >
-      <div className="relative" style={{ width: "100%", height: 112, background: "#111" }}>
-        {track.cover_url ? <img src={optimizedImageUrl(track.cover_url, 180)} alt={track.title} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : (
+      <div className="relative" style={{ width: "100%", aspectRatio: "1 / 1", background: "#111" }}>
+        {track.cover_url ? <img src={optimizedImageUrl(track.cover_url, 240)} alt={track.title} loading="lazy" decoding="async" draggable="false" className="w-full h-full object-cover object-center" /> : (
           <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${BLUE},0.07)` }}>
             <Music2 style={{ width: 22, height: 22, color: `rgba(${BLUE},0.4)` }} />
           </div>
@@ -169,11 +192,11 @@ export default function RadioCTA() {
               <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: primaryColor, fontFamily: "var(--font-heading)" }}>{label}</span>
             </div>
             <div className="flex items-center gap-3 p-3">
-              <div className="flex-shrink-0 rounded-xl overflow-hidden relative" style={{ width: 106, height: 106, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
-                {showTrack.cover_url ? <img src={optimizedImageUrl(showTrack.cover_url, 240)} alt={showTrack.title} loading="eager" fetchPriority="high" decoding="async" className="w-full h-full" style={{ objectFit: "cover", objectPosition: "center top" }} /> : (
+              <button type="button" onClick={handlePlayCta} className="flex-shrink-0 rounded-xl overflow-hidden relative active:scale-[0.98]" style={{ width: 106, aspectRatio: "1 / 1", background: rgba(0.1), border: `1px solid ${rgba(0.2)}`, padding: 0, WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }} aria-label={showPlaying ? `Pause ${showTrack.title}` : `Play ${showTrack.title}`}>
+                {showTrack.cover_url ? <img src={optimizedImageUrl(showTrack.cover_url, 260)} alt={showTrack.title} loading="eager" fetchPriority="high" decoding="async" draggable="false" className="w-full h-full object-cover object-center" /> : (
                   <div className="w-full h-full flex items-center justify-center"><Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} /></div>
                 )}
-              </div>
+              </button>
               <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1"><FreqBadge label={freqLabel} /><NewBadge track={showTrack} /></div>
@@ -202,7 +225,7 @@ export default function RadioCTA() {
         {newestTracks.length > 0 && (
           <div className="flex flex-col gap-2">
             <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", fontFamily: "var(--font-heading)" }}>Newest Songs</p>
-            <div className="flex gap-2.5 overflow-x-auto" style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+            <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: 4, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", touchAction: "pan-x", overscrollBehaviorX: "contain", paddingLeft: 2, paddingRight: 22 }}>
               {newestTracks.map((track) => (
                 <NewestTrackCard key={track.id} track={track} onPlay={handlePlayNewest} isPlaying={showPlaying && showTrack?.id === track.id} />
               ))}

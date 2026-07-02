@@ -45,9 +45,12 @@ function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
         aspectRatio: "16/9",
         background: "#111",
         border: "1px solid rgba(255,60,60,0.15)",
-        width: small ? "calc(50vw - 28px)" : "100%",
-        maxWidth: small ? 160 : "100%",
+        width: small ? "min(46vw, 168px)" : "100%",
+        minWidth: small ? 138 : "100%",
+        maxWidth: small ? 168 : "100%",
         scrollSnapAlign: "start",
+        WebkitTapHighlightColor: "transparent",
+        touchAction: "manipulation",
       }}
     >
       <img
@@ -56,7 +59,8 @@ function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
         alt={title}
         loading="lazy"
         onError={handleError}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover object-center"
+        draggable="false"
         style={{ display: "block" }}
       />
       {/* Gradient overlay */}
@@ -183,13 +187,17 @@ export default function YouTubeCTA() {
         {/* Secondary videos — horizontal swipe row */}
         {secondaryVideos.length > 0 && (
           <div
-            className="flex gap-3 overflow-x-auto pb-1"
+            className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar"
             style={{
               scrollSnapType: "x mandatory",
+              scrollPaddingInline: 4,
               WebkitOverflowScrolling: "touch",
               msOverflowStyle: "none",
               scrollbarWidth: "none",
-              paddingRight: "16px",
+              paddingLeft: "2px",
+              paddingRight: "22px",
+              touchAction: "pan-x",
+              overscrollBehaviorX: "contain",
             }}
           >
             {secondaryVideos.map((v) => (
