@@ -300,6 +300,25 @@ export default function Start() {
     navigate("/music", { replace: true });
   }, [isAuthenticated, isLoadingAuth, isPlus, isAdmin]);
 
+  // Keep /start locked to the iPhone viewport — carousel rows handle their own horizontal scroll.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflowX = html.style.overflowX;
+    const prevBodyOverflowX = body.style.overflowX;
+    const prevBodyMaxWidth = body.style.maxWidth;
+    html.style.overflowX = "hidden";
+    body.style.overflowX = "hidden";
+    body.style.maxWidth = "100vw";
+    body.classList.add("start-page-active");
+    return () => {
+      html.style.overflowX = prevHtmlOverflowX;
+      body.style.overflowX = prevBodyOverflowX;
+      body.style.maxWidth = prevBodyMaxWidth;
+      body.classList.remove("start-page-active");
+    };
+  }, []);
+
   // Inject page-specific meta tags for social sharing
   useEffect(() => {
     const prev = document.title;
@@ -426,22 +445,35 @@ export default function Start() {
         WebkitOverflowScrolling: "touch",
         fontFamily: "var(--font-body)",
         width: "100%",
+        maxWidth: "100vw",
+        minHeight: "100dvh",
+        position: "relative",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+        "--start-player-bottom-space": "calc(75px + env(safe-area-inset-bottom, 0px) + 24px)",
       }}
     >
+      <style>{`
+        @media (max-width: 767px) {
+          .start-primary-actions {
+            margin-top: calc(75px + env(safe-area-inset-bottom, 0px) + 14px) !important;
+          }
+        }
+      `}</style>
       {/* Lightweight static ambient — no fixed positioning, reduced blur for mobile perf */}
       <div className="absolute top-0 left-0 right-0 h-[300px] pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
         <div className="absolute top-[-60px] left-1/2 -translate-x-1/2 w-[320px] h-[240px] rounded-full blur-[80px]"
           style={{ background: "rgba(0,144,200,0.07)" }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-md px-5 flex flex-col gap-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 9.5rem)" }}>
+      <div className="relative z-10 w-full max-w-md px-4 sm:px-5 flex flex-col gap-8" style={{ width: "100%", maxWidth: "min(28rem, 100vw)", boxSizing: "border-box", paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.25rem)", paddingBottom: "var(--start-player-bottom-space)" }}>
 
         {/* ── HERO ── */}
-        <section className="flex flex-col items-center text-center gap-5">
+        <section className="w-full max-w-full flex flex-col items-center text-center gap-4" style={{ minWidth: 0, boxSizing: "border-box" }}>
 
           {/* Wordmark */}
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+          <div className="w-full max-w-full flex flex-col items-center" style={{ minWidth: 0 }}>
+            <div className="inline-flex max-w-full items-center justify-center gap-2 px-3 py-1.5 rounded-full mb-4"
               style={{ background: "rgba(0,160,220,0.07)", border: "1px solid rgba(0,160,220,0.22)" }}>
               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#00A0DC" }} />
               <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase", color: "#00A0DC", fontFamily: "var(--font-heading)" }}>
@@ -461,12 +493,12 @@ export default function Start() {
           <RadioCTA />
 
           {/* Headline */}
-          <div>
-            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.45rem, 6vw, 2rem)", fontWeight: 900, lineHeight: 1.15, color: "#fff", marginBottom: "0.6rem" }}>
+          <div className="w-full max-w-full" style={{ minWidth: 0 }}>
+            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.35rem, 5.8vw, 2rem)", fontWeight: 900, lineHeight: 1.15, color: "#fff", marginBottom: "0.6rem" }}>
               Stream Free.<br />
               <span style={{ color: "#00A0DC" }}>Download Everything</span> for $4.99/month.
             </h1>
-            <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: "rgba(255,255,255,0.45)", maxWidth: "24rem", margin: "0 auto" }}>
+            <p style={{ fontSize: "0.82rem", lineHeight: 1.45, color: "rgba(255,255,255,0.45)", maxWidth: "24rem", margin: "0 auto" }}>
               Listen to Upper Vibe Media free anytime. Upgrade to Plus to download every song, save your favorite tracks, and keep the frequency with you offline.
             </p>
           </div>
@@ -474,7 +506,7 @@ export default function Start() {
 
 
           {/* Primary CTA — below headline */}
-          <div className="w-full flex flex-col gap-3">
+          <div className="start-primary-actions w-full max-w-full flex flex-col gap-3" style={{ minWidth: 0 }}>
             <PremiumButton onClick={handleCheckout}>
               Unlock All Downloads — $4.99/mo
             </PremiumButton>

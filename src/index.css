@@ -238,6 +238,11 @@ html {
 .player-bar {
   bottom: calc(56px + env(safe-area-inset-bottom, 12px));
 }
+/* /start hides the mobile bottom nav, so the player can sit at the true bottom. */
+body.start-page-active .player-bar {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Desktop: player sits at the very bottom */
 @media (min-width: 1024px) {
   .player-bar {

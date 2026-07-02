@@ -183,8 +183,12 @@ export default function RadioCTA() {
   const label = showPlaying ? "My Vibe Playing" : "My Vibe Pick";
 
   return (
-    <section className="start-radio-cta flex flex-col gap-3 rounded-3xl relative overflow-hidden" style={{ background: rgba(0.06), border: `1px solid ${rgba(0.35)}`, boxShadow: `0 0 24px rgba(${r},0.1)` }}>
+    <section className="start-radio-cta flex flex-col gap-3 rounded-3xl relative overflow-hidden" style={{ width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: rgba(0.06), border: `1px solid ${rgba(0.35)}`, boxShadow: `0 0 24px rgba(${r},0.1)` }}>
       <style>{`
+        .start-radio-cta, .start-radio-inner, .start-radio-current, .start-carousel-row { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+        .start-mini-controls { min-width: 0; flex-wrap: wrap; }
+        .start-mini-controls > span { flex-shrink: 1; max-width: 46px; overflow: hidden; }
+        .start-tag-row { min-width: 0; flex-wrap: wrap; }
         @media (max-width: 430px) and (orientation: portrait) {
           .start-radio-inner { padding: 12px !important; gap: 10px !important; }
           .start-radio-current { border-radius: 16px !important; }
@@ -195,8 +199,13 @@ export default function RadioCTA() {
         @media (max-width: 390px) and (orientation: portrait), (max-height: 740px) and (orientation: portrait) {
           .start-radio-inner { padding: 10px !important; gap: 8px !important; }
           .start-radio-row { gap: 8px !important; padding: 9px !important; }
-          .start-radio-cover { width: 80px !important; }
+          .start-radio-cover { width: 78px !important; }
           .start-newest-card { width: 100px !important; }
+          .start-mini-controls { gap: 6px !important; }
+        }
+        @media (max-width: 350px) and (orientation: portrait) {
+          .start-radio-cover { width: 70px !important; }
+          .start-mini-controls > span { max-width: 30px; }
         }
       `}</style>
       <div className="absolute pointer-events-none" style={{ inset: 0, background: `radial-gradient(ellipse at top, rgba(${r},0.1) 0%, transparent 70%)`, zIndex: 0 }} />
@@ -214,12 +223,12 @@ export default function RadioCTA() {
               </button>
               <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <div>
-                  <div className="flex items-center gap-1.5 mb-1"><FreqBadge label={freqLabel} /><NewBadge track={showTrack} /></div>
+                  <div className="start-tag-row flex items-center gap-1.5 mb-1"><FreqBadge label={freqLabel} /><NewBadge track={showTrack} /></div>
                   <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.95rem", lineHeight: 1.2 }}>{showTrack.title}</p>
                   <p className="truncate" style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{showTrack.artist_display || "Upper Vibe Media"}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <motion.button onClick={handlePlayCta} whileTap={{ scale: 0.9 }} className="flex items-center gap-1 px-2 py-1 rounded-lg font-black transition-all" style={{ background: showPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`, border: showPlaying ? `1px solid ${rgba(0.6)}` : "none", color: showPlaying ? primaryColor : "#000", boxShadow: `0 0 16px ${rgba(0.4)}`, fontFamily: "var(--font-heading)", letterSpacing: "0.04em", fontSize: 10, flexShrink: 0 }}>
+                <div className="start-mini-controls flex items-center gap-2">
+                  <motion.button onClick={handlePlayCta} whileTap={{ scale: 0.9 }} className="flex items-center gap-1 px-2 py-1 rounded-lg font-black transition-all" style={{ background: showPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`, border: showPlaying ? `1px solid ${rgba(0.6)}` : "none", color: showPlaying ? primaryColor : "#000", boxShadow: `0 0 16px ${rgba(0.4)}`, fontFamily: "var(--font-heading)", letterSpacing: "0.04em", fontSize: 10, flexShrink: 0, minHeight: 28 }}>
                     {showPlaying ? <><Pause className="w-2.5 h-2.5" /> Playing</> : <><Play className="w-2.5 h-2.5 ml-0.5" /> Play</>}
                   </motion.button>
                   <button onClick={handleSkipCta} className="flex items-center justify-center rounded-lg" style={{ width: 28, height: 24, background: rgba(0.08), border: `1px solid ${rgba(0.22)}`, color: primaryColor }} aria-label="Skip My Vibe song">
@@ -240,7 +249,7 @@ export default function RadioCTA() {
         {newestTracks.length > 0 && (
           <div className="flex flex-col gap-2">
             <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", fontFamily: "var(--font-heading)" }}>Newest Songs</p>
-            <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: 4, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", touchAction: "pan-x", overscrollBehaviorX: "contain", paddingLeft: 2, paddingRight: 22 }}>
+            <div className="start-carousel-row flex gap-3 overflow-x-auto pb-2 hide-scrollbar" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: 8, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", touchAction: "pan-x", overscrollBehaviorX: "contain", paddingLeft: 8, paddingRight: 24, marginLeft: 0, marginRight: 0 }}>
               {newestTracks.map((track) => (
                 <NewestTrackCard key={track.id} track={track} onPlay={handlePlayNewest} isPlaying={showPlaying && showTrack?.id === track.id} />
               ))}

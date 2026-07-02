@@ -42,6 +42,7 @@ function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
       onTouchEnd={() => setPressed(false)}
       className="relative block overflow-hidden rounded-xl flex-shrink-0 transition-all active:scale-[0.97]"
       style={{
+        boxSizing: "border-box",
         aspectRatio: "16/9",
         background: "#111",
         border: "1px solid rgba(255,60,60,0.15)",
