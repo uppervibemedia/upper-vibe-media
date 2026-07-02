@@ -58,6 +58,8 @@ import TransportConfirmModal from "@/components/vibeworld/TransportConfirmModal"
 import BeachQuestHUD from "@/components/vibeworld/BeachQuestHUD";
 import BeachActivityHUD from "@/components/vibeworld/BeachActivityHUD";
 import BeachPreviewNotice from "@/components/vibeworld/BeachPreviewNotice";
+import HoverboardMusicDashHUD from "@/components/vibeworld/HoverboardMusicDashHUD";
+import { saveHoverboardDashBest } from "@/components/vibeworld/HoverboardMusicDashSystem.js";
 import DailyCityEngagement from "@/components/vibeworld/DailyCityEngagement";
 import SacredLearningLayer from "@/components/vibeworld/SacredLearningLayer";
 import FrequencyScoreTracker from "@/components/vibeworld/FrequencyScoreTracker";
@@ -238,6 +240,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [beachActivityRequest, setBeachActivityRequest] = useState(null);
   const [beachActivityExitRequest, setBeachActivityExitRequest] = useState(null);
   const [beachActivityHud, setBeachActivityHud] = useState(null);
+  const [hoverboardDashActive, setHoverboardDashActive] = useState(false);
+  const [hoverboardDashSessionId, setHoverboardDashSessionId] = useState(null);
+  const [hoverboardDashStats, setHoverboardDashStats] = useState(null);
+  const [hoverboardDashResults, setHoverboardDashResults] = useState(null);
+  const hoverboardDashRewardedRef = useRef(null);
 
 
 
@@ -827,6 +834,40 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     try { navigator?.vibrate?.(15); } catch {}
   }, [updateBeachQuest]);
 
+  const awardHoverboardDashCoins = useCallback((stats) => {
+    const amount = Math.max(0, Math.round(stats?.coinsEarned || 0));
+    const session = stats?.sessionId || hoverboardDashSessionId || Date.now();
+    if (!amount || hoverboardDashRewardedRef.current === session) return;
+    hoverboardDashRewardedRef.current = session;
+    window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
+      detail: {
+        source: "daily_reward",
+        coinIds: Array.from({ length: amount }, (_, i) => `hoverboard_dash_${session}_${i}`),
+      },
+    }));
+  }, [hoverboardDashSessionId]);
+
+  const finishHoverboardDash = useCallback((stats) => {
+    const finalStats = { ...(stats || hoverboardDashStats || {}), bestScore: saveHoverboardDashBest(stats?.score || hoverboardDashStats?.score || 0) };
+    setHoverboardDashActive(false);
+    setHoverboardDashResults(finalStats);
+    setHoverboardDashStats(finalStats);
+    awardHoverboardDashCoins(finalStats);
+  }, [awardHoverboardDashCoins, hoverboardDashStats]);
+
+  const startHoverboardDash = useCallback(() => {
+    if (worldMode !== "city") return;
+    const session = Date.now();
+    hoverboardDashRewardedRef.current = null;
+    setHoverboardDashResults(null);
+    setHoverboardDashSessionId(session);
+    setHoverboardDashStats({ sessionId: session, ringsCollected: 0, totalRings: 16, combo: 0, longestCombo: 0, distance: 0, coinsEarned: 0, score: 0, bestScore: 0, remaining: 75 });
+    setPersonalHoverboardActive(true);
+    setHoverboardDashActive(true);
+    setAnyBlockingUIOpen(false);
+    try { navigator?.vibrate?.(20); } catch {}
+  }, [worldMode]);
+
   const handleStartBeachActivity = useCallback((type) => {
     if (!type || beachActivityHud?.active) return;
     if (beachPreviewFlags.enableBeachPreviewMode) {
@@ -870,6 +911,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     if (Math.sqrt(bonfireDx * bonfireDx + bonfireDz * bonfireDz) < 7) return "bonfire";
     return null;
   })();
+
+  const nearHoverboardDashStart = worldMode === "city" && Math.sqrt(playerPos.x * playerPos.x + (playerPos.z + 6) * (playerPos.z + 6)) < 14;
 
   // ── Voice ducking: only applies while outside the dance floor.
   // Inside the dance floor, the city audio machine owns Live DJ volume exclusively.
@@ -1344,6 +1387,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           tvMode={tvMode}
           tvQuality={tvQuality}
           danceFloorFrameRef={danceFloorFrameRef}
+          hoverboardDashActive={hoverboardDashActive}
+          hoverboardDashSessionId={hoverboardDashSessionId}
+          onHoverboardDashUpdate={setHoverboardDashStats}
+          onHoverboardDashComplete={finishHoverboardDash}
         />
       </div>
 
@@ -1511,6 +1558,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onExit={handleExitBeachActivity}
         isMobile={isMobile}
         mobileLayout={mobileLayout}
+      />
+
+      <HoverboardMusicDashHUD
+        active={hoverboardDashActive}
+        stats={hoverboardDashStats}
+        results={hoverboardDashResults}
+        onStart={startHoverboardDash}
+        onExit={() => finishHoverboardDash(hoverboardDashStats)}
+        onCloseResults={() => setHoverboardDashResults(null)}
+        isMobile={isMobile}
+        mobileLayout={mobileLayout}
+        worldMode={worldMode}
+        blocked={loading || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!beachActivityHud?.active || anyBlockingUIOpen || stageWatching || !nearHoverboardDashStart}
       />
 
       {/* Stage cover visualizer keeps branded media on the stage screen behind any video overlay */}
@@ -1703,7 +1763,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onToggle={() => setPersonalHoverboardActive(p => !p)}
         onJump={() => setHoverboardJumpRequest({ id: Date.now() })}
         personalHoverboardActive={personalHoverboardActive}
-        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
+        canUsePersonalBoard={(hoverboardDashActive || !!equippedBoard) && !personalHoverboardActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
+        lockPutAway={hoverboardDashActive}
       />
 
       {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}

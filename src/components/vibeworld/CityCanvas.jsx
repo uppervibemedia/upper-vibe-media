@@ -33,6 +33,12 @@ import { createSimpleCityShoreline, animateSimpleCityShoreline } from "./SimpleC
 import { animateBeachActivities } from "./BeachActivities.jsx";
 import { animateBeachFrequencyCove } from "./BeachFrequencyCove.jsx";
 import { startBeachActivity, tickBeachActivity, applyBeachActivityCamera, exitBeachActivity } from "./BeachActivityEngine.js";
+import {
+  createHoverboardMusicDash,
+  tickHoverboardMusicDash,
+  disposeHoverboardMusicDash,
+  getHoverboardDashStats,
+} from "./HoverboardMusicDashSystem.js";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -547,7 +553,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, equippedAuraColor = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, equippedAuraColor = null, hoverboardDashActive = false, hoverboardDashSessionId = null, onHoverboardDashUpdate, onHoverboardDashComplete, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -566,6 +572,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   worldModeRef.current = worldMode;
   const djTrackRef = useRef(djTrack);
   djTrackRef.current = djTrack;
+  const hoverboardDashRef = useRef(null);
+  const hoverboardDashActiveRef = useRef(false);
+  hoverboardDashActiveRef.current = hoverboardDashActive;
+  const hoverboardDashBoostUntilRef = useRef(0);
+  const hoverboardDashComboRef = useRef(0);
+  const onHoverboardDashUpdateRef = useRef(onHoverboardDashUpdate);
+  onHoverboardDashUpdateRef.current = onHoverboardDashUpdate;
+  const onHoverboardDashCompleteRef = useRef(onHoverboardDashComplete);
+  onHoverboardDashCompleteRef.current = onHoverboardDashComplete;
 
   // Update the in-world "Now Playing" display whenever djTrack changes
   useEffect(() => {
@@ -660,6 +675,26 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   useEffect(() => {
     if (hoverboardJumpRequest?.id) pendingHoverboardJumpRef.current = true;
   }, [hoverboardJumpRequest?.id]);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    if (!hoverboardDashActive || worldModeRef.current !== "city") {
+      if (hoverboardDashRef.current) {
+        disposeHoverboardMusicDash(scene, hoverboardDashRef.current);
+        hoverboardDashRef.current = null;
+        hoverboardDashBoostUntilRef.current = 0;
+        hoverboardDashComboRef.current = 0;
+      }
+      return;
+    }
+    if (hoverboardDashRef.current?.sessionId === hoverboardDashSessionId) return;
+    if (hoverboardDashRef.current) disposeHoverboardMusicDash(scene, hoverboardDashRef.current);
+    hoverboardDashRef.current = createHoverboardMusicDash(scene, { mobile: isMobileRef.current, sessionId: hoverboardDashSessionId || Date.now() });
+    hoverboardDashBoostUntilRef.current = 0;
+    hoverboardDashComboRef.current = 0;
+    onHoverboardDashUpdateRef.current?.(getHoverboardDashStats(hoverboardDashRef.current));
+  }, [hoverboardDashActive, hoverboardDashSessionId]);
 
   useEffect(() => {
     if (!beachActivityRequest?.id || !beachActivityRequest?.type || !sceneRef.current) return;
@@ -1085,13 +1120,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         if (isMoving) {
-          const boosting = false;
+          const boosting = hoverboardDashActiveRef.current && hoverboardDashBoostUntilRef.current > t;
           const usingPersonalBoard = personalHoverboardActiveRef.current;
           const personalHoverboardSpeed = MOVE_SPEED * PERSONAL_HOVERBOARD_SPEED_MULTIPLIER;
           const airControl = hoverboardAirborne ? HOVERBOARD_AIR_CONTROL_MULTIPLIER : 1;
           const baseRideSpeed = (usingPersonalBoard ? personalHoverboardSpeed : MOVE_SPEED) * airControl;
           const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08
-            ? (boosting ? MOVE_SPEED * 3.0 : baseRideSpeed)
+            ? (boosting ? baseRideSpeed * 1.45 : baseRideSpeed)
             : 0;
           vel.x += (moveX * targetSpeed - vel.x) * Math.min(1, ACCELERATION * moveDt);
           vel.z += (moveZ * targetSpeed - vel.z) * Math.min(1, ACCELERATION * moveDt);
@@ -1168,7 +1203,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Rim light follows avatar
         const rimLight = scene.userData.avatarRimLight;
-        if (rimLight) rimLight.position.set(px, py + 1.0, pz);
+        if (rimLight) {
+          rimLight.position.set(px, py + 1.0, pz);
+          rimLight.intensity = 1.2 + Math.min(1.1, hoverboardDashComboRef.current * 0.055);
+        }
 
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
@@ -1342,6 +1380,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
+
+        if (hoverboardDashRef.current && worldModeRef.current === "city") {
+          const dash = tickHoverboardMusicDash(hoverboardDashRef.current, { x: px, z: pz, rot }, t, moveDt, audioBeat);
+          hoverboardDashBoostUntilRef.current = dash.boostUntil || 0;
+          hoverboardDashComboRef.current = dash.combo || 0;
+          const dashStats = getHoverboardDashStats(dash);
+          if (frameRef.current % 6 === 0 || dash.complete) onHoverboardDashUpdateRef.current?.(dashStats);
+          if (dash.complete && !dash._completedSent) {
+            dash._completedSent = true;
+            onHoverboardDashCompleteRef.current?.(dashStats);
+          }
+        }
 
         // Stage screen — visualizer canvas
         const stageCanvasVal = stageCanvasRef.current;
@@ -1640,14 +1690,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const hbBoard = avatarEntryRef.current?._hbBoard;
           if (hbBoard) {
             const jumpGlow = Math.min(0.35, hoverboardJumpOffsetRef.current * 0.12 + hoverboardLandingBounceRef.current);
+            const dashGlow = Math.min(0.35, hoverboardDashComboRef.current * 0.018);
             const stripeMat = hbBoard.userData.stripeMat;
             if (stripeMat) {
-              stripeMat.opacity = Math.min(1, 0.72 + audioBeat * 0.26 + Math.sin(t * 4.5) * 0.10 + jumpGlow);
+              stripeMat.opacity = Math.min(1, 0.72 + audioBeat * 0.26 + Math.sin(t * 4.5) * 0.10 + jumpGlow + dashGlow);
               if (!scene.userData._hbC1) { scene.userData._hbC1 = new Color("#00E5FF"); scene.userData._hbC2 = new Color("#C43BFF"); }
               stripeMat.color.copy(scene.userData._hbC1).lerp(scene.userData._hbC2, Math.sin(t * 1.6) * 0.5 + 0.5);
             }
             if (hbBoard.userData.hoverDisc) {
-              hbBoard.userData.hoverDisc.opacity = Math.min(0.65, 0.14 + audioBeat * 0.22 + Math.sin(t * 3.0) * 0.07 + jumpGlow);
+              hbBoard.userData.hoverDisc.opacity = Math.min(0.88, 0.14 + audioBeat * 0.22 + Math.sin(t * 3.0) * 0.07 + jumpGlow + dashGlow);
             }
             if (hbBoard.userData.trailGroup) {
               hbBoard.remove(hbBoard.userData.trailGroup);
@@ -1968,6 +2019,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (beachActivityStateRef.current) {
           exitBeachActivity(scene, beachActivityStateRef.current, false);
           beachActivityStateRef.current = null;
+        }
+        if (hoverboardDashRef.current) {
+          disposeHoverboardMusicDash(scene, hoverboardDashRef.current);
+          hoverboardDashRef.current = null;
         }
         window.__hbScene = null;
         window.__uvcWorldMode = null;

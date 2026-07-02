@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Rocket, Ban } from 'lucide-react';
 
-export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle, onJump, personalHoverboardActive, canUsePersonalBoard }) {
+export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle, onJump, personalHoverboardActive, canUsePersonalBoard, lockPutAway = false }) {
   const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
 
   useEffect(() => {
@@ -113,35 +113,37 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
           </button>
         </motion.div>
 
-        <motion.div
-          key="personal-hb-put-away"
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          className="z-[57] px-3"
-          style={putAwayStyle}
-        >
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={onToggle}
-            className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-            style={{
-              width: isMobile ? (isSmallMobile ? 96 : 110) : 110,
-              height: isMobile ? (isSmallMobile ? 34 : 38) : 36,
-              padding: '0 10px',
-              opacity: 0.86,
-              background: "rgba(255, 80, 80, 0.11)",
-              border: "1px solid rgba(255, 80, 80, 0.28)",
-              color: "#ff9a9a",
-              fontSize: isMobile ? (isSmallMobile ? 11 : 12) : 12,
-              touchAction: "manipulation",
-              boxShadow: "0 0 8px rgba(255, 80, 80, 0.14)",
-            }}
+        {!lockPutAway && (
+          <motion.div
+            key="personal-hb-put-away"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="z-[57] px-3"
+            style={putAwayStyle}
           >
-            <Ban className="w-3 h-3" />
-            Put Away
-          </button>
-        </motion.div>
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={onToggle}
+              className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                width: isMobile ? (isSmallMobile ? 96 : 110) : 110,
+                height: isMobile ? (isSmallMobile ? 34 : 38) : 36,
+                padding: '0 10px',
+                opacity: 0.86,
+                background: "rgba(255, 80, 80, 0.11)",
+                border: "1px solid rgba(255, 80, 80, 0.28)",
+                color: "#ff9a9a",
+                fontSize: isMobile ? (isSmallMobile ? 11 : 12) : 12,
+                touchAction: "manipulation",
+                boxShadow: "0 0 8px rgba(255, 80, 80, 0.14)",
+              }}
+            >
+              <Ban className="w-3 h-3" />
+              Put Away
+            </button>
+          </motion.div>
+        )}
       </>
     );
   }
