@@ -119,7 +119,7 @@ function nextStreak(userId) {
   return next;
 }
 
-export default function SacredLearningLayer({ playerPos, livePositionRef, worldMode, isMobile, mobileLayout, hidden, userId, isDancing }) {
+export default function SacredLearningLayer({ playerPos, livePositionRef, worldMode, isMobile, mobileLayout, hidden, userId, isDancing, onOpenChange }) {
   const [wisdomOpen, setWisdomOpen] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
   const [nearZone, setNearZone] = useState(null);
@@ -138,6 +138,10 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
   const wisdom = useMemo(() => dailyPick(DAILY_WISDOM, "wisdom"), []);
 
   useEffect(() => { activeCardRef.current = activeCard; }, [activeCard]);
+  useEffect(() => {
+    onOpenChange?.(!!(wisdomOpen || activeCard));
+    return () => onOpenChange?.(false);
+  }, [wisdomOpen, activeCard, onOpenChange]);
   useEffect(() => { candidateRef.current = candidate; }, [candidate]);
   useEffect(() => { activationStartedRef.current = activationStarted; }, [activationStarted]);
   useEffect(() => { activeQuestRef.current = activeQuest; }, [activeQuest]);
@@ -391,7 +395,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
     <>
       <AnimatePresence>
         {wisdomOpen && (
-          <motion.div initial={{ opacity: 0, y: -12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.96 }} className="absolute left-1/2 z-[67] rounded-2xl pointer-events-auto" style={{ top, transform: "translateX(-50%)", width: isMobile ? "min(88vw, 340px)" : 360, background: "rgba(5,6,18,0.84)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(18px)", boxShadow: "0 16px 50px rgba(0,0,0,0.45)" }}>
+          <motion.div initial={{ opacity: 0, y: -12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.96 }} className="absolute left-1/2 z-[220] rounded-2xl pointer-events-auto" style={{ top, transform: "translateX(-50%)", width: isMobile ? "min(88vw, 340px)" : 360, background: "rgba(5,6,18,0.84)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(18px)", boxShadow: "0 16px 50px rgba(0,0,0,0.45)" }}>
             <div className="flex items-start gap-3 p-3"><div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(0,229,255,0.12)", color: "#00E5FF" }}><BookOpen className="w-4 h-4" /></div><div className="min-w-0 flex-1"><p className="text-[10px] font-black tracking-[0.18em] uppercase" style={{ color: "#00E5FF" }}>Today’s Frequency Lesson</p><p className="text-[12px] leading-relaxed text-white/68 mt-1">{wisdom}</p></div><button onClick={() => setWisdomOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", touchAction: "manipulation" }}><X className="w-3 h-3" /></button></div>
           </motion.div>
         )}

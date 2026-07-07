@@ -278,8 +278,9 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
       className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
+      data-camera-scroll-lock="true"
       style={{
-        zIndex: 70,
+        zIndex: 240,
         left: isMobile ? "env(safe-area-inset-left, 0px)" : "50%",
         right: isMobile ? "env(safe-area-inset-right, 0px)" : "auto",
         transform: isMobile ? "none" : "translateX(-50%)",

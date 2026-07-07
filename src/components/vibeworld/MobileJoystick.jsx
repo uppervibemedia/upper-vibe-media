@@ -12,7 +12,7 @@ import useMobileLayout from "@/hooks/useMobileLayout";
  * The joystick div is z-[62] — above the camera look zone (z-[45]) and
  * below panels (z-[65]+).
  */
-export default function MobileJoystick({ onMove }) {
+export default function MobileJoystick({ onMove, disabled = false }) {
   const layout = useMobileLayout(true);
 
   const [thumbDX, setThumbDX] = useState(0);
@@ -25,6 +25,8 @@ export default function MobileJoystick({ onMove }) {
   layoutRef.current = layout;
   const onMoveRef = useRef(onMove);
   onMoveRef.current = onMove;
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
   const visualFrameRef = useRef(null);
 
   const scheduleVisual = useCallback((dx, dy, isActive) => {
@@ -41,12 +43,12 @@ export default function MobileJoystick({ onMove }) {
     if (visualFrameRef.current) cancelAnimationFrame(visualFrameRef.current);
   }, []);
 
-  // Reset state on orientation change
+  // Reset state on orientation change or when a modal disables controls
   useEffect(() => {
     activeIdRef.current = null;
     scheduleVisual(0, 0, false);
     onMoveRef.current?.(0, 0);
-  }, [layout?.isLandscape, scheduleVisual]);
+  }, [layout?.isLandscape, disabled, scheduleVisual]);
 
   // Native capture listeners claim the whole left movement zone, not just the visible knob.
   // This keeps landscape/PWA movement working even when transparent HUD layers sit above the canvas.
@@ -79,6 +81,7 @@ export default function MobileJoystick({ onMove }) {
     };
 
     const onStart = (e) => {
+      if (disabledRef.current) return;
       if (activeIdRef.current !== null) return;
       const L = layoutRef.current;
       const t = e.changedTouches[0];
@@ -93,6 +96,7 @@ export default function MobileJoystick({ onMove }) {
     };
 
     const onMove = (e) => {
+      if (disabledRef.current) { reset(); return; }
       if (activeIdRef.current === null) return;
       e.preventDefault();
       e.stopPropagation();
@@ -174,7 +178,7 @@ export default function MobileJoystick({ onMove }) {
         touchAction: "none",
         userSelect: "none",
         WebkitUserSelect: "none",
-        pointerEvents: "auto",
+        pointerEvents: disabled ? "none" : "auto",
       }}
     >
       <div

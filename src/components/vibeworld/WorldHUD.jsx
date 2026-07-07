@@ -230,6 +230,17 @@ export default function WorldHUD({
   // approved conversation cache: { [userId]: true } — populated when profile card opens
   const [approvedConversations, setApprovedConversations] = useState({});
 
+  const anyPanelOpen = !!(
+    dashboardOpen || notifPanelOpen || dmInboxOpen || musicPanelOpen || loungePanelOpen || visualizerOpen ||
+    vibeCheckOpen || leaderboardOpen || academyOpen || ferrisWheelOpen || zenBeachOpen || activeBeachActivity ||
+    emotePanelOpen || shopOpen || jukeboxOpen || djSongPageOpen || socialPanelOpen || userInteractionTarget
+  );
+
+  useEffect(() => {
+    onMobileModalChange?.(anyPanelOpen);
+    return () => onMobileModalChange?.(false);
+  }, [anyPanelOpen, onMobileModalChange]);
+
   // Check if we have an approved conversation with the tapped user
   useEffect(() => {
     if (!userInteractionTarget || !currentUserId) return;
