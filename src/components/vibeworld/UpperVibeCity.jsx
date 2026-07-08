@@ -131,8 +131,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [equippedBadge, setEquippedBadge] = useState(null);
   const [equippedClothing, setEquippedClothing] = useState(null);
   const [dailyIntentionAura, setDailyIntentionAura] = useState(null);
-  const [dailyPanelOpen, setDailyPanelOpen] = useState(false);
-  const [sacredPanelOpen, setSacredPanelOpen] = useState(false);
 
   useEffect(() => {
     const onBoost = (event) => {
@@ -1113,12 +1111,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     handleReportUser(activeChatPeerRef.current);
   }, [handleReportUser]);
 
-  const modalInteractionOpen = !!(
-    mobileModalOpen || anyBlockingUIOpen || inventoryOpen || customizerOpen || transportPrompt ||
-    beachActivityHud?.active || messageComposerTarget || activeChatPeer || dailyPanelOpen || sacredPanelOpen ||
-    domeFullscreenOpen || stageFullScreen
-  );
-
 
   // Keep player refs in sync without adding them as effect deps
   stageIsPlayingRef.current = isPlaying;
@@ -1330,20 +1322,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <FrequencyScoreTracker user={user} />
         <FrequencyScoreToast isMobile={isMobile} mobileLayout={mobileLayout} />
         <DailyCityEngagement
-        userId={user?.id}
-        isMobile={isMobile}
-        mobileLayout={mobileLayout}
-        worldMode={worldMode}
-        playerPos={playerPos}
-        isDancing={isDancing}
-        stageWatching={stageWatching}
-        domeOpen={domeFullscreenOpen}
-        ferrisRiding={ferrisRiding}
-        onOpenChange={setDailyPanelOpen}
-        onSetIntentionAura={(aura) => {
-          setDailyIntentionAura(aura);
-          setAuraActive(true);
-        }}
+          userId={user?.id}
+          isMobile={isMobile}
+          mobileLayout={mobileLayout}
+          worldMode={worldMode}
+          playerPos={playerPos}
+          isDancing={isDancing}
+          stageWatching={stageWatching}
+          domeOpen={domeFullscreenOpen}
+          ferrisRiding={ferrisRiding}
+          onSetIntentionAura={(aura) => {
+            setDailyIntentionAura(aura);
+            setAuraActive(true);
+          }}
         />
         <SacredLearningLayer
           playerPos={playerPos}
@@ -1354,7 +1345,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           hidden={stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
           userId={user?.id}
           isDancing={isDancing}
-          onOpenChange={setSacredPanelOpen}
         />
         <CityCanvas
         worldMode={worldMode}
@@ -1448,7 +1438,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}
           audioBeatRef={audioBeatRef}
-          locked={movementLocked || modalInteractionOpen}
+          locked={movementLocked}
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}
@@ -1693,12 +1683,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {!loading && isMobile && (
         <>
           {/* Camera look zone — always mounted and active (no visible UI to hide) */}
-          <CameraLookZone mobileInputRef={mobileInputRef} disabled={modalInteractionOpen} />
+          <CameraLookZone mobileInputRef={mobileInputRef} />
 
           {/* Joystick — always mounted; hidden in TV mode */}
           <div style={{ opacity: tvMode ? 0 : 1, transition: "opacity 0.4s", pointerEvents: "auto" }}>
             <MobileJoystick
-              disabled={modalInteractionOpen}
               onMove={(x, y) => {
                 mobileInputRef.current.x = x;
                 mobileInputRef.current.y = y;
@@ -1742,7 +1731,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         const nearStage = currentZone?.id === "stage";
 
         // Hide when stage is watching (stage embed is the audio) or any blocking modal is open
-        const shouldHide = stageWatching || modalInteractionOpen;
+        const shouldHide = stageWatching || mobileModalOpen || activeChatPeer || messageComposerTarget;
         if (shouldHide) return null;
 
         // TV mode opacity
@@ -1838,23 +1827,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         isMobile={isMobile}
       />
 
-      {!modalInteractionOpen && (
-        <PersonalHoverboardHUD 
-          isMobile={isMobile} 
-          mobileLayout={mobileLayout}
-          onToggle={putAwayVehicle}
-          onJump={() => setHoverboardJumpRequest({ id: Date.now() })}
-          onEquipJetpack={equipJetpack}
-          onFly={requestJetpackFly}
-          personalHoverboardActive={personalHoverboardActive}
-          jetpackActive={jetpackActive}
-          jetpackStatus={jetpackStatus}
-          vehicleMode={jetpackActive ? "jetpack" : "hoverboard"}
-          canUsePersonalBoard={(hoverboardDashActive || !!equippedBoard) && !personalHoverboardActive && !jetpackActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
-          canUseJetpack={jetpackEquipped && !personalHoverboardActive && !jetpackActive && !hoverboardDashActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && worldMode === "city"}
-          lockPutAway={hoverboardDashActive && !jetpackActive}
-        />
-      )}
+      <PersonalHoverboardHUD 
+        isMobile={isMobile} 
+        mobileLayout={mobileLayout}
+        onToggle={putAwayVehicle}
+        onJump={() => setHoverboardJumpRequest({ id: Date.now() })}
+        onEquipJetpack={equipJetpack}
+        onFly={requestJetpackFly}
+        personalHoverboardActive={personalHoverboardActive}
+        jetpackActive={jetpackActive}
+        jetpackStatus={jetpackStatus}
+        vehicleMode={jetpackActive ? "jetpack" : "hoverboard"}
+        canUsePersonalBoard={(hoverboardDashActive || !!equippedBoard) && !personalHoverboardActive && !jetpackActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
+        canUseJetpack={jetpackEquipped && !personalHoverboardActive && !jetpackActive && !hoverboardDashActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && worldMode === "city"}
+        lockPutAway={hoverboardDashActive && !jetpackActive}
+      />
 
       {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}
       <FPSMonitor sceneRef={rendererRef} remoteUserCount={userCount} />

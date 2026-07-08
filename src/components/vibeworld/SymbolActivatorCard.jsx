@@ -38,7 +38,7 @@ export default function SymbolActivatorCard({
 
   return (
     <div
-      className="fixed z-[220] pointer-events-auto overflow-hidden"
+      className="fixed z-[68] pointer-events-auto overflow-hidden"
       data-camera-scroll-lock="true"
       style={{ left: isMobile ? "env(safe-area-inset-left, 0px)" : "50%", right: isMobile ? "env(safe-area-inset-right, 0px)" : "auto", transform: isMobile ? "none" : "translateX(-50%)", top: isMobile ? "0" : panelTop, bottom: isMobile ? "0" : panelBottom, width: isMobile ? "auto" : 380, maxHeight: isMobile ? "none" : "50vh", borderRadius: isMobile ? 0 : 24, paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : 0, paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : 0, overflowY: "auto", WebkitOverflowScrolling: "touch", background: "rgba(5,6,18,0.97)", border: "1px solid rgba(0,229,255,0.24)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.52), 0 0 34px rgba(0,229,255,0.16)" }}
     >

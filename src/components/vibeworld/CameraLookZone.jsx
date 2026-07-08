@@ -15,26 +15,13 @@ import React, { useRef, useEffect } from "react";
  * 3. touchend was passive — claim not strictly needed but passive=false
  *    prevents iOS from delaying/disabling touch handling.
  */
-export default function CameraLookZone({ mobileInputRef, disabled = false }) {
+export default function CameraLookZone({ mobileInputRef }) {
   const touchIdRef = useRef(null);
   const lastXRef = useRef(0);
   const lastYRef = useRef(0);
-  const disabledRef = useRef(disabled);
-  disabledRef.current = disabled;
-
-  useEffect(() => {
-    if (!disabled) return;
-    touchIdRef.current = null;
-    if (mobileInputRef?.current) {
-      mobileInputRef.current._camActive = false;
-      mobileInputRef.current.camDx = 0;
-      mobileInputRef.current.camDy = 0;
-    }
-  }, [disabled, mobileInputRef]);
 
   useEffect(() => {
     const onStart = (e) => {
-      if (disabledRef.current) return;
       if (touchIdRef.current !== null) return;
       const t = e.changedTouches[0];
       if (!t) return;
@@ -62,7 +49,6 @@ export default function CameraLookZone({ mobileInputRef, disabled = false }) {
     };
 
     const onMove = (e) => {
-      if (disabledRef.current) { onCancel(); return; }
       if (touchIdRef.current === null) return;
       let touch = null;
       for (let i = 0; i < e.touches.length; i++) {

@@ -146,7 +146,6 @@ export default function DailyCityEngagement({
   domeOpen,
   ferrisRiding,
   onSetIntentionAura,
-  onOpenChange,
 }) {
   const [daily, setDaily] = useState(() => buildDaily(userId));
   const [expanded, setExpanded] = useState(() => !buildDaily(userId).welcomeDismissed);
@@ -162,11 +161,6 @@ export default function DailyCityEngagement({
     dailyRef.current = next;
     setExpanded(!next.welcomeDismissed);
   }, [userId]);
-
-  useEffect(() => {
-    onOpenChange?.(expanded);
-    return () => onOpenChange?.(false);
-  }, [expanded, onOpenChange]);
 
   useEffect(() => {
     dailyRef.current = daily;
@@ -354,7 +348,7 @@ export default function DailyCityEngagement({
   if (!daily) return null;
 
   return (
-    <div className={isMobile ? "fixed z-[220] pointer-events-none" : "absolute left-1/2 z-[220] pointer-events-none"} style={isMobile ? { top, left: "env(safe-area-inset-left, 0px)", right: "env(safe-area-inset-right, 0px)", bottom: 0, width: "auto" } : { top, transform: "translateX(-50%)", width: 360 }}>
+    <div className={isMobile ? "fixed z-[66] pointer-events-none" : "absolute left-1/2 z-[66] pointer-events-none"} style={isMobile ? { top, left: "env(safe-area-inset-left, 0px)", right: "env(safe-area-inset-right, 0px)", bottom: 0, width: "auto" } : { top, transform: "translateX(-50%)", width: 360 }}>
       <AnimatePresence mode="wait">
         {expanded ? (
           <motion.div
