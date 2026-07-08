@@ -179,7 +179,7 @@ export default function useMobileLayout(enabled = true) {
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setLayout(computeLayout());
-      }, 80);
+      }, 300);
     };
 
     // Initial

@@ -21,17 +21,106 @@ let _audio = null;
 
 function getAudio() {
   if (!_audio) {
+    const shared = typeof window !== "undefined" ? window.__uvcGlobalAudioElement : null;
+    if (shared) {
+      _audio = shared;
+      _audio.crossOrigin = "anonymous";
+      _audio.preload = _audio.preload || "none";
+      _audio.volume = _audio.volume > 0 ? _audio.volume : 0.85;
+      console.log("[RAM] Reusing shared global audio element | active audio elements:", document.querySelectorAll("audio").length);
+      return _audio;
+    }
+
     _audio = new Audio();
     _audio.crossOrigin = "anonymous";
     _audio.preload = "none";
     _audio.volume = 0.85;
-    console.log("[RAM] Audio element created");
+    _audio.setAttribute("x-webkit-airplay", "allow");
+    _audio.setAttribute("playsinline", "");
+    _audio.setAttribute("aria-hidden", "true");
+    _audio.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+    if (typeof document !== "undefined" && document.body && !_audio.parentNode) document.body.appendChild(_audio);
+    if (typeof window !== "undefined") {
+      window.__uvcGlobalAudioElement = _audio;
+      window.__uvcGlobalAudioOwner = "RadioAudioManager";
+    }
+    console.log("[RAM] Audio element created | active audio elements:", document.querySelectorAll("audio").length);
   }
   return _audio;
 }
 
 function academyHoldsAudio() {
   return typeof window !== "undefined" && window.__uvcAcademyHoldsGlobalAudio;
+}
+
+const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
+
+function resolveArtworkUrl(track) {
+  const url = track?.cover_url || track?.coverArt || track?.image || track?.artwork || track?.thumbnail_url || FALLBACK_ART;
+  return typeof url === "string" && url.startsWith("https://") ? url : FALLBACK_ART;
+}
+
+function getMediaTrackFromState() {
+  if (_state.activeMode === "upperVibeRadio") {
+    return {
+      title: "Upper Vibe Live Radio",
+      artist: "Upper Vibe Media",
+      cover_url: FALLBACK_ART,
+    };
+  }
+  return _state.currentTrack || _state.lastTrack;
+}
+
+function registerMediaSessionHandlers() {
+  if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.setActionHandler("play", () => {
+      console.log("[RAM] 🔒 Lock screen PLAY | mode:", _state.activeMode, "| track:", getMediaTrackFromState()?.title || "none", "| paused:", getAudio().paused);
+      if (_state.activeMode === "upperVibeRadio") resumeUpperVibeRadio("lockscreen-play");
+      else if (_state.activeMode === "myVibeRadio") resumeMyVibe("lockscreen-play");
+      else if (_state.lastTrack?.audio_url) playMyVibeTrack(_state.lastTrack);
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      console.log("[RAM] 🔒 Lock screen PAUSE | mode:", _state.activeMode, "| ct:", getAudio().currentTime?.toFixed?.(2));
+      if (_state.activeMode === "upperVibeRadio") pauseUpperVibeRadio("lockscreen-pause");
+      else if (_state.activeMode === "myVibeRadio") pauseMyVibe("lockscreen-pause");
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      console.log("[RAM] 🔒 Lock screen NEXT | mode:", _state.activeMode);
+      if (_state.activeMode === "myVibeRadio" && _onMyVibeEnded) _onMyVibeEnded(_state.currentTrack);
+    });
+    navigator.mediaSession.setActionHandler("previoustrack", null);
+  } catch {}
+}
+
+function updateMediaSessionFromState() {
+  if (typeof navigator === "undefined" || !("mediaSession" in navigator) || typeof MediaMetadata === "undefined") return;
+  registerMediaSessionHandlers();
+  const mediaTrack = getMediaTrackFromState();
+  if (mediaTrack) {
+    const artSrc = resolveArtworkUrl(mediaTrack);
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: mediaTrack.title || "Upper Vibe Media",
+        artist: mediaTrack.artist_display || mediaTrack.artist || "Upper Vibe Media",
+        album: "Upper Vibe Media",
+        artwork: [
+          { src: artSrc, sizes: "96x96", type: "image/png" },
+          { src: artSrc, sizes: "256x256", type: "image/png" },
+          { src: artSrc, sizes: "512x512", type: "image/png" },
+        ],
+      });
+    } catch {}
+  }
+  try { navigator.mediaSession.playbackState = _state.isPlaying ? "playing" : "paused"; } catch {}
+  if (_state.audioType === "internalTrack" && "setPositionState" in navigator.mediaSession) {
+    const audio = getAudio();
+    try {
+      if (audio.duration && isFinite(audio.duration)) {
+        navigator.mediaSession.setPositionState({ duration: audio.duration, playbackRate: 1, position: audio.currentTime || _state.currentTime || 0 });
+      }
+    } catch {}
+  }
 }
 
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -74,6 +163,7 @@ export function getState() {
 function _setState(partial) {
   _state = { ..._state, ...partial };
   _notify();
+  updateMediaSessionFromState();
 }
 
 // ── Active event listener cleanup ─────────────────────────────────────────────
