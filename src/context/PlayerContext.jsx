@@ -45,14 +45,7 @@ import {
   trackSongPlay, trackSongPause, trackSongComplete,
   streamStart, streamPause, streamEnd, streamSetMeta,
 } from "@/lib/analytics";
-import {
-  stopAll as stopRadioAudio,
-  getState as getRamState,
-  pauseUpperVibeRadio,
-  resumeUpperVibeRadio,
-  pauseMyVibe,
-  resumeMyVibe,
-} from "@/lib/radioAudioManager";
+import { stopAll as stopRadioAudio } from "@/lib/radioAudioManager";
 
 const PlayerContext = createContext(null);
 
@@ -261,19 +254,6 @@ function enforceRate(audio) {
 // the CDN responds with Access-Control-Allow-Origin. Base44 storage does this.
 // ─────────────────────────────────────────────────────────────────────────────
 function createFreshAudio() {
-  const existing = typeof window !== "undefined" ? window.__uvcGlobalAudioElement : null;
-  if (existing) {
-    enforceRate(existing);
-    if (!existing.parentNode && typeof document !== "undefined") {
-      existing.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
-      existing.setAttribute("aria-hidden", "true");
-      document.body.appendChild(existing);
-    }
-    _globalAudioInstanceCount = Math.max(_globalAudioInstanceCount, 1);
-    console.log("[Player] audio_reused_shared | active audio elements:", document.querySelectorAll("audio").length);
-    return existing;
-  }
-
   _globalAudioInstanceCount++;
   if (_globalAudioInstanceCount > 1) {
     console.error("[WD:dup] duplicate audio instance created! count:", _globalAudioInstanceCount);
@@ -299,13 +279,9 @@ function createFreshAudio() {
   a.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
   a.setAttribute("aria-hidden", "true");
   document.body.appendChild(a);
-  if (typeof window !== "undefined") {
-    window.__uvcGlobalAudioElement = a;
-    window.__uvcGlobalAudioOwner = "PlayerContext";
-  }
 
   console.log("[Player] audio_created | instance #", _globalAudioInstanceCount,
-    "| iOS:", isIOS, "| crossOrigin: anonymous | domAttached: true | active audio elements:", document.querySelectorAll("audio").length);
+    "| iOS:", isIOS, "| crossOrigin: anonymous | domAttached: true");
   return a;
 }
 
@@ -317,10 +293,6 @@ function destroyAudio(audio) {
   try { audio.load(); } catch {}
   // Remove from DOM
   try { if (audio.parentNode) audio.parentNode.removeChild(audio); } catch {}
-  if (typeof window !== "undefined" && window.__uvcGlobalAudioElement === audio) {
-    window.__uvcGlobalAudioElement = null;
-    window.__uvcGlobalAudioOwner = null;
-  }
   console.log("[Player] audio_destroyed | remaining instances:", _globalAudioInstanceCount);
 }
 
@@ -717,24 +689,11 @@ export function PlayerProvider({ children }) {
 
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
-      const ram = getRamState();
-      console.log("[Player] 🔒 Lock screen PLAY | source:", ram.activeMode || "player",
-        "| track:", ram.currentTrack?.title || currentTrackRef.current?.title || "none",
+      console.log("[Player] 🔒 Lock screen PLAY | src:", audio?.src ? "set" : "MISSING",
+        "| track:", currentTrackRef.current?.title ?? "none",
         "| paused:", audio?.paused, "| rate:", audio?.playbackRate);
       debounce("play", (intent) => {
-        if (intent !== "play") return;
-        const latestRam = getRamState();
-        if (latestRam.activeMode === "upperVibeRadio") {
-          resumeUpperVibeRadio("lockscreen-play");
-          setMediaSessionState(true);
-          return;
-        }
-        if (latestRam.activeMode === "myVibeRadio") {
-          resumeMyVibe("lockscreen-play");
-          setMediaSessionState(true);
-          return;
-        }
-        if (audioRef.current) {
+        if (intent === "play" && audioRef.current) {
           if (window.__uvcAcademyHoldsGlobalAudio) {
             console.log("[Player] lockscreen play blocked — Vibe Academy is active");
             safePause(audioRef.current, "academy-lockscreen-block");
@@ -752,24 +711,9 @@ export function PlayerProvider({ children }) {
 
     navigator.mediaSession.setActionHandler("pause", () => {
       const audio = audioRef.current;
-      const ram = getRamState();
-      console.log("[Player] 🔒 Lock screen PAUSE | source:", ram.activeMode || "player", "| ct:", audio?.currentTime?.toFixed(2));
+      console.log("[Player] 🔒 Lock screen PAUSE | ct:", audio?.currentTime?.toFixed(2));
       debounce("pause", (intent) => {
-        if (intent !== "pause") return;
-        const latestRam = getRamState();
-        if (latestRam.activeMode === "upperVibeRadio") {
-          pauseUpperVibeRadio("lockscreen-pause");
-          setIsPlaying(false);
-          setMediaSessionState(false);
-          return;
-        }
-        if (latestRam.activeMode === "myVibeRadio") {
-          pauseMyVibe("lockscreen-pause");
-          setIsPlaying(false);
-          setMediaSessionState(false);
-          return;
-        }
-        if (audioRef.current) {
+        if (intent === "pause" && audioRef.current) {
           safePause(audioRef.current, "lockscreen-pause");
           setIsPlaying(false);
         }
@@ -778,7 +722,7 @@ export function PlayerProvider({ children }) {
 
     navigator.mediaSession.setActionHandler("nexttrack", () => {
       console.log("[Player] 🔒 Lock screen NEXT");
-      opQueueRef.current.push(async () => { onNextRef.current?.(true); });
+      opQueueRef.current.push(async () => { onNextRef.current?.(); });
     });
 
     navigator.mediaSession.setActionHandler("previoustrack", () => {
