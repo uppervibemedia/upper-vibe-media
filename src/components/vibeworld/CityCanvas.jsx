@@ -72,7 +72,8 @@ const {
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
-const MOVE_SPEED = 7.8;
+const ORIGINAL_GROUND_MOVE_SPEED = 7.8;
+const MOVE_SPEED = ORIGINAL_GROUND_MOVE_SPEED * 0.7; // 30% slower normal ground movement
 const PERSONAL_HOVERBOARD_SPEED_MULTIPLIER = 1.5;
 const HOVERBOARD_JUMP_FORCE = 9.8;
 const HOVERBOARD_JUMP_GRAVITY = -18;
@@ -1198,7 +1199,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (isMoving) {
           const boosting = hoverboardDashActiveRef.current && hoverboardDashBoostUntilRef.current > t;
           const usingPersonalBoard = personalHoverboardActiveRef.current;
-          const personalHoverboardSpeed = MOVE_SPEED * PERSONAL_HOVERBOARD_SPEED_MULTIPLIER;
+          const personalHoverboardSpeed = ORIGINAL_GROUND_MOVE_SPEED * PERSONAL_HOVERBOARD_SPEED_MULTIPLIER;
           const airControl = hoverboardAirborne ? HOVERBOARD_AIR_CONTROL_MULTIPLIER : 1;
           const baseRideSpeed = (usingPersonalBoard ? personalHoverboardSpeed : MOVE_SPEED) * airControl;
           const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08
