@@ -131,6 +131,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [equippedBadge, setEquippedBadge] = useState(null);
   const [equippedClothing, setEquippedClothing] = useState(null);
   const [dailyIntentionAura, setDailyIntentionAura] = useState(null);
+  const [dailyPanelOpen, setDailyPanelOpen] = useState(false);
 
   useEffect(() => {
     const onBoost = (event) => {
@@ -1335,6 +1336,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             setDailyIntentionAura(aura);
             setAuraActive(true);
           }}
+          onOpenChange={setDailyPanelOpen}
         />
         <SacredLearningLayer
           playerPos={playerPos}
@@ -1438,7 +1440,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}
           audioBeatRef={audioBeatRef}
-          locked={movementLocked}
+          locked={movementLocked || dailyPanelOpen}
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}

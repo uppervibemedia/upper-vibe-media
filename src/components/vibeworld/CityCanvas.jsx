@@ -73,6 +73,7 @@ const {
 
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MOVE_SPEED = 7.8;
+const ON_FOOT_MOVE_SPEED = MOVE_SPEED * 0.70;
 const PERSONAL_HOVERBOARD_SPEED_MULTIPLIER = 1.5;
 const HOVERBOARD_JUMP_FORCE = 9.8;
 const HOVERBOARD_JUMP_GRAVITY = -18;
@@ -1198,9 +1199,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (isMoving) {
           const boosting = hoverboardDashActiveRef.current && hoverboardDashBoostUntilRef.current > t;
           const usingPersonalBoard = personalHoverboardActiveRef.current;
+          const usingJetpackMovement = jetpackActiveRef.current;
           const personalHoverboardSpeed = MOVE_SPEED * PERSONAL_HOVERBOARD_SPEED_MULTIPLIER;
+          const normalMoveSpeed = usingJetpackMovement ? MOVE_SPEED : ON_FOOT_MOVE_SPEED;
           const airControl = hoverboardAirborne ? HOVERBOARD_AIR_CONTROL_MULTIPLIER : 1;
-          const baseRideSpeed = (usingPersonalBoard ? personalHoverboardSpeed : MOVE_SPEED) * airControl;
+          const baseRideSpeed = (usingPersonalBoard ? personalHoverboardSpeed : normalMoveSpeed) * airControl;
           const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08
             ? (boosting ? baseRideSpeed * 1.45 : baseRideSpeed)
             : 0;
@@ -2315,6 +2318,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     };
 
     const handleClick = (e, fromTouch = false) => {
+      if (e.target?.closest?.('[data-camera-scroll-lock="true"]')) return;
       // Only process clicks directly on the canvas (ignore HUD buttons)
       // fromTouch=true bypasses target check since touch events use canvas directly
       if (!fromTouch && e.target !== canvas) return;
@@ -2390,11 +2394,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     // doesn't interfere. Short tap (< 300ms, < 15px drift) → raycast for portal/avatar hit.
     let _tapStart = null;
     const onWindowTouchStart = (e) => {
+      if (e.target?.closest?.('[data-camera-scroll-lock="true"]')) { _tapStart = null; return; }
       if (e.target?.closest?.("[data-beach-portal-prompt]")) { _tapStart = null; return; }
       if (e.touches.length !== 1) return;
       _tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
     };
     const onWindowTouchEnd = (e) => {
+      if (e.target?.closest?.('[data-camera-scroll-lock="true"]')) { _tapStart = null; return; }
       if (!_tapStart || e.changedTouches.length !== 1) { _tapStart = null; return; }
       const ch = e.changedTouches[0];
       const dx = ch.clientX - _tapStart.x;

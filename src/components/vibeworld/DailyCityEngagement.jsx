@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Flame, Sparkles, X } from "lucide-react";
+import { Check, ChevronLeft, Flame, Sparkles, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { claimRewardCooldown, REWARD_SAVED_MESSAGE } from "@/lib/rewardCooldown";
 
@@ -146,6 +146,7 @@ export default function DailyCityEngagement({
   domeOpen,
   ferrisRiding,
   onSetIntentionAura,
+  onOpenChange,
 }) {
   const [daily, setDaily] = useState(() => buildDaily(userId));
   const [expanded, setExpanded] = useState(() => !buildDaily(userId).welcomeDismissed);
@@ -166,6 +167,36 @@ export default function DailyCityEngagement({
     dailyRef.current = daily;
     try { localStorage.setItem(storageKey(userId), JSON.stringify(daily)); } catch {}
   }, [daily, userId]);
+
+  useEffect(() => {
+    onOpenChange?.(expanded);
+    return () => onOpenChange?.(false);
+  }, [expanded, onOpenChange]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const body = document.body;
+    const html = document.documentElement;
+    const previous = {
+      bodyOverflow: body.style.overflow,
+      bodyOverscroll: body.style.overscrollBehavior,
+      bodyTouchAction: body.style.touchAction,
+      bodyUserSelect: body.style.userSelect,
+      htmlOverscroll: html.style.overscrollBehavior,
+    };
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    body.style.touchAction = "none";
+    body.style.userSelect = "none";
+    html.style.overscrollBehavior = "none";
+    return () => {
+      body.style.overflow = previous.bodyOverflow;
+      body.style.overscrollBehavior = previous.bodyOverscroll;
+      body.style.touchAction = previous.bodyTouchAction;
+      body.style.userSelect = previous.bodyUserSelect;
+      html.style.overscrollBehavior = previous.htmlOverscroll;
+    };
+  }, [expanded]);
 
   useEffect(() => {
     if (daily?.questRewardClaimed && hasQuestLock(daily)) setMessage(REWARD_SAVED_MESSAGE);
@@ -292,7 +323,7 @@ export default function DailyCityEngagement({
     };
     window.addEventListener("uvcDailyAction", onAction);
     return () => window.removeEventListener("uvcDailyAction", onAction);
-  }, [completeAction]);
+  }, [completeAction, saveNext]);
 
   useEffect(() => { if (worldMode === "beach") completeAction("beach_visit"); }, [worldMode, completeAction]);
   useEffect(() => { if (stageWatching) completeAction("stage_visualizer"); }, [stageWatching, completeAction]);
@@ -339,91 +370,308 @@ export default function DailyCityEngagement({
     setExpanded(false);
   };
 
+  const tapQuestRow = (task) => {
+    completeAction(task.id);
+    try { navigator?.vibrate?.(8); } catch {}
+  };
+
+  const stopBubble = (e) => e.stopPropagation();
+  const stopBackdropScroll = (e) => {
+    if (e.target === e.currentTarget) e.preventDefault();
+    e.stopPropagation();
+  };
+
   const questItems = (daily?.quest || []).map((id) => TASKS.find((t) => t.id === id)).filter(Boolean);
   const completedCount = questItems.filter((t) => daily?.completed?.[t.id]).length;
-  const intention = INTENTIONS.find((i) => i.id === daily?.intention);
-  const top = isMobile ? 0 : 92;
-  const panelMaxHeight = isMobile ? "100dvh" : "min(70dvh, 560px)";
 
   if (!daily) return null;
 
   return (
-    <div className={isMobile ? "fixed z-[66] pointer-events-none" : "absolute left-1/2 z-[66] pointer-events-none"} style={isMobile ? { top, left: "env(safe-area-inset-left, 0px)", right: "env(safe-area-inset-right, 0px)", bottom: 0, width: "auto" } : { top, transform: "translateX(-50%)", width: 360 }}>
-      <AnimatePresence mode="wait">
-        {expanded ? (
+    <AnimatePresence mode="wait">
+      {expanded && (
+        <motion.div
+          key="daily-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          data-camera-scroll-lock="true"
+          onClick={stopBubble}
+          onPointerDown={stopBubble}
+          onTouchStart={stopBubble}
+          onTouchMove={stopBackdropScroll}
+          className="fixed inset-0 flex items-center justify-center"
+          style={{
+            zIndex: 100000,
+            pointerEvents: "auto",
+            touchAction: "none",
+            overscrollBehavior: "none",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            boxSizing: "border-box",
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
+            paddingRight: "max(3vw, env(safe-area-inset-right, 0px))",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+            paddingLeft: "max(3vw, env(safe-area-inset-left, 0px))",
+            background: "rgba(0, 0, 8, 0.56)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+          }}
+        >
           <motion.div
             key="daily-card"
-            initial={{ opacity: 0, y: -12, scale: 0.96 }}
+            initial={{ opacity: 0, y: -10, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.96 }}
-            className="pointer-events-auto overflow-hidden"
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
             data-camera-scroll-lock="true"
-            style={{ height: isMobile ? "100dvh" : "auto", maxHeight: panelMaxHeight, overflowY: "auto", paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : 0, paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : 0, borderRadius: isMobile ? 0 : 24, background: "rgba(5,6,18,0.96)", border: "1px solid rgba(0,229,255,0.18)", backdropFilter: "blur(22px)", boxShadow: "0 18px 60px rgba(0,0,0,0.45), 0 0 34px rgba(0,229,255,0.12)" }}
+            onClick={stopBubble}
+            onPointerDown={stopBubble}
+            onTouchStart={stopBubble}
+            onTouchMove={stopBubble}
+            className="flex flex-col"
+            style={{
+              width: "min(94vw, 900px)",
+              maxWidth: "100%",
+              maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px)",
+              overflow: "hidden",
+              overflowX: "hidden",
+              boxSizing: "border-box",
+              borderRadius: "clamp(18px, 4vw, 28px)",
+              background: "rgba(5,6,18,0.97)",
+              border: "1px solid rgba(0,229,255,0.22)",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+              boxShadow: "0 18px 60px rgba(0,0,0,0.52), 0 0 34px rgba(0,229,255,0.16)",
+            }}
           >
-            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-white/5">
-              <div>
-                <p className="text-[11px] font-black tracking-[0.18em] uppercase" style={{ color: "#00E5FF" }}>{message}</p>
-                <div className="flex items-center gap-3 mt-2 text-[10px] text-white/45">
+            <div
+              className="flex items-center justify-between gap-3 border-b border-white/5"
+              style={{
+                flexShrink: 0,
+                minHeight: 64,
+                padding: "8px 10px",
+                background: "rgba(5,6,18,0.98)",
+                boxSizing: "border-box",
+              }}
+            >
+              <button
+                type="button"
+                onClick={closePanel}
+                className="flex items-center justify-center gap-1 rounded-full font-black text-[11px] uppercase tracking-wider active:scale-95"
+                style={{
+                  minWidth: 48,
+                  width: 72,
+                  height: 48,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "rgba(255,255,255,0.76)",
+                  touchAction: "manipulation",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                }}
+              >
+                <ChevronLeft className="w-4 h-4" /> Back
+              </button>
+
+              <div className="min-w-0 flex-1 text-center px-1">
+                <p
+                  className="font-black tracking-[0.13em] uppercase"
+                  style={{
+                    color: "#00E5FF",
+                    fontSize: isMobile ? 10 : 11,
+                    lineHeight: 1.25,
+                    overflow: "hidden",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {message}
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-1 text-[10px] text-white/45 flex-wrap">
                   <span className="inline-flex items-center gap-1"><Flame className="w-3 h-3 text-yellow-400" /> {daily.streak} day streak</span>
-                  <span>{daily.questRewardClaimed ? "Quest reward claimed" : "Quest reward unlocks at 3/3"}</span>
+                  <span>{daily.questRewardClaimed ? "Quest reward claimed" : "Quest reward optional"}</span>
                 </div>
               </div>
-              <button onClick={closePanel} className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.72)", touchAction: "manipulation" }} aria-label="Close Daily Quest">
-                <X className="w-4 h-4" />
+
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-full flex items-center justify-center flex-shrink-0 active:scale-95"
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "rgba(255,255,255,0.76)",
+                  touchAction: "manipulation",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                }}
+                aria-label="Close Daily Quest"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="px-4 py-3 space-y-3">
-              <div>
-                <p className="text-[10px] font-black text-white/35 uppercase tracking-wider mb-2">Today's intention</p>
-                {intention ? (
-                  <div className="flex items-center justify-between rounded-2xl px-3 py-2" style={{ background: `${intention.color}18`, border: `1px solid ${intention.color}40` }}>
-                    <span className="text-sm font-black" style={{ color: intention.color }}>{intention.label}</span>
-                    <span className="text-[10px] font-bold text-white/45">session aura active</span>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {INTENTIONS.map((item) => (
-                      <button key={item.id} onClick={() => chooseIntention(item)} className="rounded-xl px-2 py-2 text-[10px] font-black transition-all active:scale-95" style={{ background: `${item.color}14`, border: `1px solid ${item.color}33`, color: item.color, touchAction: "manipulation" }}>
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-black text-white/35 uppercase tracking-wider">Daily city quest</p>
-                  <p className="text-[10px] font-black" style={{ color: completedCount === 3 ? "#4ADE80" : "#FFD36E" }}>{completedCount}/3{completedCount === 3 ? " Complete" : ""}</p>
-                </div>
-                <div className="space-y-1.5">
-                  {questItems.map((task) => {
-                    const done = !!daily.completed?.[task.id];
+            <div
+              data-daily-modal-scroll="true"
+              className="space-y-4"
+              style={{
+                flex: "1 1 auto",
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                WebkitOverflowScrolling: "touch",
+                overscrollBehavior: "contain",
+                touchAction: "pan-y",
+                boxSizing: "border-box",
+                padding: isMobile ? "12px" : "18px",
+              }}
+            >
+              <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+                <p className="text-[10px] font-black text-white/35 uppercase tracking-wider mb-3">Today's intention</p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 136px), 1fr))",
+                    gap: 12,
+                    width: "100%",
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {INTENTIONS.map((item) => {
+                    const selected = daily?.intention === item.id;
                     return (
-                      <div key={task.id} className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: done ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.035)", border: `1px solid ${done ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)"}` }}>
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: done ? "#4ADE80" : "transparent", border: done ? "1px solid #4ADE80" : "1px solid rgba(255,255,255,0.22)", color: done ? "#001008" : "transparent" }}>
-                          {done && <Check className="w-2.5 h-2.5" />}
-                        </div>
-                        <span className="text-[11px] font-bold" style={{ color: done ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.52)" }}>{task.label}</span>
-                      </div>
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => chooseIntention(item)}
+                        className="rounded-2xl text-left font-black transition-all active:scale-[0.98]"
+                        style={{
+                          minHeight: 52,
+                          padding: "12px 14px",
+                          width: "100%",
+                          maxWidth: "100%",
+                          background: selected ? `${item.color}24` : `${item.color}12`,
+                          border: `1px solid ${selected ? item.color : `${item.color}33`}`,
+                          color: item.color,
+                          touchAction: "manipulation",
+                          cursor: "pointer",
+                          userSelect: "none",
+                          WebkitUserSelect: "none",
+                          boxShadow: selected ? `0 0 18px ${item.color}22` : "none",
+                        }}
+                      >
+                        <span className="block text-sm leading-snug break-words">{item.label}</span>
+                        {selected && <span className="block text-[10px] mt-1 text-white/50">Selected aura</span>}
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="rounded-2xl px-3 py-2" style={{ background: "rgba(155,126,255,0.07)", border: "1px solid rgba(155,126,255,0.16)" }}>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider" style={{ color: "#C4AAFF" }}>
-                  <Sparkles className="w-3 h-3" /> {event.name}
+              <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+                <div className="flex items-center justify-between mb-2 gap-3">
+                  <p className="text-[10px] font-black text-white/35 uppercase tracking-wider">Daily city quest</p>
+                  <p className="text-[10px] font-black whitespace-nowrap" style={{ color: completedCount === 3 ? "#4ADE80" : "#FFD36E" }}>{completedCount}/3{completedCount === 3 ? " Complete" : " Optional"}</p>
                 </div>
-                <p className="text-[10px] text-white/35 mt-1">{event.bonus}</p>
+                <div className="space-y-2">
+                  {questItems.map((task) => {
+                    const done = !!daily.completed?.[task.id];
+                    return (
+                      <button
+                        key={task.id}
+                        type="button"
+                        onClick={() => tapQuestRow(task)}
+                        className="flex items-center gap-3 rounded-2xl text-left transition-all active:scale-[0.99]"
+                        style={{
+                          width: "100%",
+                          minHeight: 52,
+                          padding: "12px 14px",
+                          background: done ? "rgba(74,222,128,0.09)" : "rgba(255,255,255,0.04)",
+                          border: `1px solid ${done ? "rgba(74,222,128,0.24)" : "rgba(255,255,255,0.08)"}`,
+                          touchAction: "manipulation",
+                          cursor: "pointer",
+                          userSelect: "none",
+                          WebkitUserSelect: "none",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: done ? "#4ADE80" : "transparent", border: done ? "1px solid #4ADE80" : "1px solid rgba(255,255,255,0.24)", color: done ? "#001008" : "transparent" }}>
+                          {done && <Check className="w-3 h-3" />}
+                        </span>
+                        <span className="text-xs font-bold leading-snug break-words" style={{ color: done ? "rgba(255,255,255,0.86)" : "rgba(255,255,255,0.62)" }}>{task.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <p className="text-[9px] leading-relaxed text-white/25">Vibe Coins are in-app reward points only and have no real-world cash value. Spend them in Upper Vibe Shop for aura, hoverboard, badge, and nameplate cosmetics.</p>
+              <div className="rounded-2xl" style={{ width: "100%", maxWidth: "100%", padding: "12px", background: "rgba(155,126,255,0.07)", border: "1px solid rgba(155,126,255,0.16)", boxSizing: "border-box" }}>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider" style={{ color: "#C4AAFF" }}>
+                  <Sparkles className="w-3 h-3 flex-shrink-0" /> <span className="break-words">{event.name}</span>
+                </div>
+                <p className="text-[10px] text-white/40 mt-1 leading-relaxed break-words">{event.bonus}</p>
+              </div>
+
+              <div className="rounded-2xl" style={{ width: "100%", maxWidth: "100%", padding: "12px", background: "rgba(0,229,255,0.055)", border: "1px solid rgba(0,229,255,0.14)", boxSizing: "border-box" }}>
+                <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#00E5FF" }}>Upper Vibe Beach Preview</p>
+                <p className="text-[10px] leading-relaxed text-white/38 mt-1 break-words">Beach activities are optional and stay inside the world experience when you choose to visit.</p>
+              </div>
+
+              <p className="text-[9px] leading-relaxed text-white/25 break-words" style={{ width: "100%", maxWidth: "100%" }}>Vibe Coins are in-app reward points only and have no real-world cash value. Spend them in Upper Vibe Shop for aura, hoverboard, badge, and nameplate cosmetics.</p>
+            </div>
+
+            <div
+              className="grid gap-2 border-t border-white/5"
+              style={{
+                flexShrink: 0,
+                padding: "10px",
+                background: "rgba(5,6,18,0.98)",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              }}
+            >
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-2xl font-black tracking-wide active:scale-[0.99]"
+                style={{
+                  minHeight: 52,
+                  background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
+                  border: "1px solid rgba(0,229,255,0.45)",
+                  color: "#001018",
+                  touchAction: "manipulation",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                }}
+              >
+                Enter Upper Vibe City
+              </button>
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-2xl font-black tracking-wide active:scale-[0.99]"
+                style={{
+                  minHeight: 52,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "rgba(255,255,255,0.78)",
+                  touchAction: "manipulation",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                }}
+              >
+                Skip for Now
+              </button>
             </div>
           </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
