@@ -44,7 +44,7 @@ export default function TikTokPostCard({ track, index }) {
 
   const handlePlay = () => {
     trackAnalytics(active ? "tiktok_post_pause_song" : "tiktok_post_play_song");
-    if (active) togglePlay();
+    if (isCurrentTrack) togglePlay();
     else playTrack(track, "tiktok_feed");
   };
 
