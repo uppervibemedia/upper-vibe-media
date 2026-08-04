@@ -5,7 +5,7 @@ import { Calendar, ExternalLink, Flame, Heart, MessageCircle, Play, Pause, Share
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 import CoverImage from "@/components/shared/CoverImage";
-import TikTokLightbox, { getTikTokVideoId } from "@/components/tiktok/TikTokLightbox";
+import TikTokLightbox from "@/components/tiktok/TikTokLightbox";
 
 const compact = (value) => {
   const n = Number(value);
@@ -60,10 +60,6 @@ export default function TikTokPostCard({ track, index }) {
 
   const handleOpenTikTokPreview = () => {
     trackAnalytics("tiktok_post_open_preview");
-    if (!getTikTokVideoId(track)) {
-      if (track.tiktok_post_url) window.open(track.tiktok_post_url, "_blank", "noopener,noreferrer");
-      return;
-    }
     wasPlayingBeforeTikTokRef.current = isPlaying;
     pausedForTikTokRef.current = false;
     setTikTokOpen(true);
