@@ -45,6 +45,7 @@ import {
   disposeSkyRingDash,
   getSkyRingDashStats,
 } from "./SkyRingDashSystem.js";
+import { createHelpfulNPCs, tickHelpfulNPCs } from "./HelpfulNPCs.js";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -872,6 +873,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       if (worldModeRef.current === "beach") createBeachWorld(scene);
       else buildPark(scene);
+      createHelpfulNPCs(scene, worldModeRef.current);
       createSacredGeometryNetwork(scene, worldModeRef.current);
       scene.userData._cityQuality = quality;
       const cachedNeonSigns = [];
@@ -1340,6 +1342,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
           try { onPosCbRef.current(px, pz, rot, py, jetpackModeRef.current); } catch {}
+        }
+
+        // ── Helpful NPC proximity — prompt only while grounded/on foot ──
+        if (frameRef.current % 8 === 0) {
+          const npcGrounded = !hbRidingRef.current && !personalHoverboardActiveRef.current && !jetpackActiveRef.current && !hoverboardDashActiveRef.current && !skyRingDashActiveRef.current && jetpackHeightRef.current <= 0.08;
+          tickHelpfulNPCs(scene, { x: px, y: py, z: pz }, npcGrounded);
         }
 
         // ── Transport pad + Jukebox proximity ──

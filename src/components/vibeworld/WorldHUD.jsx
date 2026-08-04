@@ -51,6 +51,7 @@ import UserInteractionMenu from "./UserInteractionMenu";
 import NotificationPanel from "./panels/NotificationPanel";
 import FrequencyLeaderboardPanel from "./panels/FrequencyLeaderboardPanel";
 import FrequencyLeaderboardPrompt from "./FrequencyLeaderboardPrompt";
+import NPCInteractionHUD from "./NPCInteractionHUD";
 import { base44 } from "@/api/base44Client";
 import { beachPreviewFlags } from "@/components/vibeworld/beachPreviewFlags";
 
@@ -340,6 +341,12 @@ export default function WorldHUD({
           </div>
         </motion.div>
       )}
+
+      <NPCInteractionHUD
+        isMobile={isMobile}
+        mobileLayout={mobileLayout}
+        groundInteractionsEnabled={groundInteractionsEnabled && !stageWatching}
+      />
 
       {/* ── Online count + Requests bell — hidden during stage watch ── */}
       <motion.div
