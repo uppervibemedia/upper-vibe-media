@@ -1,0 +1,142 @@
+{
+  "name": "SocialVideoPost",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": [
+        "tiktok",
+        "instagram",
+        "youtube_shorts",
+        "facebook_reels"
+      ],
+      "default": "tiktok"
+    },
+    "provider_video_id": {
+      "type": "string",
+      "description": "Unique short-form video ID from the provider"
+    },
+    "caption": {
+      "type": "string"
+    },
+    "thumbnail_url": {
+      "type": "string"
+    },
+    "preview_url": {
+      "type": "string"
+    },
+    "post_url": {
+      "type": "string"
+    },
+    "embed_url": {
+      "type": "string"
+    },
+    "post_type": {
+      "type": "string",
+      "enum": [
+        "video",
+        "image",
+        "quote",
+        "meme"
+      ],
+      "default": "video"
+    },
+    "posted_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0
+    },
+    "like_count": {
+      "type": "number",
+      "default": 0
+    },
+    "comment_count": {
+      "type": "number",
+      "default": 0
+    },
+    "share_count": {
+      "type": "number",
+      "default": 0
+    },
+    "track_id": {
+      "type": "string",
+      "description": "Mapped Upper Vibe Track ID"
+    },
+    "suggested_track_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "match_status": {
+      "type": "string",
+      "enum": [
+        "unmatched",
+        "suggested",
+        "matched",
+        "review"
+      ],
+      "default": "unmatched"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved"
+      ],
+      "default": "pending"
+    },
+    "is_trending": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_hidden": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "display_order": {
+      "type": "number",
+      "default": 0
+    },
+    "last_synced_at": {
+      "type": "string"
+    },
+    "raw_payload": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "provider",
+    "provider_video_id"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

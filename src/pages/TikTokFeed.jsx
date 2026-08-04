@@ -2,66 +2,76 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Loader2, Search, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import TikTokCategoryTabs from "@/components/tiktok/TikTokCategoryTabs";
+import TikTokFeedFilterTabs from "@/components/tiktok/TikTokFeedFilterTabs";
 import TikTokPostCard from "@/components/tiktok/TikTokPostCard";
-import FutureSongMatcherPanel from "@/components/tiktok/FutureSongMatcherPanel";
 
 const dateValue = (value) => value ? new Date(value).getTime() || 0 : 0;
 const textValue = (value) => String(value || "").toLowerCase();
+const weekAgo = () => Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-function orderedTikTokSort(copy) {
-  return copy.sort((a, b) => {
-    if (!!b.tiktok_pin_top !== !!a.tiktok_pin_top) return Number(!!b.tiktok_pin_top) - Number(!!a.tiktok_pin_top);
-    const orderA = Number.isFinite(Number(a.tiktok_display_order)) ? Number(a.tiktok_display_order) : 9999;
-    const orderB = Number.isFinite(Number(b.tiktok_display_order)) ? Number(b.tiktok_display_order) : 9999;
-    if (orderA !== orderB) return orderA - orderB;
-    return dateValue(b.tiktok_posted_at || b.release_date || b.created_date) - dateValue(a.tiktok_posted_at || a.release_date || a.created_date);
-  });
+function mapPostToPlayable(post, track) {
+  return {
+    ...track,
+    social_post_id: post.id,
+    provider_video_id: post.provider_video_id,
+    tiktok_caption: post.caption,
+    tiktok_post_type: post.post_type || "video",
+    tiktok_thumbnail_url: post.thumbnail_url,
+    tiktok_preview_url: post.preview_url,
+    tiktok_post_url: post.post_url,
+    tiktok_posted_at: post.posted_at,
+    tiktok_view_count: post.view_count || 0,
+    tiktok_like_count: post.like_count || 0,
+    tiktok_comment_count: post.comment_count || 0,
+    tiktok_share_count: post.share_count || 0,
+    tiktok_trending: !!post.is_trending,
+    tiktok_pin_top: !!post.is_pinned,
+    tiktok_featured: !!post.is_featured,
+    tiktok_display_order: post.display_order || 0,
+  };
 }
 
-function matchesTheme(track, theme) {
-  const haystack = [track.title, track.artist_display, track.description, track.lyrics, track.tiktok_caption, ...(track.mood_tags || [])].map(textValue).join(" ");
-  if (theme === "motivation") return /motivat|inspire|rise|focus|power|grind|energy|strength/.test(haystack);
-  if (theme === "mindset") return /mindset|manifest|clarity|heal|meditat|affirm|frequency|peace/.test(haystack);
-  if (theme === "relationships") return /love|heart|relationship|twin|soul|romance|breakup|together/.test(haystack);
-  return true;
+function sortItems(items, mode) {
+  const copy = [...items];
+  if (mode === "views") return copy.sort((a, b) => Number(b.tiktok_view_count || 0) - Number(a.tiktok_view_count || 0));
+  if (mode === "trending") return copy.sort((a, b) => Number(!!b.tiktok_trending) - Number(!!a.tiktok_trending) || Number(b.tiktok_view_count || 0) - Number(a.tiktok_view_count || 0));
+  if (mode === "week") return copy.filter((item) => dateValue(item.tiktok_posted_at) >= weekAgo()).sort((a, b) => dateValue(b.tiktok_posted_at) - dateValue(a.tiktok_posted_at));
+  return copy.sort((a, b) => Number(!!b.tiktok_pin_top) - Number(!!a.tiktok_pin_top) || Number(a.tiktok_display_order || 0) - Number(b.tiktok_display_order || 0) || dateValue(b.tiktok_posted_at || b.release_date || b.created_date) - dateValue(a.tiktok_posted_at || a.release_date || a.created_date));
 }
 
-function sortTracks(tracks, mode) {
-  const copy = [...tracks];
-  if (mode === "newest") return copy.sort((a, b) => dateValue(b.tiktok_posted_at || b.release_date || b.created_date) - dateValue(a.tiktok_posted_at || a.release_date || a.created_date));
-  if (mode === "saved") return copy.sort((a, b) => Number(b.tiktok_like_count || b.saved_count || b.plays || 0) - Number(a.tiktok_like_count || a.saved_count || a.plays || 0));
-  if (mode === "rising") return copy.sort((a, b) => Number(b.tiktok_share_count || b.tiktok_view_count || 0) - Number(a.tiktok_share_count || a.tiktok_view_count || 0));
-  if (mode === "432hz") return orderedTikTokSort(copy.filter((track) => track.frequency_type === "432hz" || Number(track.frequency_hz) === 432));
-  if (["motivation", "mindset", "relationships"].includes(mode)) return orderedTikTokSort(copy.filter((track) => matchesTheme(track, mode)));
-  return orderedTikTokSort(copy);
-}
-
-function searchTracks(tracks, query) {
+function searchItems(items, query) {
   const normalized = query.trim().toLowerCase();
-  if (!normalized) return tracks;
-  return tracks.filter((track) => [track.title, track.artist_display, track.lyrics, track.description, track.tiktok_caption, ...(track.mood_tags || [])].some((value) => textValue(value).includes(normalized)));
+  if (!normalized) return items;
+  return items.filter((item) => [item.title, item.artist_display, item.lyrics, item.description, item.tiktok_caption].some((value) => textValue(value).includes(normalized)));
 }
 
 export default function TikTokFeed() {
-  const [tracks, setTracks] = useState([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState("trending");
+  const [activeFilter, setActiveFilter] = useState("newest");
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(10);
 
   useEffect(() => {
-    base44.analytics.track({ eventName: "tiktok_post_feed_page_visit", properties: { source: "tiktok_bio" } });
+    base44.analytics.track({ eventName: "tiktok_live_feed_page_visit", properties: { source: "tiktok_bio" } });
     const load = async () => {
-      const promoted = await base44.entities.Track.filter({ status: "published", tiktok_promoted: true }, "-updated_date", 80);
-      if (promoted.length > 0) setTracks(promoted);
-      else setTracks(await base44.entities.Track.filter({ status: "published" }, "-release_date", 24));
+      const [posts, tracks] = await Promise.all([
+        base44.entities.SocialVideoPost.filter({ provider: "tiktok", approval_status: "approved", is_hidden: false }, "-posted_at", 80),
+        base44.entities.Track.filter({ status: "published" }, "-updated_date", 500),
+      ]);
+      const trackMap = Object.fromEntries(tracks.map((track) => [track.id, track]));
+      const mapped = posts.map((post) => post.track_id && trackMap[post.track_id] ? mapPostToPlayable(post, trackMap[post.track_id]) : null).filter(Boolean);
+      if (mapped.length > 0) setItems(mapped);
+      else {
+        const promoted = tracks.filter((track) => track.tiktok_promoted).slice(0, 24);
+        setItems(promoted.length ? promoted : tracks.slice(0, 16));
+      }
       setLoading(false);
     };
     load();
   }, []);
 
-  useEffect(() => setVisibleCount(10), [activeSection, searchQuery]);
+  useEffect(() => setVisibleCount(10), [activeFilter, searchQuery]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -73,10 +83,10 @@ export default function TikTokFeed() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const filteredTracks = useMemo(() => searchTracks(sortTracks(tracks, activeSection), searchQuery), [tracks, activeSection, searchQuery]);
-  const visibleTracks = filteredTracks.slice(0, visibleCount);
-  const topPosts = visibleTracks.slice(0, 4);
-  const laterPosts = visibleTracks.slice(4);
+  const filteredItems = useMemo(() => searchItems(sortItems(items, activeFilter), searchQuery), [items, activeFilter, searchQuery]);
+  const visibleItems = filteredItems.slice(0, visibleCount);
+  const firstPosts = visibleItems.slice(0, 4);
+  const laterPosts = visibleItems.slice(4);
 
   return (
     <main className="min-h-[100dvh] overflow-x-hidden bg-black text-white" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 9.25rem)" }}>
@@ -97,16 +107,16 @@ export default function TikTokFeed() {
           </div>
         </div>
 
-        <div className="mx-auto mt-4 max-w-2xl pb-3 text-center">
-          <p className="text-sm font-semibold text-white/58">Scroll recent Upper Vibe TikToks, recognize the exact post, then tap Play Song.</p>
+        <div className="mx-auto mt-4 max-w-2xl pb-4 text-center">
+          <p className="text-sm font-semibold text-white/58">Newest synced TikTok uploads first — recognize the post, tap Play Song, and listen instantly.</p>
         </div>
 
         {loading ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-white/60">
             <Loader2 className="h-7 w-7 animate-spin text-cyan-300" />
-            <p className="text-xs font-black uppercase tracking-[0.2em]">Loading TikTok posts...</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em]">Loading live TikTok feed...</p>
           </div>
-        ) : filteredTracks.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[0.04] p-7 text-center">
             <Sparkles className="mx-auto mb-3 h-8 w-8 text-cyan-300" />
             <h2 className="font-heading text-xl font-black">No matching TikToks yet</h2>
@@ -116,23 +126,19 @@ export default function TikTokFeed() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {topPosts.map((track, index) => <TikTokPostCard key={track.id} track={track} index={index} />)}
+              {firstPosts.map((item, index) => <TikTokPostCard key={`${item.social_post_id || item.id}-${index}`} track={item} index={index} />)}
             </div>
-
             <div className="mx-auto my-5 max-w-2xl rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-3">
-              <p className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/38">Explore if you need it</p>
-              <TikTokCategoryTabs active={activeSection} onChange={setActiveSection} />
+              <p className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/38">Filter TikTok posts</p>
+              <TikTokFeedFilterTabs active={activeFilter} onChange={setActiveFilter} />
             </div>
-
             {laterPosts.length > 0 && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {laterPosts.map((track, index) => <TikTokPostCard key={track.id} track={track} index={index + 4} />)}
+                {laterPosts.map((item, index) => <TikTokPostCard key={`${item.social_post_id || item.id}-${index + 4}`} track={item} index={index + 4} />)}
               </div>
             )}
           </>
         )}
-
-        <FutureSongMatcherPanel />
       </section>
     </main>
   );

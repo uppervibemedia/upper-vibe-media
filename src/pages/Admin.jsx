@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2, FlaskConical, Wrench, Disc3 } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2, FlaskConical, Wrench, Disc3, Smartphone } from "lucide-react";
 import AnalyticsDashboard from "../components/admin/AnalyticsDashboard";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
@@ -16,11 +16,13 @@ import HostDropManager from "../components/admin/HostDropManager.jsx";
 import StripeTestPanel from "../components/admin/StripeTestPanel";
 import StripeRepairPanel from "../components/admin/StripeRepairPanel";
 import DJPlaylistManager from "../components/admin/DJPlaylistManager";
+import TikTokFeedManager from "../components/admin/TikTokFeedManager";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
   { id: "analytics", label: "Analytics", icon: BarChart2 },
   { id: "manager", label: "Music Manager", icon: ListFilter },
+  { id: "tiktok_feed", label: "TikTok Feed", icon: Smartphone },
   { id: "upload", label: "Upload Track", icon: Music },
   { id: "visualizers", label: "Visualizers", icon: Tv2 },
   { id: "host_drops", label: "Host Drops", icon: Mic2 },
@@ -165,6 +167,11 @@ export default function Admin() {
               />
             )}
           </div>
+        )}
+
+        {/* TikTok Feed tab */}
+        {tab === "tiktok_feed" && (
+          <TikTokFeedManager tracks={tracks} />
         )}
 
         {/* Upload tab */}

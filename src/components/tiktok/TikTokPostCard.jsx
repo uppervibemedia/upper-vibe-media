@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Calendar, ExternalLink, Flame, Heart, MessageCircle, Play, Repeat2, Share2, Image as ImageIcon, Quote } from "lucide-react";
+import { Calendar, ExternalLink, Flame, Heart, MessageCircle, Play, Share2, Image as ImageIcon, Quote } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 import CoverImage from "@/components/shared/CoverImage";
