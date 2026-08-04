@@ -81,7 +81,11 @@ function makeNpcLabel(text, color) {
   ctx.strokeStyle = color;
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.roundRect(10, 10, 236, 44, 18);
+  if (ctx.roundRect) {
+    ctx.roundRect(10, 10, 236, 44, 18);
+  } else {
+    ctx.rect(10, 10, 236, 44);
+  }
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#FFFFFF";
