@@ -225,7 +225,6 @@ function createAvatarNPC(scene, def, helper = false) {
   entry.root.rotation.y = def.rot || 0;
   entry.root.userData.npcDef = def;
   entry.root.userData.isHelpfulNpc = helper;
-  entry.root.add(makeNpcLabel(def.name, def.accent));
   return { ...def, entry, group: entry.root, segment: 0, waitUntil: 0 };
 }
 
