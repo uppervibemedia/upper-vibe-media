@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Calendar, ExternalLink, Flame, Heart, MessageCircle, Play, Pause, Share2, Image as ImageIcon, Quote } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 import CoverImage from "@/components/shared/CoverImage";
+import TikTokLightbox, { getTikTokVideoId } from "@/components/tiktok/TikTokLightbox";
 
 const compact = (value) => {
   const n = Number(value);
@@ -20,6 +21,9 @@ const postLabel = { video: "Video", image: "Image", quote: "Quote", meme: "Meme"
 export default function TikTokPostCard({ track, index }) {
   const { playTrack, togglePlay, currentTrack, isPlaying } = usePlayer();
   const navigate = useNavigate();
+  const [tiktokOpen, setTikTokOpen] = useState(false);
+  const pausedForTikTokRef = useRef(false);
+  const wasPlayingBeforeTikTokRef = useRef(false);
   const isCurrentTrack = currentTrack?.id === track.id;
   const active = isCurrentTrack && isPlaying;
   const type = track.tiktok_post_type || "video";
@@ -54,10 +58,29 @@ export default function TikTokPostCard({ track, index }) {
     navigate(`/song/${track.id}`);
   };
 
-  const handleWatchTikTok = () => {
-    if (!track.tiktok_post_url) return;
-    trackAnalytics("tiktok_post_watch_original");
-    window.open(track.tiktok_post_url, "_blank", "noopener,noreferrer");
+  const handleOpenTikTokPreview = () => {
+    trackAnalytics("tiktok_post_open_preview");
+    if (!getTikTokVideoId(track)) {
+      if (track.tiktok_post_url) window.open(track.tiktok_post_url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    wasPlayingBeforeTikTokRef.current = isPlaying;
+    pausedForTikTokRef.current = false;
+    setTikTokOpen(true);
+  };
+
+  const handleTikTokAudioIntent = () => {
+    if (!isPlaying || pausedForTikTokRef.current) return;
+    wasPlayingBeforeTikTokRef.current = true;
+    pausedForTikTokRef.current = true;
+    togglePlay();
+  };
+
+  const handleCloseTikTokPreview = () => {
+    setTikTokOpen(false);
+    if (pausedForTikTokRef.current && wasPlayingBeforeTikTokRef.current) {
+      setTimeout(() => togglePlay(), 120);
+    }
   };
 
   return (
@@ -70,9 +93,9 @@ export default function TikTokPostCard({ track, index }) {
       className="overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#070713] shadow-2xl shadow-black/30"
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
-      <div className="relative aspect-[9/13] overflow-hidden bg-gradient-to-br from-purple-950 via-black to-cyan-950">
+      <button type="button" onClick={handleOpenTikTokPreview} className="group/tiktok relative block aspect-[9/13] w-full overflow-hidden bg-gradient-to-br from-purple-950 via-black to-cyan-950 text-left transition-transform active:scale-[0.992]" aria-label="Watch TikTok preview inside Upper Vibe Media">
         {thumbnail ? (
-          <CoverImage src={thumbnail} alt={caption} width={720} height={1040} eager={index < 8} fetchPriority={index < 3 ? "high" : "auto"} className="h-full w-full transition-transform duration-500 group-hover:scale-[1.03]" iconClassName="w-10 h-10" />
+          <CoverImage src={thumbnail} alt={caption} width={720} height={1040} eager={index < 8} fetchPriority={index < 3 ? "high" : "auto"} className="h-full w-full transition-transform duration-500 group-hover/tiktok:scale-[1.045]" iconClassName="w-10 h-10" />
         ) : (
           <div className="flex h-full flex-col justify-center p-6 text-center">
             <Quote className="mx-auto mb-4 h-10 w-10 text-cyan-200/70" />
@@ -80,6 +103,12 @@ export default function TikTokPostCard({ track, index }) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/15" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="absolute h-16 w-16 rounded-full bg-cyan-300/20 opacity-0 transition-opacity group-active/tiktok:animate-ping group-active/tiktok:opacity-100" />
+          <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-black/48 text-white shadow-2xl backdrop-blur-md transition-transform duration-300 group-hover/tiktok:scale-110">
+            <Play className="ml-1 h-7 w-7 fill-current" />
+          </span>
+        </div>
         <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/80 backdrop-blur-md">
           <TypeIcon className="h-3.5 w-3.5" /> {postLabel[type] || "Post"}
         </div>
@@ -102,7 +131,7 @@ export default function TikTokPostCard({ track, index }) {
           <p className="line-clamp-3 text-sm font-bold leading-snug text-white">{caption}</p>
           {dateText && <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-white/55"><Calendar className="h-3.5 w-3.5" /> {dateText}</p>}
         </div>
-      </div>
+      </button>
 
       <div className="relative border-t border-cyan-300/15 bg-gradient-to-b from-cyan-300/[0.075] via-white/[0.035] to-transparent p-4 shadow-[0_-18px_50px_rgba(34,211,238,0.08)]">
         <div className="mb-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">
@@ -145,15 +174,10 @@ export default function TikTokPostCard({ track, index }) {
             Open Song Page <ExternalLink className="h-4 w-4" />
           </button>
 
-          <button
-            onClick={handleWatchTikTok}
-            disabled={!track.tiktok_post_url}
-            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 text-sm font-black text-white/78 transition-all hover:bg-white/[0.065] active:scale-[0.98] disabled:opacity-40"
-          >
-            Watch on TikTok <ExternalLink className="h-4 w-4" />
-          </button>
         </div>
       </div>
+
+      <TikTokLightbox open={tiktokOpen} onClose={handleCloseTikTokPreview} track={track} onAudioIntent={handleTikTokAudioIntent} />
     </motion.article>
   );
 }
