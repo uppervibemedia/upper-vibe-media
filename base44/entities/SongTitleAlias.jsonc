@@ -1,0 +1,55 @@
+{
+  "name": "SongTitleAlias",
+  "type": "object",
+  "properties": {
+    "alias_title": {
+      "type": "string",
+      "description": "Alternate title text found in captions"
+    },
+    "normalized_alias": {
+      "type": "string",
+      "description": "Normalized alias used by the matcher"
+    },
+    "track_id": {
+      "type": "string",
+      "description": "Upper Vibe Track ID this alias should match"
+    },
+    "canonical_title": {
+      "type": "string",
+      "description": "Official track title"
+    },
+    "artist_display": {
+      "type": "string",
+      "description": "Official artist display name"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "alias_title",
+    "track_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

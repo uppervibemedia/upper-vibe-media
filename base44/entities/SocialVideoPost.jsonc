@@ -19,6 +19,10 @@
     "caption": {
       "type": "string"
     },
+    "detected_song_title": {
+      "type": "string",
+      "description": "Song title text detected from the caption"
+    },
     "thumbnail_url": {
       "type": "string"
     },
@@ -64,6 +68,31 @@
     "track_id": {
       "type": "string",
       "description": "Mapped Upper Vibe Track ID"
+    },
+    "matched_song_title": {
+      "type": "string"
+    },
+    "matched_artist": {
+      "type": "string"
+    },
+    "song_page_url": {
+      "type": "string"
+    },
+    "match_confidence": {
+      "type": "number",
+      "default": 0
+    },
+    "match_method": {
+      "type": "string",
+      "enum": [
+        "none",
+        "exact_title",
+        "exact_title_artist",
+        "close_title",
+        "alias",
+        "manual"
+      ],
+      "default": "none"
     },
     "suggested_track_ids": {
       "type": "array",

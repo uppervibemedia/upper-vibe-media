@@ -28,6 +28,12 @@ function mapPostToPlayable(post, track) {
     tiktok_pin_top: !!post.is_pinned,
     tiktok_featured: !!post.is_featured,
     tiktok_display_order: post.display_order || 0,
+    detected_song_title: post.detected_song_title || "",
+    matched_song_title: post.matched_song_title || track.title,
+    matched_artist: post.matched_artist || track.artist_display,
+    song_page_url: post.song_page_url || `/song/${track.id}`,
+    match_confidence: post.match_confidence || 0,
+    match_method: post.match_method || "none",
   };
 }
 

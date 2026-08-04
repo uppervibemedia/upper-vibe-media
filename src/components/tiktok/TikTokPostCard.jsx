@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Calendar, ExternalLink, Flame, Heart, MessageCircle, Play, Share2, Image as ImageIcon, Quote } from "lucide-react";
+import { Calendar, ExternalLink, Flame, Heart, MessageCircle, Play, Pause, Share2, Image as ImageIcon, Quote } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 import CoverImage from "@/components/shared/CoverImage";
@@ -18,9 +18,10 @@ const postIcon = { video: Play, image: ImageIcon, quote: Quote, meme: MessageCir
 const postLabel = { video: "Video", image: "Image", quote: "Quote", meme: "Meme" };
 
 export default function TikTokPostCard({ track, index }) {
-  const { playTrack, currentTrack, isPlaying } = usePlayer();
+  const { playTrack, togglePlay, currentTrack, isPlaying } = usePlayer();
   const navigate = useNavigate();
-  const active = currentTrack?.id === track.id && isPlaying;
+  const isCurrentTrack = currentTrack?.id === track.id;
+  const active = isCurrentTrack && isPlaying;
   const type = track.tiktok_post_type || "video";
   const TypeIcon = postIcon[type] || Play;
   const thumbnail = track.tiktok_thumbnail_url || track.tiktok_preview_url || track.cover_url;
@@ -42,8 +43,9 @@ export default function TikTokPostCard({ track, index }) {
   });
 
   const handlePlay = () => {
-    trackAnalytics("tiktok_post_play_song");
-    playTrack(track, "tiktok_feed");
+    trackAnalytics(active ? "tiktok_post_pause_song" : "tiktok_post_play_song");
+    if (active) togglePlay();
+    else playTrack(track, "tiktok_feed");
   };
 
   const handleOpen = () => {
@@ -99,6 +101,7 @@ export default function TikTokPostCard({ track, index }) {
         <div className="flex items-center gap-3">
           <CoverImage src={track.cover_url || thumbnail} alt={track.title} width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl overflow-hidden" iconClassName="w-5 h-5" />
           <div className="min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200/70">Matched Song</p>
             <h2 className="truncate font-heading text-lg font-black leading-tight text-white">{track.title}</h2>
             <p className="truncate text-sm font-semibold text-white/55">{track.artist_display || "Upper Vibe Media"}</p>
           </div>
@@ -109,14 +112,14 @@ export default function TikTokPostCard({ track, index }) {
           disabled={!track.audio_url}
           className="flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 text-sm font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(34,211,238,0.26)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-45"
         >
-          <Play className={`h-5 w-5 ${active ? "fill-current" : ""}`} /> {active ? "Playing Song" : "Play Song"}
+          {active ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5" />} {active ? "Pause" : isCurrentTrack ? "Resume" : "Play Song"}
         </button>
 
         <button
           onClick={handleOpen}
           className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-black text-white transition-all hover:bg-white/[0.085] active:scale-[0.98]"
         >
-          Open Full Song <ExternalLink className="h-4 w-4" />
+          Open Song Page <ExternalLink className="h-4 w-4" />
         </button>
       </div>
     </motion.article>
