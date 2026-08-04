@@ -1344,11 +1344,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           try { onPosCbRef.current(px, pz, rot, py, jetpackModeRef.current); } catch {}
         }
 
-        // ── Helpful NPC proximity — prompt only while grounded/on foot ──
-        if (frameRef.current % 8 === 0) {
-          const npcGrounded = !hbRidingRef.current && !personalHoverboardActiveRef.current && !jetpackActiveRef.current && !hoverboardDashActiveRef.current && !skyRingDashActiveRef.current && jetpackHeightRef.current <= 0.08;
-          tickHelpfulNPCs(scene, { x: px, y: py, z: pz }, npcGrounded);
-        }
+        // ── Helpful + walking NPCs. Prompt only while grounded/on foot; walkers keep moving.
+        const npcGrounded = !hbRidingRef.current && !personalHoverboardActiveRef.current && !jetpackActiveRef.current && !hoverboardDashActiveRef.current && !skyRingDashActiveRef.current && jetpackHeightRef.current <= 0.08;
+        tickHelpfulNPCs(scene, { x: px, y: py, z: pz }, npcGrounded, t, moveDt);
 
         // ── Transport pad + Jukebox proximity ──
         if (onTransportProxRef.current && frameRef.current % 6 === 0) {
