@@ -25,6 +25,7 @@ export default function TikTokPostCard({ track, index }) {
   const type = track.tiktok_post_type || "video";
   const TypeIcon = postIcon[type] || Play;
   const thumbnail = track.tiktok_thumbnail_url || track.tiktok_preview_url || track.cover_url;
+  const albumCover = track.cover_url;
   const caption = track.tiktok_caption || track.description || "The Upper Vibe sound from TikTok — tap Play Song to hear the full track.";
   const stats = [
     { icon: Play, value: compact(track.tiktok_view_count || track.tiktok_plays || track.tiktok_views) },
@@ -51,6 +52,12 @@ export default function TikTokPostCard({ track, index }) {
   const handleOpen = () => {
     trackAnalytics("tiktok_post_open_song");
     navigate(`/song/${track.id}`);
+  };
+
+  const handleWatchTikTok = () => {
+    if (!track.tiktok_post_url) return;
+    trackAnalytics("tiktok_post_watch_original");
+    window.open(track.tiktok_post_url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -97,30 +104,55 @@ export default function TikTokPostCard({ track, index }) {
         </div>
       </div>
 
-      <div className="space-y-3 p-3.5">
-        <div className="flex items-center gap-3">
-          <CoverImage src={track.cover_url || thumbnail} alt={track.title} width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl overflow-hidden" iconClassName="w-5 h-5" />
-          <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200/70">Matched Song</p>
-            <h2 className="truncate font-heading text-lg font-black leading-tight text-white">{track.title}</h2>
-            <p className="truncate text-sm font-semibold text-white/55">{track.artist_display || "Upper Vibe Media"}</p>
+      <div className="relative border-t border-cyan-300/15 bg-gradient-to-b from-cyan-300/[0.075] via-white/[0.035] to-transparent p-4 shadow-[0_-18px_50px_rgba(34,211,238,0.08)]">
+        <div className="mb-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-cyan-300/30" />
+          🎵 Now Playing
+          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-cyan-300/30" />
+        </div>
+
+        <div className="flex flex-col items-center text-center">
+          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/12 bg-black/40 shadow-[0_0_30px_rgba(34,211,238,0.15)] sm:h-28 sm:w-28">
+            {albumCover ? (
+              <>
+                <img src={albumCover} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl" loading={index < 4 ? "eager" : "lazy"} />
+                <img src={albumCover} alt={track.title || "Album artwork"} className="relative z-10 h-full w-full object-contain p-1.5" loading={index < 4 ? "eager" : "lazy"} decoding="async" />
+              </>
+            ) : (
+              <CoverImage src={thumbnail} alt={track.title} width={112} height={112} className="h-full w-full" iconClassName="w-8 h-8" />
+            )}
+          </div>
+
+          <div className="mt-3 min-w-0 max-w-full">
+            <h2 className="line-clamp-2 font-heading text-xl font-black leading-tight text-white">{track.title}</h2>
+            <p className="mt-1 truncate text-sm font-semibold text-white/62">{track.artist_display || "Upper Vibe Media"}</p>
           </div>
         </div>
 
-        <button
-          onClick={handlePlay}
-          disabled={!track.audio_url}
-          className="flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 text-sm font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(34,211,238,0.26)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-45"
-        >
-          {active ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5" />} {active ? "Pause" : isCurrentTrack ? "Resume" : "Play Song"}
-        </button>
+        <div className="mt-4 grid gap-2.5">
+          <button
+            onClick={handlePlay}
+            disabled={!track.audio_url}
+            className="flex min-h-[58px] w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 text-sm font-black uppercase tracking-wider text-black shadow-[0_0_26px_rgba(34,211,238,0.32)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-45"
+          >
+            {active ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />} {active ? "Pause" : isCurrentTrack ? "Resume Full Song" : "Play Full Song"}
+          </button>
 
-        <button
-          onClick={handleOpen}
-          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-black text-white transition-all hover:bg-white/[0.085] active:scale-[0.98]"
-        >
-          Open Song Page <ExternalLink className="h-4 w-4" />
-        </button>
+          <button
+            onClick={handleOpen}
+            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-4 text-sm font-black text-white transition-all hover:bg-white/[0.1] active:scale-[0.98]"
+          >
+            Open Song Page <ExternalLink className="h-4 w-4" />
+          </button>
+
+          <button
+            onClick={handleWatchTikTok}
+            disabled={!track.tiktok_post_url}
+            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 text-sm font-black text-white/78 transition-all hover:bg-white/[0.065] active:scale-[0.98] disabled:opacity-40"
+          >
+            Watch on TikTok <ExternalLink className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </motion.article>
   );
