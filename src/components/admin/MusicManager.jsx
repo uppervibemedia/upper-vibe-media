@@ -161,6 +161,12 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
     onRefresh();
   };
 
+  const toggleTikTok = async (track) => {
+    await base44.entities.Track.update(track.id, { tiktok_promoted: !track.tiktok_promoted });
+    toast.success(track.tiktok_promoted ? "Removed from TikTok Feed" : "Added to TikTok Feed");
+    onRefresh();
+  };
+
   const deleteTrack = async (track) => {
     if (!confirm(`Delete "${track.title}"?`)) return;
     await base44.entities.Track.delete(track.id);
@@ -668,6 +674,7 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
                         />
                         <div className="min-w-0">
                           <p className="font-medium text-foreground truncate max-w-[140px]">{track.title}</p>
+                          {track.tiktok_promoted && <p className="text-[9px] font-black uppercase tracking-wider text-cyan-400">TikTok Feed</p>}
                           {track.duration && <p className="text-[10px] text-muted-foreground">{track.duration}</p>}
                         </div>
                       </div>
@@ -748,6 +755,10 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
                         <button onClick={() => toggleFeatured(track)} title="Toggle featured"
                           className={`p-1.5 rounded-lg transition-all ${track.is_featured ? "text-secondary" : "text-muted-foreground hover:text-secondary"}`}>
                           <Star className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => toggleTikTok(track)} title="Toggle TikTok Feed"
+                          className={`p-1.5 rounded-lg transition-all ${track.tiktok_promoted ? "text-cyan-400" : "text-muted-foreground hover:text-cyan-400"}`}>
+                          <Music4 className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={() => toggleLock(track)} title={track.metadata_locked ? "Unlock metadata" : "Lock metadata"}
                           className={`p-1.5 rounded-lg transition-all ${track.metadata_locked ? "text-yellow-400" : "text-muted-foreground hover:text-yellow-400"}`}>

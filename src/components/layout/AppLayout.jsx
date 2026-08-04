@@ -70,9 +70,10 @@ function LayoutContent() {
   const location = useLocation();
   const isRadioPage = location.pathname === "/radio";
   const isStartPage = location.pathname === "/start";
+  const isTikTokFeed = location.pathname === "/tiktok" || location.pathname === "/link-in-bio";
 
   const mainStyle = {
-    paddingTop: isStartPage ? "0px" : "calc(56px + env(safe-area-inset-top, 0px))",
+    paddingTop: isStartPage || isTikTokFeed ? "0px" : "calc(56px + env(safe-area-inset-top, 0px))",
     paddingBottom: isStartPage ? "0px" : !isRadioPage
       ? "calc(56px + 72px + env(safe-area-inset-bottom, 12px))"
       : "calc(56px + env(safe-area-inset-bottom, 12px))",
@@ -81,13 +82,15 @@ function LayoutContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Persistent — never remounts */}
-      <Sidebar />
-      <div className="hidden lg:block fixed top-4 right-5 z-40">
-        <TopRightAuth />
-      </div>
+      {!isTikTokFeed && <Sidebar />}
+      {!isTikTokFeed && (
+        <div className="hidden lg:block fixed top-4 right-5 z-40">
+          <TopRightAuth />
+        </div>
+      )}
 
       {/* Page content — no animation wrapper, no transforms, no stacking context */}
-      <main className="lg:ml-[72px] lg:pt-0" style={mainStyle}>
+      <main className={isTikTokFeed ? "lg:pt-0" : "lg:ml-[72px] lg:pt-0"} style={mainStyle}>
         <Outlet />
       </main>
 

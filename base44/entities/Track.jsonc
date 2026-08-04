@@ -104,6 +104,30 @@
       "type": "boolean",
       "default": false
     },
+    "tiktok_promoted": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this track appears on the TikTok / link-in-bio feed page"
+    },
+    "tiktok_caption": {
+      "type": "string",
+      "description": "Short TikTok-style caption or hook shown on the link-in-bio feed"
+    },
+    "tiktok_pin_top": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pinned TikTok feed tracks appear before unpinned tracks"
+    },
+    "tiktok_display_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Lower numbers appear earlier on the TikTok feed when pinned/order is used"
+    },
+    "tiktok_posted_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this song was posted or promoted on TikTok"
+    },
     "is_downloadable": {
       "type": "boolean",
       "default": true,

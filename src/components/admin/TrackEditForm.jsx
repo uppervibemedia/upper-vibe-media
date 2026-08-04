@@ -29,6 +29,11 @@ const EMPTY = {
   status: "published",
   is_featured: false,
   is_new_release: false,
+  tiktok_promoted: false,
+  tiktok_caption: "",
+  tiktok_pin_top: false,
+  tiktok_display_order: 0,
+  tiktok_posted_at: "",
   is_downloadable: true,
   audio_url: "",
   cover_url: "",
@@ -73,6 +78,7 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
     const payload = {
       ...form,
       frequency_hz: form.frequency_hz !== "" && form.frequency_hz != null ? parseFloat(form.frequency_hz) : undefined,
+      tiktok_display_order: form.tiktok_display_order !== "" && form.tiktok_display_order != null ? parseFloat(form.tiktok_display_order) : 0,
       is_premium: !form.tier_access.includes("free"),
       min_tier: form.tier_access.includes("free") ? "free" : form.tier_access.includes("supporter") ? "supporter" : "premium",
     };
@@ -273,6 +279,8 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
             {[
               { key: "is_featured", label: "Featured track" },
               { key: "is_new_release", label: "New release" },
+              { key: "tiktok_promoted", label: "Promoted on TikTok" },
+              { key: "tiktok_pin_top", label: "Pin on TikTok feed" },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -285,9 +293,30 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
               </label>
             ))}
           </div>
-        </div>
 
-        {isEdit && (
+          <div className="col-span-2 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 space-y-4">
+            <div>
+              <p className="text-sm font-black text-cyan-300">TikTok Feed / Link In Bio</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Use these fields when this track is being promoted from your TikTok bio page.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">TikTok Caption / Hook</label>
+                <Input value={form.tiktok_caption || ""} onChange={(e) => setForm({ ...form, tiktok_caption: e.target.value })} placeholder="e.g. The 432 Hz track from today’s TikTok..." className="bg-card/40 border-border/30" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Feed Order</label>
+                <Input type="number" value={form.tiktok_display_order ?? 0} onChange={(e) => setForm({ ...form, tiktok_display_order: e.target.value })} className="bg-card/40 border-border/30" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">TikTok Posted Date</label>
+                <Input type="date" value={form.tiktok_posted_at || ""} onChange={(e) => setForm({ ...form, tiktok_posted_at: e.target.value })} className="bg-card/40 border-border/30" />
+              </div>
+            </div>
+          </div>
+          </div>
+
+          {isEdit && (
           <div className="col-span-2">
             <TrackVersionManager trackId={track.id} />
           </div>

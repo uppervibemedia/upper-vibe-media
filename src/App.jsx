@@ -44,6 +44,7 @@ import ResetPassword from './pages/ResetPassword';
 import Settings from './pages/Settings';
 import ShareRedirect from './pages/ShareRedirect';
 import FAQ from './pages/FAQ';
+import TikTokFeed from './pages/TikTokFeed';
 {/* VibeCheck removed — user requested */}
 import Start from './pages/Start';
 import VibeWorld from './pages/VibeWorld';
@@ -167,6 +168,8 @@ const AuthenticatedApp = () => {
         <Route path="/support" element={<Support />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/tiktok" element={<TikTokFeed />} />
+        <Route path="/link-in-bio" element={<TikTokFeed />} />
         <Route path="/start" element={<Start />} />
         <Route path="/vibe-world" element={<VibeWorld />} />
         <Route path="/my-feed" element={<PersonalizedFeed />} />

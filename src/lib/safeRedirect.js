@@ -24,6 +24,8 @@ const VALID_ROUTE_PREFIXES = [
   "/artists",
   "/sessions",
   "/newest-music",
+  "/tiktok",
+  "/link-in-bio",
   "/academy",
   "/academy/lesson",
   "/faq",
