@@ -1,28 +1,32 @@
 import * as THREE from "three";
 import { createMixamoAvatar, updateMixamoAvatarAnimation } from "./AvatarModelMixamo.jsx";
 
+const DANCE_EMOTES = ["dance", "vibe", "clap", "celebrate"];
+
 export const HELPFUL_NPCS = [
   {
     id: "vibe-guide",
     world: "city",
+    zone: "spawn",
     name: "Vibe Guide",
-    x: -9.8,
+    x: -10.2,
     z: -2.6,
-    rot: 1.15,
+    rot: 1.05,
     gender: "female",
     hairStyle: "ponytail",
     outfitColorKey: "cosmic-blue",
     skinToneKey: "tan",
     accent: "#00E5FF",
     radius: 3.2,
-    message: "Welcome to Upper Vibe City. Explore, listen to music, collect rewards, check your vibe, and unlock gear.",
+    message: "Welcome to Upper Vibe City. Explore the zones, collect rewards, and follow your vibe.",
   },
   {
     id: "shop-keeper",
     world: "city",
+    zone: "shop",
     name: "Shop Keeper",
-    x: 22.8,
-    z: 16.4,
+    x: 23.2,
+    z: 16.2,
     rot: -2.75,
     gender: "female",
     hairStyle: "bob",
@@ -30,11 +34,28 @@ export const HELPFUL_NPCS = [
     skinToneKey: "medium",
     accent: "#FFD36E",
     radius: 3.4,
-    message: "Earn Vibe Coins around the city and unlock hoverboards, jetpacks, trails, avatar gear, and coin items in the shop.",
+    message: "Earn Vibe Coins around the city, then unlock hoverboards, jetpacks, avatar gear, and aura items in the shop.",
+  },
+  {
+    id: "beach-guide-city",
+    world: "city",
+    zone: "beach-portal",
+    name: "Beach Guide",
+    x: 12.8,
+    z: 25.4,
+    rot: -1.75,
+    gender: "male",
+    hairStyle: "hat",
+    outfitColorKey: "cosmic-blue",
+    skinToneKey: "brown",
+    accent: "#68D7E8",
+    radius: 3.5,
+    message: "The beach portal connects you to Upper Vibe Beach. Step near it when you’re ready to transport.",
   },
   {
     id: "beach-guide",
     world: "beach",
+    zone: "beach-spawn",
     name: "Beach Guide",
     x: 10.5,
     z: 18.5,
@@ -49,41 +70,165 @@ export const HELPFUL_NPCS = [
   },
 ];
 
-const WALKING_NPCS = [
+const STATIC_NPCS = [
   {
-    id: "walker-beachwalk-1",
+    id: "stage-watcher-left",
     world: "city",
-    name: "Beach Walker",
+    zone: "stage",
+    name: "Stage Listener",
+    x: -6.8,
+    z: -24.4,
+    lookAt: [0, -32],
     gender: "male",
-    hairStyle: "hat",
-    outfitColorKey: "cosmic-blue",
-    skinToneKey: "brown",
-    accent: "#68D7E8",
-    speed: 0.78,
-    path: [[-18, 22], [-8, 28], [4, 26], [10, 18], [7, 9], [-2, 7], [-12, 13]],
+    hairStyle: "short",
+    outfitColorKey: "shadow-black",
+    skinToneKey: "medium",
+    accent: "#00D4F0",
+    behavior: "watchStage",
   },
   {
-    id: "walker-beach-1",
+    id: "stage-vibe-right",
+    world: "city",
+    zone: "stage",
+    name: "Screen Fan",
+    x: 6.6,
+    z: -24.8,
+    lookAt: [0, -32],
+    gender: "female",
+    hairStyle: "short",
+    outfitColorKey: "white-silver",
+    skinToneKey: "dark",
+    accent: "#C8D4E0",
+    behavior: "vibe",
+  },
+  {
+    id: "leaderboard-viewer",
+    world: "city",
+    zone: "leaderboard",
+    name: "Score Watcher",
+    x: -5.7,
+    z: 10.2,
+    lookAt: [0, 12.25],
+    gender: "female",
+    hairStyle: "bob",
+    outfitColorKey: "neon-purple",
+    skinToneKey: "tan",
+    accent: "#A078FF",
+    behavior: "observe",
+  },
+  {
+    id: "wheel-guest",
+    world: "city",
+    zone: "ferris",
+    name: "Wheel Guest",
+    x: -8.4,
+    z: 28.6,
+    lookAt: [0, 24],
+    gender: "male",
+    hairStyle: "fade",
+    outfitColorKey: "neon-purple",
+    skinToneKey: "deep-brown",
+    accent: "#A078FF",
+    behavior: "observe",
+  },
+  {
+    id: "academy-student",
+    world: "city",
+    zone: "academy",
+    name: "Academy Student",
+    x: -31.8,
+    z: 5.2,
+    lookAt: [-28, 10],
+    gender: "female",
+    hairStyle: "long",
+    outfitColorKey: "gold-aura",
+    skinToneKey: "light",
+    accent: "#FFD36E",
+    behavior: "idle",
+  },
+  {
+    id: "crystal-meditator",
+    world: "city",
+    zone: "crystal",
+    name: "Crystal Visitor",
+    x: 8.8,
+    z: -14.6,
+    lookAt: [0, -10],
+    gender: "male",
+    hairStyle: "locs",
+    outfitColorKey: "cosmic-blue",
+    skinToneKey: "brown",
+    accent: "#00E5FF",
+    behavior: "idle",
+  },
+  {
+    id: "beach-relaxer",
     world: "beach",
+    zone: "beach-path",
     name: "Beach Guest",
+    x: -6,
+    z: 18,
+    lookAt: [10, 18],
     gender: "male",
     hairStyle: "hat",
     outfitColorKey: "cosmic-blue",
     skinToneKey: "tan",
     accent: "#68D7E8",
-    speed: 0.9,
+    behavior: "idle",
+  },
+];
+
+const WALKING_NPCS = [
+  {
+    id: "outer-path-walker",
+    world: "city",
+    zone: "outer-paths",
+    name: "City Walker",
+    gender: "female",
+    hairStyle: "ponytail",
+    outfitColorKey: "rose-glow",
+    skinToneKey: "medium",
+    accent: "#FF4FC3",
+    speed: 0.72,
+    path: [[-18, 22], [-9, 28], [2, 27], [10, 19], [7, 9], [-2, 7], [-12, 13]],
+  },
+  {
+    id: "shop-path-walker",
+    world: "city",
+    zone: "shop-path",
+    name: "Shopper",
+    gender: "male",
+    hairStyle: "hat",
+    outfitColorKey: "gold-aura",
+    skinToneKey: "light",
+    accent: "#FFD36E",
+    speed: 0.64,
+    path: [[16.5, 10.5], [20.5, 14.8], [26, 13.8], [27.5, 9.5], [21.8, 8.2]],
+  },
+  {
+    id: "beach-walker",
+    world: "beach",
+    zone: "beach-walk",
+    name: "Beach Walker",
+    gender: "female",
+    hairStyle: "bob",
+    outfitColorKey: "gold-aura",
+    skinToneKey: "medium",
+    accent: "#FFD36E",
+    speed: 0.78,
     path: [[-4, 16], [5, 18], [16, 18], [24, 15], [28, 10]],
   },
 ];
 
 const DANCING_NPCS = [
   {
-    id: "dancer-dj-left",
+    id: "dancer-left",
     world: "city",
+    zone: "dance-floor",
     name: "Dance Guest",
-    x: -3.6,
-    z: -6.2,
-    rot: 0.65,
+    x: -3.8,
+    z: -6.7,
+    rot: 0.6,
     gender: "female",
     hairStyle: "bob",
     outfitColorKey: "rose-glow",
@@ -92,12 +237,13 @@ const DANCING_NPCS = [
     emoteId: "dance",
   },
   {
-    id: "dancer-dj-right",
+    id: "dancer-center",
     world: "city",
+    zone: "dance-floor",
     name: "Vibe Dancer",
-    x: 3.7,
-    z: -4.8,
-    rot: -0.55,
+    x: 0.8,
+    z: -3.3,
+    rot: -0.25,
     gender: "male",
     hairStyle: "locs",
     outfitColorKey: "neon-purple",
@@ -105,38 +251,26 @@ const DANCING_NPCS = [
     accent: "#A078FF",
     emoteId: "vibe",
   },
+  {
+    id: "dancer-right",
+    world: "city",
+    zone: "dance-floor",
+    name: "Rhythm Guest",
+    x: 4.4,
+    z: -7.2,
+    rot: -0.7,
+    gender: "female",
+    hairStyle: "short",
+    outfitColorKey: "cosmic-blue",
+    skinToneKey: "brown",
+    accent: "#00E5FF",
+    emoteId: "clap",
+  },
 ];
 
-function makeNpcLabel(text, color) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 320;
-  canvas.height = 64;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, 320, 64);
-  ctx.fillStyle = "rgba(4, 6, 18, 0.70)";
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(16, 12, 288, 40, 15);
-  else ctx.rect(16, 12, 288, 40);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "700 20px Inter, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, 160, 32);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, depthTest: false }));
-  sprite.scale.set(1.8, 0.42, 1);
-  sprite.position.set(0, 2.05, 0);
-  sprite.userData.isNeonSign = true;
-  sprite.renderOrder = 999;
-  return sprite;
+function faceTarget(fromX, fromZ, target) {
+  if (!target) return 0;
+  return Math.atan2(target[0] - fromX, target[1] - fromZ);
 }
 
 function createAvatarNPC(scene, def, helper = false) {
@@ -150,10 +284,12 @@ function createAvatarNPC(scene, def, helper = false) {
     outfitColorKey: def.outfitColorKey,
     skinToneKey: def.skinToneKey,
   });
-  entry.root.name = helper ? `helpfulNpc_${def.id}` : `walkingNpc_${def.id}`;
-  entry.root.rotation.y = def.rot || 0;
+  entry.root.name = helper ? `helpfulNpc_${def.id}` : `ambientNpc_${def.id}`;
+  entry.root.rotation.y = def.lookAt ? faceTarget(x, z, def.lookAt) : (def.rot || 0);
   entry.root.userData.npcDef = def;
   entry.root.userData.isHelpfulNpc = helper;
+  entry._npcEmote = def.emoteId || null;
+  entry._npcNextEmoteAt = Math.random() * 5;
   return { ...def, entry, group: entry.root, segment: 0, waitUntil: 0 };
 }
 
@@ -175,7 +311,7 @@ function updateWalkingNpc(npc, player, t, dt) {
 
   const playerDx = player.x - group.position.x;
   const playerDz = player.z - group.position.z;
-  const nearPlayer = playerDx * playerDx + playerDz * playerDz < 1.35 * 1.35;
+  const nearPlayer = playerDx * playerDx + playerDz * playerDz < 1.45 * 1.45;
   if (nearPlayer) {
     updateMixamoAvatarAnimation(npc.entry, 0, false, dt);
     return;
@@ -183,7 +319,7 @@ function updateWalkingNpc(npc, player, t, dt) {
 
   if (dist < 0.18) {
     npc.segment = nextIndex;
-    npc.waitUntil = t + 0.7 + ((npc.segment % 3) * 0.2);
+    npc.waitUntil = t + 0.8 + ((npc.segment % 3) * 0.25);
     updateMixamoAvatarAnimation(npc.entry, 0, false, dt);
     return;
   }
@@ -196,23 +332,49 @@ function updateWalkingNpc(npc, player, t, dt) {
   let diff = targetRot - group.rotation.y;
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
-  group.rotation.y += diff * Math.min(1, dt * 7);
+  group.rotation.y += diff * Math.min(1, dt * 6);
   updateMixamoAvatarAnimation(npc.entry, npc.speed, false, dt);
+}
+
+function updateStaticNpc(npc, player, t, dt) {
+  const behavior = npc.behavior || "idle";
+  const shouldVibe = behavior === "vibe" && Math.sin(t * 0.7 + npc.x) > -0.15;
+  updateMixamoAvatarAnimation(npc.entry, 0, shouldVibe, dt, false, shouldVibe ? "vibe" : null);
+  if (npc.group && npc.lookAt) {
+    const targetRot = faceTarget(npc.group.position.x, npc.group.position.z, npc.lookAt);
+    let diff = targetRot - npc.group.rotation.y;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    npc.group.rotation.y += diff * Math.min(1, dt * 2);
+  }
+}
+
+function updateDancerNpc(npc, t, dt) {
+  if (!npc.entry._npcEmote || t >= npc.entry._npcNextEmoteAt) {
+    const current = npc.entry._npcEmote;
+    const options = DANCE_EMOTES.filter((emote) => emote !== current);
+    npc.entry._npcEmote = options[Math.floor(Math.random() * options.length)] || "dance";
+    npc.entry._npcNextEmoteAt = t + 5.5 + Math.random() * 5;
+  }
+  updateMixamoAvatarAnimation(npc.entry, 0, true, dt, false, npc.entry._npcEmote);
 }
 
 export function createHelpfulNPCs(scene, worldMode) {
   const helpful = HELPFUL_NPCS.filter((npc) => npc.world === worldMode).map((def) => createAvatarNPC(scene, def, true));
+  const staticNpcs = STATIC_NPCS.filter((npc) => npc.world === worldMode).map((def) => createAvatarNPC(scene, def, false));
   const walkers = WALKING_NPCS.filter((npc) => npc.world === worldMode).map((def) => createAvatarNPC(scene, def, false));
   const dancers = DANCING_NPCS.filter((npc) => npc.world === worldMode).map((def) => createAvatarNPC(scene, def, false));
   scene.userData.helpfulNPCs = helpful;
+  scene.userData.staticNPCs = staticNpcs;
   scene.userData.walkingNPCs = walkers;
   scene.userData.dancingNPCs = dancers;
   scene.userData._lastHelpfulNPCId = null;
-  return { helpful, walkers, dancers };
+  return { helpful, staticNpcs, walkers, dancers };
 }
 
 export function tickHelpfulNPCs(scene, player, enabled = true, t = 0, dt = 0.016) {
   const helpful = scene.userData.helpfulNPCs || [];
+  const staticNpcs = scene.userData.staticNPCs || [];
   const walkers = scene.userData.walkingNPCs || [];
   const dancers = scene.userData.dancingNPCs || [];
 
@@ -231,8 +393,9 @@ export function tickHelpfulNPCs(scene, player, enabled = true, t = 0, dt = 0.016
     }
   }
 
+  for (const npc of staticNpcs) updateStaticNpc(npc, player, t, dt);
   for (const npc of walkers) updateWalkingNpc(npc, player, t, dt);
-  for (const npc of dancers) updateMixamoAvatarAnimation(npc.entry, 0, true, dt, false, npc.emoteId);
+  for (const npc of dancers) updateDancerNpc(npc, t, dt);
 
   let nearest = null;
   let nearestD2 = Infinity;
