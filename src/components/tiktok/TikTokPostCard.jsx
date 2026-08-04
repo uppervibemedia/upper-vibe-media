@@ -88,12 +88,13 @@ export default function TikTokPostCard({ track, index }) {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.025, 0.2) }}
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.992 }}
-      className="overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#070713] shadow-2xl shadow-black/30"
+      whileHover={{ y: -7, scale: 1.02 }}
+      whileTap={{ y: -4, scale: 1.01 }}
+      className="group/card h-full rounded-[24px] bg-gradient-to-br from-cyan-300 via-blue-500/80 to-purple-500 p-[2px] shadow-[0_18px_48px_rgba(0,0,0,0.44),0_0_30px_rgba(34,211,238,0.15)] transition-shadow duration-200 will-change-transform hover:shadow-[0_24px_62px_rgba(0,0,0,0.52),0_0_44px_rgba(34,211,238,0.26),0_0_28px_rgba(168,85,247,0.18)]"
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
-      <button type="button" onClick={handleOpenTikTokPreview} className="group/tiktok relative block aspect-[9/13] w-full overflow-hidden bg-gradient-to-br from-purple-950 via-black to-cyan-950 text-left transition-transform active:scale-[0.992]" aria-label="Watch TikTok preview inside Upper Vibe Media">
+      <div className="flex h-full flex-col overflow-hidden rounded-[22px] bg-[#070713]/88 shadow-inner shadow-white/[0.035] backdrop-blur-xl">
+      <button type="button" onClick={handleOpenTikTokPreview} className="group/tiktok relative block aspect-[9/13] w-full shrink-0 overflow-hidden bg-gradient-to-br from-purple-950 via-black to-cyan-950 text-left transition-transform active:scale-[0.992]" aria-label="Watch TikTok preview inside Upper Vibe Media">
         {thumbnail ? (
           <CoverImage src={thumbnail} alt={caption} width={720} height={1040} eager={index < 8} fetchPriority={index < 3 ? "high" : "auto"} className="h-full w-full transition-transform duration-500 group-hover/tiktok:scale-[1.045]" iconClassName="w-10 h-10" />
         ) : (
@@ -133,11 +134,12 @@ export default function TikTokPostCard({ track, index }) {
         </div>
       </button>
 
-      <div className="relative border-t border-cyan-300/15 bg-gradient-to-b from-cyan-300/[0.075] via-white/[0.035] to-transparent p-4 shadow-[0_-18px_50px_rgba(34,211,238,0.08)]">
-        <div className="mb-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-cyan-300/30" />
-          🎵 Now Playing
-          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-cyan-300/30" />
+      <div className="relative flex flex-1 flex-col border-t border-cyan-300/25 bg-[#03030b]/95 p-4 shadow-[0_-22px_55px_rgba(34,211,238,0.13)] backdrop-blur-xl">
+        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-cyan-300/10 via-cyan-300 to-purple-400/90 shadow-[0_0_18px_rgba(34,211,238,0.65)]" />
+        <div className="mb-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200 drop-shadow-[0_0_10px_rgba(34,211,238,0.55)]">
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-300/50 to-purple-400/40" />
+          ♪ Now Playing
+          <span className="h-px flex-1 bg-gradient-to-l from-transparent via-cyan-300/50 to-purple-400/40" />
         </div>
 
         <div className="flex flex-col items-center text-center">
@@ -152,13 +154,13 @@ export default function TikTokPostCard({ track, index }) {
             )}
           </div>
 
-          <div className="mt-3 min-w-0 max-w-full">
+          <div className="mt-3 min-h-[56px] min-w-0 max-w-full">
             <h2 className="line-clamp-2 font-heading text-xl font-black leading-tight text-white">{track.title}</h2>
             <p className="mt-1 truncate text-sm font-semibold text-white/62">{track.artist_display || "Upper Vibe Media"}</p>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2.5">
+        <div className="mt-auto grid gap-2.5 pt-4">
           <button
             onClick={handlePlay}
             disabled={!track.audio_url}
@@ -175,6 +177,7 @@ export default function TikTokPostCard({ track, index }) {
           </button>
 
         </div>
+      </div>
       </div>
 
       <TikTokLightbox open={tiktokOpen} onClose={handleCloseTikTokPreview} track={track} onAudioIntent={handleTikTokAudioIntent} />

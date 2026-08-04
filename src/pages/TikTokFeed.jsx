@@ -131,7 +131,7 @@ export default function TikTokFeed() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
               {firstPosts.map((item, index) => <TikTokPostCard key={`${item.social_post_id || item.id}-${index}`} track={item} index={index} />)}
             </div>
             <div className="mx-auto my-5 max-w-2xl rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-3">
@@ -139,7 +139,7 @@ export default function TikTokFeed() {
               <TikTokFeedFilterTabs active={activeFilter} onChange={setActiveFilter} />
             </div>
             {laterPosts.length > 0 && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
                 {laterPosts.map((item, index) => <TikTokPostCard key={`${item.social_post_id || item.id}-${index + 4}`} track={item} index={index + 4} />)}
               </div>
             )}
