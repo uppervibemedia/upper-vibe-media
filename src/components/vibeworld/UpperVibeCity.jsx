@@ -60,6 +60,7 @@ import BeachActivityHUD from "@/components/vibeworld/BeachActivityHUD";
 import BeachPreviewNotice from "@/components/vibeworld/BeachPreviewNotice";
 import HoverboardMusicDashHUD from "@/components/vibeworld/HoverboardMusicDashHUD";
 import { saveHoverboardDashBest } from "@/components/vibeworld/HoverboardMusicDashSystem.js";
+import { saveSkyRingDashBest } from "@/components/vibeworld/SkyRingDashSystem.js";
 import DailyCityEngagement from "@/components/vibeworld/DailyCityEngagement";
 import SacredLearningLayer from "@/components/vibeworld/SacredLearningLayer";
 import FrequencyScoreTracker from "@/components/vibeworld/FrequencyScoreTracker";
@@ -245,12 +246,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [hoverboardDashSessionId, setHoverboardDashSessionId] = useState(null);
   const [hoverboardDashStats, setHoverboardDashStats] = useState(null);
   const [hoverboardDashResults, setHoverboardDashResults] = useState(null);
+  const [skyRingDashActive, setSkyRingDashActive] = useState(false);
+  const [skyRingDashSessionId, setSkyRingDashSessionId] = useState(null);
+  const [skyRingDashStats, setSkyRingDashStats] = useState(null);
+  const [skyRingDashResults, setSkyRingDashResults] = useState(null);
   const [jetpackActive, setJetpackActive] = useState(false);
   const [jetpackFlyRequest, setJetpackFlyRequest] = useState(null);
   const [jetpackStatus, setJetpackStatus] = useState({ mode: "off", cooldownRemaining: 0, flightRemaining: 0 });
   const hbRiding = personalHoverboardActive && !jetpackActive;
   const jetpackEquipped = equippedMovementGear === "shop_jetpack";
   const hoverboardDashRewardedRef = useRef(null);
+  const skyRingDashRewardedRef = useRef(null);
 
 
 
@@ -874,23 +880,57 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     awardHoverboardDashCoins(finalStats);
   }, [awardHoverboardDashCoins, hoverboardDashStats]);
 
+  const awardSkyRingDashCoins = useCallback((stats) => {
+    const amount = Math.max(0, Math.round(stats?.coinsEarned || 0));
+    const session = stats?.sessionId || skyRingDashSessionId || Date.now();
+    if (!amount || skyRingDashRewardedRef.current === session) return;
+    skyRingDashRewardedRef.current = session;
+    window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
+      detail: {
+        source: "daily_reward",
+        coinIds: Array.from({ length: amount }, (_, i) => `sky_ring_dash_${session}_${i}`),
+      },
+    }));
+  }, [skyRingDashSessionId]);
+
+  const finishSkyRingDash = useCallback((stats) => {
+    const finalStats = { ...(stats || skyRingDashStats || {}), bestScore: saveSkyRingDashBest(stats?.score || skyRingDashStats?.score || 0) };
+    setSkyRingDashActive(false);
+    setSkyRingDashResults(finalStats);
+    setSkyRingDashStats(finalStats);
+    awardSkyRingDashCoins(finalStats);
+  }, [awardSkyRingDashCoins, skyRingDashStats]);
+
   const startHoverboardDash = useCallback(() => {
-    if (worldMode !== "city") return;
+    if (worldMode !== "city" || !personalHoverboardActive || jetpackActive) return;
     const session = Date.now();
     hoverboardDashRewardedRef.current = null;
     setHoverboardDashResults(null);
     setHoverboardDashSessionId(session);
     setHoverboardDashStats({ sessionId: session, ringsCollected: 0, totalRings: 16, combo: 0, longestCombo: 0, distance: 0, coinsEarned: 0, score: 0, bestScore: 0, remaining: 75 });
-    setJetpackActive(false);
-    setPersonalHoverboardActive(true);
+    setSkyRingDashActive(false);
     setHoverboardDashActive(true);
     setAnyBlockingUIOpen(false);
     try { navigator?.vibrate?.(20); } catch {}
-  }, [worldMode]);
+  }, [worldMode, personalHoverboardActive, jetpackActive]);
+
+  const startSkyRingDash = useCallback(() => {
+    if (worldMode !== "city" || !jetpackActive || personalHoverboardActive) return;
+    const session = Date.now();
+    skyRingDashRewardedRef.current = null;
+    setSkyRingDashResults(null);
+    setSkyRingDashSessionId(session);
+    setSkyRingDashStats({ sessionId: session, ringsCollected: 0, totalRings: 16, combo: 0, longestCombo: 0, distance: 0, coinsEarned: 0, score: 0, bestScore: 0, remaining: 75 });
+    setHoverboardDashActive(false);
+    setSkyRingDashActive(true);
+    setAnyBlockingUIOpen(false);
+    try { navigator?.vibrate?.(20); } catch {}
+  }, [worldMode, jetpackActive, personalHoverboardActive]);
 
   const equipJetpack = useCallback(() => {
     if (!jetpackEquipped) return;
     setHoverboardDashActive(false);
+    setHoverboardDashResults(null);
     setPersonalHoverboardActive(false);
     setJetpackActive(true);
     setJetpackStatus({ mode: "ready", cooldownRemaining: 0, flightRemaining: 0 });
@@ -899,12 +939,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const putAwayVehicle = useCallback(() => {
     if (jetpackActive) {
+      if (skyRingDashActive) finishSkyRingDash(skyRingDashStats);
       setJetpackActive(false);
       setJetpackStatus((prev) => ({ ...prev, mode: "off" }));
       return;
     }
+    if (personalHoverboardActive && hoverboardDashActive) finishHoverboardDash(hoverboardDashStats);
     setPersonalHoverboardActive((p) => !p);
-  }, [jetpackActive]);
+  }, [jetpackActive, skyRingDashActive, skyRingDashStats, finishSkyRingDash, personalHoverboardActive, hoverboardDashActive, hoverboardDashStats, finishHoverboardDash]);
+
+  useEffect(() => {
+    if (!jetpackActive && skyRingDashActive) finishSkyRingDash(skyRingDashStats);
+  }, [jetpackActive, skyRingDashActive, skyRingDashStats, finishSkyRingDash]);
 
   const requestJetpackFly = useCallback(() => {
     if (!jetpackEquipped) return;
@@ -977,6 +1023,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   })();
 
   const nearHoverboardDashStart = worldMode === "city" && Math.sqrt(playerPos.x * playerPos.x + (playerPos.z + 6) * (playerPos.z + 6)) < 14;
+  const movementGearActive = personalHoverboardActive || hoverboardDashActive || jetpackActive || skyRingDashActive || ["flying", "falling", "cooldown"].includes(jetpackStatus.mode);
+  const avatarGrounded = (playerPos.y || 0) < 0.18 && !["flying", "falling"].includes(jetpackStatus.mode);
+  const groundInteractionsEnabled = avatarGrounded && !movementGearActive;
+  const movementGearGameMode = jetpackActive ? "jetpack" : personalHoverboardActive ? "hoverboard" : null;
 
   // ── Voice ducking: only applies while outside the dance floor.
   // Inside the dance floor, the city audio machine owns Live DJ volume exclusively.
@@ -1337,6 +1387,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             setAuraActive(true);
           }}
           onOpenChange={setDailyPanelOpen}
+          groundInteractionsEnabled={groundInteractionsEnabled}
         />
         <SacredLearningLayer
           playerPos={playerPos}
@@ -1344,7 +1395,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           worldMode={worldMode}
           isMobile={isMobile}
           mobileLayout={mobileLayout}
-          hidden={stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget}
+          hidden={stageWatching || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!activeChatPeer || !!messageComposerTarget || !groundInteractionsEnabled}
+          groundInteractionsEnabled={groundInteractionsEnabled}
           userId={user?.id}
           isDancing={isDancing}
         />
@@ -1407,6 +1459,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             jukeboxProxVolRef.current = vol;
           }}
           onTransportProximity={(target) => {
+            if (!groundInteractionsEnabled) {
+              setTransportTarget(null);
+              setDismissedTransportTarget(null);
+              if (transportPromptSourceRef.current === "pad") {
+                transportPromptSourceRef.current = null;
+                setTransportPrompt(null);
+              }
+              return;
+            }
             if (Date.now() < transportPadDisabledUntilRef.current) {
               setTransportTarget(null);
               return;
@@ -1463,6 +1524,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           hoverboardDashSessionId={hoverboardDashSessionId}
           onHoverboardDashUpdate={setHoverboardDashStats}
           onHoverboardDashComplete={finishHoverboardDash}
+          skyRingDashActive={skyRingDashActive}
+          skyRingDashSessionId={skyRingDashSessionId}
+          onSkyRingDashUpdate={setSkyRingDashStats}
+          onSkyRingDashComplete={finishSkyRingDash}
         />
       </div>
 
@@ -1623,6 +1688,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         beachActivityActive={!!beachActivityHud?.active}
         followSystem={followSystem}
         username={user?.world_username || ""}
+        groundInteractionsEnabled={groundInteractionsEnabled}
       />
 
       <BeachActivityHUD
@@ -1633,16 +1699,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       />
 
       <HoverboardMusicDashHUD
-        active={hoverboardDashActive}
-        stats={hoverboardDashStats}
-        results={hoverboardDashResults}
-        onStart={startHoverboardDash}
-        onExit={() => finishHoverboardDash(hoverboardDashStats)}
-        onCloseResults={() => setHoverboardDashResults(null)}
+        active={movementGearGameMode === "jetpack" ? skyRingDashActive : hoverboardDashActive}
+        stats={movementGearGameMode === "jetpack" ? skyRingDashStats : hoverboardDashStats}
+        results={skyRingDashResults || hoverboardDashResults}
+        onStart={movementGearGameMode === "jetpack" ? startSkyRingDash : startHoverboardDash}
+        onExit={() => movementGearGameMode === "jetpack" ? finishSkyRingDash(skyRingDashStats) : finishHoverboardDash(hoverboardDashStats)}
+        onCloseResults={() => { setSkyRingDashResults(null); setHoverboardDashResults(null); }}
         isMobile={isMobile}
         mobileLayout={mobileLayout}
         worldMode={worldMode}
-        blocked={loading || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!beachActivityHud?.active || anyBlockingUIOpen || stageWatching || !nearHoverboardDashStart}
+        gameMode={skyRingDashResults ? "jetpack" : hoverboardDashResults ? "hoverboard" : movementGearGameMode}
+        blocked={!movementGearGameMode || loading || stageFullScreen || domeFullscreenOpen || ferrisRiding || !!beachActivityHud?.active || anyBlockingUIOpen || stageWatching}
       />
 
       {/* Stage cover visualizer keeps branded media on the stage screen behind any video overlay */}

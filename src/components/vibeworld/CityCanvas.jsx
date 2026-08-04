@@ -1875,7 +1875,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
 
         // ─── BEACH TREASURE HUNT — lightweight proximity collect ────────
-        if (worldModeRef.current === "beach" && frameRef.current % 6 === 0) {
+        if (worldModeRef.current === "beach" && frameRef.current % 6 === 0 && !hbRidingRef.current && !personalHoverboardActiveRef.current && !jetpackActiveRef.current && jetpackHeightRef.current <= 0.08) {
           const shellMeshes = scene.userData.beachShellMeshes || [];
           for (const shell of shellMeshes) {
             if (!shell.visible || shell.userData.collected) continue;
