@@ -31,6 +31,14 @@ const EMPTY = {
   is_new_release: false,
   tiktok_promoted: false,
   tiktok_caption: "",
+  tiktok_post_type: "video",
+  tiktok_thumbnail_url: "",
+  tiktok_post_url: "",
+  tiktok_view_count: 0,
+  tiktok_like_count: 0,
+  tiktok_comment_count: 0,
+  tiktok_share_count: 0,
+  tiktok_trending: false,
   tiktok_pin_top: false,
   tiktok_display_order: 0,
   tiktok_posted_at: "",
@@ -79,6 +87,10 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
       ...form,
       frequency_hz: form.frequency_hz !== "" && form.frequency_hz != null ? parseFloat(form.frequency_hz) : undefined,
       tiktok_display_order: form.tiktok_display_order !== "" && form.tiktok_display_order != null ? parseFloat(form.tiktok_display_order) : 0,
+      tiktok_view_count: form.tiktok_view_count !== "" && form.tiktok_view_count != null ? parseFloat(form.tiktok_view_count) : 0,
+      tiktok_like_count: form.tiktok_like_count !== "" && form.tiktok_like_count != null ? parseFloat(form.tiktok_like_count) : 0,
+      tiktok_comment_count: form.tiktok_comment_count !== "" && form.tiktok_comment_count != null ? parseFloat(form.tiktok_comment_count) : 0,
+      tiktok_share_count: form.tiktok_share_count !== "" && form.tiktok_share_count != null ? parseFloat(form.tiktok_share_count) : 0,
       is_premium: !form.tier_access.includes("free"),
       min_tier: form.tier_access.includes("free") ? "free" : form.tier_access.includes("supporter") ? "supporter" : "premium",
     };
@@ -280,6 +292,7 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
               { key: "is_featured", label: "Featured track" },
               { key: "is_new_release", label: "New release" },
               { key: "tiktok_promoted", label: "Promoted on TikTok" },
+              { key: "tiktok_trending", label: "Trending TikTok post" },
               { key: "tiktok_pin_top", label: "Pin on TikTok feed" },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
@@ -302,15 +315,46 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">TikTok Caption / Hook</label>
-                <Input value={form.tiktok_caption || ""} onChange={(e) => setForm({ ...form, tiktok_caption: e.target.value })} placeholder="e.g. The 432 Hz track from today’s TikTok..." className="bg-card/40 border-border/30" />
+                <Input value={form.tiktok_caption || ""} onChange={(e) => setForm({ ...form, tiktok_caption: e.target.value })} placeholder="Caption used on the TikTok post..." className="bg-card/40 border-border/30" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Post Type</label>
+                <Select value={form.tiktok_post_type || "video"} onValueChange={(v) => setForm({ ...form, tiktok_post_type: v })}>
+                  <SelectTrigger className="bg-card/40 border-border/30"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="video">Video</SelectItem><SelectItem value="image">Image</SelectItem><SelectItem value="quote">Quote</SelectItem><SelectItem value="meme">Meme</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">TikTok Posted Date</label>
+                <Input type="date" value={form.tiktok_posted_at || ""} onChange={(e) => setForm({ ...form, tiktok_posted_at: e.target.value })} className="bg-card/40 border-border/30" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">TikTok Thumbnail / Preview URL</label>
+                <Input value={form.tiktok_thumbnail_url || ""} onChange={(e) => setForm({ ...form, tiktok_thumbnail_url: e.target.value })} placeholder="Paste the TikTok thumbnail or preview image URL" className="bg-card/40 border-border/30" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Original TikTok Post URL</label>
+                <Input value={form.tiktok_post_url || ""} onChange={(e) => setForm({ ...form, tiktok_post_url: e.target.value })} placeholder="https://www.tiktok.com/@uppervibemedia/video/..." className="bg-card/40 border-border/30" />
               </div>
               <div>
                 <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Feed Order</label>
                 <Input type="number" value={form.tiktok_display_order ?? 0} onChange={(e) => setForm({ ...form, tiktok_display_order: e.target.value })} className="bg-card/40 border-border/30" />
               </div>
               <div>
-                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">TikTok Posted Date</label>
-                <Input type="date" value={form.tiktok_posted_at || ""} onChange={(e) => setForm({ ...form, tiktok_posted_at: e.target.value })} className="bg-card/40 border-border/30" />
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Views</label>
+                <Input type="number" value={form.tiktok_view_count ?? 0} onChange={(e) => setForm({ ...form, tiktok_view_count: e.target.value })} className="bg-card/40 border-border/30" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Likes</label>
+                <Input type="number" value={form.tiktok_like_count ?? 0} onChange={(e) => setForm({ ...form, tiktok_like_count: e.target.value })} className="bg-card/40 border-border/30" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Comments</label>
+                <Input type="number" value={form.tiktok_comment_count ?? 0} onChange={(e) => setForm({ ...form, tiktok_comment_count: e.target.value })} className="bg-card/40 border-border/30" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Shares</label>
+                <Input type="number" value={form.tiktok_share_count ?? 0} onChange={(e) => setForm({ ...form, tiktok_share_count: e.target.value })} className="bg-card/40 border-border/30" />
               </div>
             </div>
           </div>

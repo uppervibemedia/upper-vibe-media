@@ -111,7 +111,46 @@
     },
     "tiktok_caption": {
       "type": "string",
-      "description": "Short TikTok-style caption or hook shown on the link-in-bio feed"
+      "description": "Caption used on the TikTok post"
+    },
+    "tiktok_post_type": {
+      "type": "string",
+      "enum": [
+        "video",
+        "image",
+        "quote",
+        "meme"
+      ],
+      "default": "video",
+      "description": "Type of TikTok post shown on the TikTok feed"
+    },
+    "tiktok_thumbnail_url": {
+      "type": "string",
+      "description": "TikTok video thumbnail or preview image URL"
+    },
+    "tiktok_post_url": {
+      "type": "string",
+      "description": "Original TikTok post URL"
+    },
+    "tiktok_view_count": {
+      "type": "number",
+      "default": 0
+    },
+    "tiktok_like_count": {
+      "type": "number",
+      "default": 0
+    },
+    "tiktok_comment_count": {
+      "type": "number",
+      "default": 0
+    },
+    "tiktok_share_count": {
+      "type": "number",
+      "default": 0
+    },
+    "tiktok_trending": {
+      "type": "boolean",
+      "default": false
     },
     "tiktok_pin_top": {
       "type": "boolean",
