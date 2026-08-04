@@ -138,6 +138,7 @@ export default function WorldHUD({
   onFerrisRideChange,
   onStartBeachActivity,
   beachActivityActive = false,
+  groundInteractionsEnabled = true,
   // Follow system
   followSystem,
 }) {
@@ -145,7 +146,7 @@ export default function WorldHUD({
   const [isPortrait, setIsPortrait] = useState(() => window.innerHeight > window.innerWidth);
   const zoneFadeTimerRef = useRef(null);
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
-  const zone = detectZone(playerX, playerZ);
+  const zone = groundInteractionsEnabled ? detectZone(playerX, playerZ) : null;
 
   // Track orientation changes
   useEffect(() => {
@@ -245,6 +246,22 @@ export default function WorldHUD({
   }, [userInteractionTarget?.user_id, userInteractionTarget?.id, currentUserId]);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
+
+  useEffect(() => {
+    if (groundInteractionsEnabled) return;
+    setMusicPanelOpen(false);
+    setLoungePanelOpen(false);
+    setVisualizerOpen(false);
+    setVibeCheckOpen(false);
+    setLeaderboardOpen(false);
+    setAcademyOpen(false);
+    setFerrisWheelOpen(false);
+    setZenBeachOpen(false);
+    setActiveBeachActivity(null);
+    setShopOpen(false);
+    setJukeboxOpen(false);
+    onMobileModalChange?.(false);
+  }, [groundInteractionsEnabled, onMobileModalChange]);
 
   const handleDashboardAction = useCallback((id) => {
     hapticTap();
@@ -473,7 +490,7 @@ export default function WorldHUD({
 
       {/* ── DJ Now Playing card — larger song card above DJ Booth when near jukebox ── */}
       <AnimatePresence>
-        {nearJukebox && djTrack && !jukeboxOpen && !stageWatching && (
+        {groundInteractionsEnabled && nearJukebox && djTrack && !jukeboxOpen && !stageWatching && (
           <motion.div
             key="dj-song-card"
             initial={{ opacity: 0, y: 16, scale: 0.92 }}

@@ -39,6 +39,12 @@ import {
   disposeHoverboardMusicDash,
   getHoverboardDashStats,
 } from "./HoverboardMusicDashSystem.js";
+import {
+  createSkyRingDash,
+  tickSkyRingDash,
+  disposeSkyRingDash,
+  getSkyRingDashStats,
+} from "./SkyRingDashSystem.js";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -554,7 +560,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, jetpackActive = false, jetpackFlyRequest = null, onJetpackStatusChange, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, equippedAuraColor = null, hoverboardDashActive = false, hoverboardDashSessionId = null, onHoverboardDashUpdate, onHoverboardDashComplete, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, jetpackActive = false, jetpackFlyRequest = null, onJetpackStatusChange, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, equippedAuraColor = null, hoverboardDashActive = false, hoverboardDashSessionId = null, onHoverboardDashUpdate, onHoverboardDashComplete, skyRingDashActive = false, skyRingDashSessionId = null, onSkyRingDashUpdate, onSkyRingDashComplete, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -582,6 +588,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   onHoverboardDashUpdateRef.current = onHoverboardDashUpdate;
   const onHoverboardDashCompleteRef = useRef(onHoverboardDashComplete);
   onHoverboardDashCompleteRef.current = onHoverboardDashComplete;
+  const skyRingDashRef = useRef(null);
+  const skyRingDashActiveRef = useRef(false);
+  skyRingDashActiveRef.current = skyRingDashActive;
+  const onSkyRingDashUpdateRef = useRef(onSkyRingDashUpdate);
+  onSkyRingDashUpdateRef.current = onSkyRingDashUpdate;
+  const onSkyRingDashCompleteRef = useRef(onSkyRingDashComplete);
+  onSkyRingDashCompleteRef.current = onSkyRingDashComplete;
   const jetpackActiveRef = useRef(false);
   jetpackActiveRef.current = jetpackActive;
   const pendingJetpackFlyRef = useRef(false);
@@ -717,6 +730,22 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     hoverboardDashComboRef.current = 0;
     onHoverboardDashUpdateRef.current?.(getHoverboardDashStats(hoverboardDashRef.current));
   }, [hoverboardDashActive, hoverboardDashSessionId]);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    if (!skyRingDashActive || worldModeRef.current !== "city") {
+      if (skyRingDashRef.current) {
+        disposeSkyRingDash(scene, skyRingDashRef.current);
+        skyRingDashRef.current = null;
+      }
+      return;
+    }
+    if (skyRingDashRef.current?.sessionId === skyRingDashSessionId) return;
+    if (skyRingDashRef.current) disposeSkyRingDash(scene, skyRingDashRef.current);
+    skyRingDashRef.current = createSkyRingDash(scene, { mobile: isMobileRef.current, sessionId: skyRingDashSessionId || Date.now() });
+    onSkyRingDashUpdateRef.current?.(getSkyRingDashStats(skyRingDashRef.current));
+  }, [skyRingDashActive, skyRingDashSessionId]);
 
   useEffect(() => {
     if (!beachActivityRequest?.id || !beachActivityRequest?.type || !sceneRef.current) return;
@@ -1496,6 +1525,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
+        if (skyRingDashRef.current && worldModeRef.current === "city") {
+          const skyDash = tickSkyRingDash(skyRingDashRef.current, { x: px, y: py, z: pz, rot }, t, moveDt, audioBeat);
+          const skyStats = getSkyRingDashStats(skyDash);
+          if (frameRef.current % 6 === 0 || skyDash.complete) onSkyRingDashUpdateRef.current?.(skyStats);
+          if (skyDash.complete && !skyDash._completedSent) {
+            skyDash._completedSent = true;
+            onSkyRingDashCompleteRef.current?.(skyStats);
+          }
+        }
+
         // Stage screen — visualizer canvas
         const stageCanvasVal = stageCanvasRef.current;
         const stageScreen = scene.userData.stageScreen;
@@ -2146,6 +2185,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (hoverboardDashRef.current) {
           disposeHoverboardMusicDash(scene, hoverboardDashRef.current);
           hoverboardDashRef.current = null;
+        }
+        if (skyRingDashRef.current) {
+          disposeSkyRingDash(scene, skyRingDashRef.current);
+          skyRingDashRef.current = null;
         }
         window.__hbScene = null;
         window.__uvcWorldMode = null;

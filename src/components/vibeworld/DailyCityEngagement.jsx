@@ -147,6 +147,7 @@ export default function DailyCityEngagement({
   ferrisRiding,
   onSetIntentionAura,
   onOpenChange,
+  groundInteractionsEnabled = true,
 }) {
   const [daily, setDaily] = useState(() => buildDaily(userId));
   const [expanded, setExpanded] = useState(() => !buildDaily(userId).welcomeDismissed);
@@ -331,11 +332,11 @@ export default function DailyCityEngagement({
   useEffect(() => { if (ferrisRiding) completeAction("ferris_wheel"); }, [ferrisRiding, completeAction]);
 
   useEffect(() => {
-    if (!playerPos || worldMode !== "city") return;
+    if (!playerPos || worldMode !== "city" || !groundInteractionsEnabled) return;
     if (CRYSTAL_NODES.some((n) => (playerPos.x - n.x) ** 2 + (playerPos.z - n.z) ** 2 < 5.2 ** 2)) {
       completeAction("crystal_charge");
     }
-  }, [playerPos?.x, playerPos?.z, worldMode, completeAction]);
+  }, [playerPos?.x, playerPos?.z, worldMode, completeAction, groundInteractionsEnabled]);
 
   useEffect(() => {
     if (!isDancing) return;

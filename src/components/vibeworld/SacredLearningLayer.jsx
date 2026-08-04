@@ -119,7 +119,7 @@ function nextStreak(userId) {
   return next;
 }
 
-export default function SacredLearningLayer({ playerPos, livePositionRef, worldMode, isMobile, mobileLayout, hidden, userId, isDancing }) {
+export default function SacredLearningLayer({ playerPos, livePositionRef, worldMode, isMobile, mobileLayout, hidden, userId, isDancing, groundInteractionsEnabled = true }) {
   const [wisdomOpen, setWisdomOpen] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
   const [nearZone, setNearZone] = useState(null);
@@ -188,9 +188,11 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
       setNearZone(null);
       setCandidate(null);
       setActivationStarted(null);
-      if (activeCardRef.current?.isSymbol) setActiveCard(null);
+      setActiveQuest(null);
+      activeQuestRef.current = null;
+      setActiveCard(null);
     };
-    if (worldMode !== "city" || hidden) { resetSymbolState(); return; }
+    if (worldMode !== "city" || hidden || !groundInteractionsEnabled) { resetSymbolState(); return; }
     const sample = () => {
       const live = livePositionRef?.current || playerPos;
       const x = Number.isFinite(live?.x) ? live.x : playerPos?.x;
@@ -243,7 +245,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
     sample();
     const id = setInterval(sample, 120);
     return () => { clearInterval(id); clearSettle(); };
-  }, [playerPos, livePositionRef, worldMode, hidden]);
+  }, [playerPos, livePositionRef, worldMode, hidden, groundInteractionsEnabled]);
 
   useEffect(() => {
     if (!activationStarted) return;
@@ -297,7 +299,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
   }, []);
 
   useEffect(() => {
-    if (!activeQuest) return;
+    if (!activeQuest || !groundInteractionsEnabled) return;
     const id = setInterval(() => {
       const quest = activeQuestRef.current;
       if (!quest) return;
@@ -317,7 +319,7 @@ export default function SacredLearningLayer({ playerPos, livePositionRef, worldM
       if (next.progress >= quest.quest.target) completeQuest(next);
     }, 1000);
     return () => clearInterval(id);
-  }, [activeQuest?.symbolId, playerPos?.x, playerPos?.z, livePositionRef, isDancing]);
+  }, [activeQuest?.symbolId, playerPos?.x, playerPos?.z, livePositionRef, isDancing, groundInteractionsEnabled]);
 
   useEffect(() => {
     if (!activeQuest || activeCard?.id !== activeQuest.symbolId) return;
