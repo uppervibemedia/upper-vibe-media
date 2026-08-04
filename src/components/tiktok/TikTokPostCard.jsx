@@ -5,7 +5,7 @@ import { Calendar, ExternalLink, Flame, Heart, MessageCircle, Play, Pause, Share
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 import CoverImage from "@/components/shared/CoverImage";
-import TikTokLightbox from "@/components/tiktok/TikTokLightbox";
+import TikTokInlinePlayer from "@/components/tiktok/TikTokInlinePlayer";
 
 const compact = (value) => {
   const n = Number(value);
@@ -72,9 +72,9 @@ export default function TikTokPostCard({ track, index }) {
     togglePlay();
   };
 
-  const handleCloseTikTokPreview = () => {
+  const handleCloseTikTokPreview = (resumeAudio = true) => {
     setTikTokOpen(false);
-    if (pausedForTikTokRef.current && wasPlayingBeforeTikTokRef.current) {
+    if (resumeAudio && pausedForTikTokRef.current && wasPlayingBeforeTikTokRef.current) {
       setTimeout(() => togglePlay(), 120);
     }
   };
@@ -90,7 +90,11 @@ export default function TikTokPostCard({ track, index }) {
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
       <div className="flex h-full flex-col overflow-hidden rounded-[22px] bg-[#070713]/88 shadow-inner shadow-white/[0.035] backdrop-blur-xl">
-      <button type="button" onClick={handleOpenTikTokPreview} className="group/tiktok relative block aspect-[9/13] w-full shrink-0 overflow-hidden bg-gradient-to-br from-purple-950 via-black to-cyan-950 text-left transition-transform active:scale-[0.992]" aria-label="Watch TikTok preview inside Upper Vibe Media">
+      <div className="relative aspect-[9/13] w-full shrink-0 overflow-hidden bg-gradient-to-br from-purple-950 via-black to-cyan-950">
+        {tiktokOpen ? (
+          <TikTokInlinePlayer track={track} onClose={handleCloseTikTokPreview} onAudioIntent={handleTikTokAudioIntent} />
+        ) : (
+      <button type="button" onClick={handleOpenTikTokPreview} className="group/tiktok absolute inset-0 block h-full w-full overflow-hidden text-left transition-transform active:scale-[0.992]" aria-label="Watch TikTok preview inside Upper Vibe Media">
         {thumbnail ? (
           <CoverImage src={thumbnail} alt={caption} width={720} height={1040} eager={index < 8} fetchPriority={index < 3 ? "high" : "auto"} className="h-full w-full transition-transform duration-500 group-hover/tiktok:scale-[1.045]" iconClassName="w-10 h-10" />
         ) : (
@@ -129,6 +133,8 @@ export default function TikTokPostCard({ track, index }) {
           {dateText && <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-white/55"><Calendar className="h-3.5 w-3.5" /> {dateText}</p>}
         </div>
       </button>
+        )}
+      </div>
 
       <div className="relative flex flex-1 flex-col border-t border-cyan-300/25 bg-[#03030b]/95 p-4 shadow-[0_-22px_55px_rgba(34,211,238,0.13)] backdrop-blur-xl">
         <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-cyan-300/10 via-cyan-300 to-purple-400/90 shadow-[0_0_18px_rgba(34,211,238,0.65)]" />
@@ -176,7 +182,6 @@ export default function TikTokPostCard({ track, index }) {
       </div>
       </div>
 
-      <TikTokLightbox open={tiktokOpen} onClose={handleCloseTikTokPreview} track={track} onAudioIntent={handleTikTokAudioIntent} />
     </motion.article>
   );
 }
