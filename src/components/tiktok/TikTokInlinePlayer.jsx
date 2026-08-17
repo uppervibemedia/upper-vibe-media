@@ -30,12 +30,12 @@ export default function TikTokInlinePlayer({ track, onClose, onAudioIntent }) {
   }, [onClose]);
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/92 p-4 sm:p-6 landscape:p-3" onPointerDownCapture={onAudioIntent}>
-      <button type="button" onClick={() => onClose?.(true)} className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white backdrop-blur-md active:scale-95" aria-label="Close TikTok preview">
-        <X className="h-5 w-5" />
+    <div className="absolute inset-0 bg-black" onPointerDownCapture={onAudioIntent}>
+      <button type="button" onClick={() => onClose?.(true)} className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white backdrop-blur-md active:scale-95" aria-label="Close TikTok preview">
+        <X className="h-4 w-4" />
       </button>
 
-      <div className="relative h-[90%] w-[90%] max-w-[340px] overflow-hidden rounded-[1.35rem] border border-cyan-300/20 bg-black shadow-[0_0_30px_rgba(34,211,238,0.16)] sm:h-[82%] sm:w-[82%] lg:h-[80%] lg:w-[80%]">
+      <div className="relative h-full w-full overflow-hidden rounded-[1.2rem] bg-black">
         {directVideoUrl ? (
           <video
             src={directVideoUrl}

@@ -28,7 +28,7 @@ export default function TikTokPostCard({ track, index }) {
   const active = isCurrentTrack && isPlaying;
   const type = track.tiktok_post_type || "video";
   const TypeIcon = postIcon[type] || Play;
-  const thumbnail = track.tiktok_thumbnail_url || track.tiktok_preview_url || track.cover_url;
+  const thumbnail = track.tiktok_thumbnail_url || track.thumbnail_url || track.cover_url;
   const albumCover = track.cover_url;
   const caption = track.tiktok_caption || track.description || "The Upper Vibe sound from TikTok — tap Play Song to hear the full track.";
   const stats = [
@@ -81,107 +81,101 @@ export default function TikTokPostCard({ track, index }) {
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 14 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.025, 0.2) }}
-      whileHover={{ y: -7, scale: 1.02 }}
-      whileTap={{ y: -4, scale: 1.01 }}
-      className="group/card h-full rounded-[24px] bg-gradient-to-br from-cyan-300 via-blue-500/80 to-purple-500 p-[2px] shadow-[0_18px_48px_rgba(0,0,0,0.44),0_0_30px_rgba(34,211,238,0.15)] transition-shadow duration-200 will-change-transform hover:shadow-[0_24px_62px_rgba(0,0,0,0.52),0_0_44px_rgba(34,211,238,0.26),0_0_28px_rgba(168,85,247,0.18)]"
+      transition={{ delay: Math.min(index * 0.025, 0.18) }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      className="group/card h-full rounded-[24px] bg-gradient-to-br from-cyan-300 via-blue-500/80 to-purple-500 p-[2px] shadow-[0_16px_42px_rgba(0,0,0,0.42),0_0_26px_rgba(34,211,238,0.14)] transition-shadow duration-200 hover:shadow-[0_22px_54px_rgba(0,0,0,0.5),0_0_36px_rgba(34,211,238,0.22)]"
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
-      <div className="flex h-full flex-col overflow-hidden rounded-[22px] bg-[#070713]/88 shadow-inner shadow-white/[0.035] backdrop-blur-xl">
-      <div className="relative aspect-[9/13] w-full shrink-0 overflow-hidden bg-gradient-to-br from-purple-950 via-black to-cyan-950">
-        {tiktokOpen ? (
-          <TikTokInlinePlayer track={track} onClose={handleCloseTikTokPreview} onAudioIntent={handleTikTokAudioIntent} />
-        ) : (
-      <button type="button" onClick={handleOpenTikTokPreview} className="group/tiktok absolute inset-0 block h-full w-full overflow-hidden text-left transition-transform active:scale-[0.992]" aria-label="Watch TikTok preview inside Upper Vibe Media">
-        {thumbnail ? (
-          <CoverImage src={thumbnail} alt={caption} width={720} height={1040} eager={index < 8} fetchPriority={index < 3 ? "high" : "auto"} className="h-full w-full transition-transform duration-500 group-hover/tiktok:scale-[1.045]" iconClassName="w-10 h-10" />
-        ) : (
-          <div className="flex h-full flex-col justify-center p-6 text-center">
-            <Quote className="mx-auto mb-4 h-10 w-10 text-cyan-200/70" />
-            <p className="font-heading text-2xl font-black leading-tight text-white">{caption}</p>
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/15" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="absolute h-16 w-16 rounded-full bg-cyan-300/20 opacity-0 transition-opacity group-active/tiktok:animate-ping group-active/tiktok:opacity-100" />
-          <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-black/48 text-white shadow-2xl backdrop-blur-md transition-transform duration-300 group-hover/tiktok:scale-110">
-            <Play className="ml-1 h-7 w-7 fill-current" />
-          </span>
-        </div>
-        <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/80 backdrop-blur-md">
-          <TypeIcon className="h-3.5 w-3.5" /> {postLabel[type] || "Post"}
-        </div>
-        {(track.tiktok_trending || track.tiktok_pin_top) && (
-          <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full border border-orange-300/30 bg-orange-400/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-orange-100 backdrop-blur-md">
-            <Flame className="h-3.5 w-3.5" /> Trending
-          </div>
-        )}
-        {stats.length > 0 && (
-          <div className="absolute bottom-4 right-3 flex flex-col items-center gap-3">
-            {stats.map(({ icon: Icon, value }, i) => (
-              <div key={i} className="flex flex-col items-center text-white drop-shadow">
-                <Icon className="h-5 w-5" />
-                <span className="mt-0.5 text-[10px] font-black">{value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="absolute bottom-0 left-0 right-10 p-4">
-          <p className="line-clamp-3 text-sm font-bold leading-snug text-white">{caption}</p>
-          {dateText && <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-white/55"><Calendar className="h-3.5 w-3.5" /> {dateText}</p>}
-        </div>
-      </button>
-        )}
-      </div>
-
-      <div className="relative flex flex-1 flex-col border-t border-cyan-300/25 bg-[#03030b]/95 p-4 shadow-[0_-22px_55px_rgba(34,211,238,0.13)] backdrop-blur-xl">
-        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-cyan-300/10 via-cyan-300 to-purple-400/90 shadow-[0_0_18px_rgba(34,211,238,0.65)]" />
-        <div className="mb-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200 drop-shadow-[0_0_10px_rgba(34,211,238,0.55)]">
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-300/50 to-purple-400/40" />
-          ♪ Now Playing
-          <span className="h-px flex-1 bg-gradient-to-l from-transparent via-cyan-300/50 to-purple-400/40" />
-        </div>
-
-        <div className="flex flex-col items-center text-center">
-          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/12 bg-black/40 shadow-[0_0_30px_rgba(34,211,238,0.15)] sm:h-28 sm:w-28">
-            {albumCover ? (
-              <>
-                <img src={albumCover} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl" loading={index < 4 ? "eager" : "lazy"} />
-                <img src={albumCover} alt={track.title || "Album artwork"} className="relative z-10 h-full w-full object-contain p-1.5" loading={index < 4 ? "eager" : "lazy"} decoding="async" />
-              </>
+      <div className="flex h-full flex-col overflow-hidden rounded-[22px] bg-[#070713]/90 shadow-inner shadow-white/[0.035] backdrop-blur-xl">
+        <div className="p-3 pb-2 sm:p-4 sm:pb-3">
+          <div className="relative mx-auto aspect-[9/16] w-[68%] max-w-[230px] overflow-hidden rounded-[1.45rem] border border-cyan-300/22 bg-black shadow-[0_0_30px_rgba(34,211,238,0.16)] sm:w-[62%] sm:max-w-[245px] lg:w-[58%] lg:max-w-[260px] landscape:w-[46%] landscape:max-w-[220px]">
+            {tiktokOpen ? (
+              <TikTokInlinePlayer track={track} onClose={handleCloseTikTokPreview} onAudioIntent={handleTikTokAudioIntent} />
             ) : (
-              <CoverImage src={thumbnail} alt={track.title} width={112} height={112} className="h-full w-full" iconClassName="w-8 h-8" />
+              <button type="button" onClick={handleOpenTikTokPreview} className="group/tiktok absolute inset-0 block h-full w-full overflow-hidden text-left active:scale-[0.992]" aria-label="Watch TikTok preview inside Upper Vibe Media">
+                {thumbnail ? (
+                  <img src={thumbnail} alt={caption} className="h-full w-full bg-black object-contain" loading={index < 8 ? "eager" : "lazy"} fetchPriority={index < 3 ? "high" : "auto"} decoding="async" />
+                ) : (
+                  <div className="flex h-full flex-col justify-center p-4 text-center">
+                    <Quote className="mx-auto mb-3 h-8 w-8 text-cyan-200/70" />
+                    <p className="font-heading text-lg font-black leading-tight text-white">{caption}</p>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/10" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white shadow-xl backdrop-blur-md transition-transform duration-300 group-hover/tiktok:scale-105">
+                    <Play className="ml-0.5 h-5 w-5 fill-current" />
+                  </span>
+                </div>
+                <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-white/82 backdrop-blur-md">
+                  <TypeIcon className="h-3 w-3" /> {postLabel[type] || "Post"}
+                </div>
+                {(track.tiktok_trending || track.tiktok_pin_top) && (
+                  <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-orange-300/30 bg-orange-400/18 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-orange-100 backdrop-blur-md">
+                    <Flame className="h-3 w-3" /> Hot
+                  </div>
+                )}
+              </button>
             )}
           </div>
 
-          <div className="mt-3 min-h-[56px] min-w-0 max-w-full">
-            <h2 className="line-clamp-2 font-heading text-xl font-black leading-tight text-white">{track.title}</h2>
-            <p className="mt-1 truncate text-sm font-semibold text-white/62">{track.artist_display || "Upper Vibe Media"}</p>
+          <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+            <p className="line-clamp-2 text-sm font-bold leading-snug text-white/88">{caption}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-black text-white/52">
+              {dateText && <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> {dateText}</span>}
+              {stats.map(({ icon: Icon, value }, i) => (
+                <span key={i} className="inline-flex items-center gap-1.5"><Icon className="h-3.5 w-3.5" /> {value}</span>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="mt-auto grid gap-2.5 pt-4">
-          <button
-            onClick={handlePlay}
-            disabled={!track.audio_url}
-            className="flex min-h-[58px] w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 text-sm font-black uppercase tracking-wider text-black shadow-[0_0_26px_rgba(34,211,238,0.32)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-45"
-          >
-            {active ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />} {active ? "Pause" : isCurrentTrack ? "Resume Full Song" : "Play Full Song"}
-          </button>
+        <div className="relative flex flex-1 flex-col border-t border-cyan-300/25 bg-[#03030b]/95 p-4 pt-3 shadow-[0_-16px_42px_rgba(34,211,238,0.11)] backdrop-blur-xl">
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-cyan-300/10 via-cyan-300 to-purple-400/90 shadow-[0_0_18px_rgba(34,211,238,0.65)]" />
+          <div className="mb-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-300/50 to-purple-400/40" />
+            ♪ Matched Song
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent via-cyan-300/50 to-purple-400/40" />
+          </div>
 
-          <button
-            onClick={handleOpen}
-            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-4 text-sm font-black text-white transition-all hover:bg-white/[0.1] active:scale-[0.98]"
-          >
-            Open Song Page <ExternalLink className="h-4 w-4" />
-          </button>
+          <div className="flex flex-col items-center text-center">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/12 bg-black/40 shadow-[0_0_24px_rgba(34,211,238,0.14)] sm:h-24 sm:w-24">
+              {albumCover ? (
+                <>
+                  <img src={albumCover} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl" loading={index < 4 ? "eager" : "lazy"} />
+                  <img src={albumCover} alt={track.title || "Album artwork"} className="relative z-10 h-full w-full object-contain p-1.5" loading={index < 4 ? "eager" : "lazy"} decoding="async" />
+                </>
+              ) : (
+                <CoverImage src={thumbnail} alt={track.title} width={96} height={96} className="h-full w-full" iconClassName="w-7 h-7" />
+              )}
+            </div>
 
+            <div className="mt-3 min-h-[48px] min-w-0 max-w-full">
+              <h2 className="line-clamp-2 font-heading text-lg font-black leading-tight text-white sm:text-xl">{track.title}</h2>
+              <p className="mt-1 truncate text-sm font-semibold text-white/62">{track.artist_display || "Upper Vibe Media"}</p>
+            </div>
+          </div>
+
+          <div className="mt-auto grid gap-2.5 pt-3">
+            <button
+              onClick={handlePlay}
+              disabled={!track.audio_url}
+              className="flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 text-sm font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(34,211,238,0.3)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-45"
+            >
+              {active ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />} {active ? "Pause" : isCurrentTrack ? "Resume Full Song" : "Play Full Song"}
+            </button>
+
+            <button
+              onClick={handleOpen}
+              className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-black text-white transition-all hover:bg-white/[0.1] active:scale-[0.98]"
+            >
+              Open Song Page <ExternalLink className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
-      </div>
-
     </motion.article>
   );
 }
