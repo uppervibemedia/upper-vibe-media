@@ -10,6 +10,7 @@ import CoverImage from "@/components/shared/CoverImage";
 
 const MOOD_OPTIONS = ["motivation", "focus", "healing", "confidence", "money", "night", "driving", "meditation", "love", "spiritual"];
 const TIER_OPTIONS = ["free", "supporter", "premium"];
+const EXPORT_SELECTION_LIMIT = 60;
 
 
 export default function MusicManager({ tracks, categories, artists, onEdit, onRefresh }) {
@@ -79,17 +80,35 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
   const toggleSelect = (id) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        return next;
+      }
+      if (next.size >= EXPORT_SELECTION_LIMIT) {
+        toast.error(`You can select up to ${EXPORT_SELECTION_LIMIT} songs at a time.`);
+        return prev;
+      }
+      next.add(id);
       return next;
     });
   };
 
   const toggleAll = () => {
-    if (selected.size === filtered.length) setSelected(new Set());
-    else setSelected(new Set(filtered.map((t) => t.id)));
+    const filteredIds = filtered.map((t) => t.id);
+    const selectedInFiltered = filteredIds.filter((id) => selected.has(id)).length;
+    if (filtered.length > 0 && selectedInFiltered === Math.min(filtered.length, EXPORT_SELECTION_LIMIT)) {
+      setSelected(new Set());
+      return;
+    }
+    const limitedIds = filteredIds.slice(0, EXPORT_SELECTION_LIMIT);
+    if (filtered.length > EXPORT_SELECTION_LIMIT) {
+      toast.info(`Selected the first ${EXPORT_SELECTION_LIMIT} visible songs.`);
+    }
+    setSelected(new Set(limitedIds));
   };
 
   const selCount = selected.size;
+  const selectedTracks = useMemo(() => tracks.filter((t) => selected.has(t.id)), [tracks, selected]);
 
   const applyBulk = async () => {
     if (!selCount || !bulkValue) return;
@@ -225,9 +244,11 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
     out.set(id3); out.set(audio,id3.length); return out;
   };
 
-  const exportAllSongs = async () => {
+  const exportAllSongs = async (songsToExport = tracks, filename = "Upper-Vibe-Media-All-Songs.zip") => {
     if (isExporting) return;
-    if (!confirm(`Export all ${tracks.length} songs with cover art + metadata? Songs are processed one at a time — keep this page open until the ZIP downloads.`)) return;
+    const totalSongs = songsToExport.length;
+    if (totalSongs === 0) return;
+    if (!confirm(`Export ${totalSongs} song${totalSongs !== 1 ? "s" : ""} with cover art + metadata? Songs are processed one at a time — keep this page open until the ZIP downloads.`)) return;
 
     setIsExporting(true);
 
@@ -252,9 +273,9 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
     const fetchB = async (url) => { try { const r=await fetch(url); if(!r.ok) return null; return new Uint8Array(await r.arrayBuffer()); } catch { return null; } };
 
     try {
-      for (let i = 0; i < tracks.length; i++) {
-        const track = tracks[i];
-        setExportProgress({ label: `Processing ${i + 1} of ${tracks.length}: ${track.title || ""}` });
+      for (let i = 0; i < songsToExport.length; i++) {
+        const track = songsToExport[i];
+        setExportProgress({ label: `Processing ${i + 1} of ${totalSongs}: ${track.title || ""}` });
 
         const audioUrl = track.audio_url;
         if (!audioUrl) { skipped.push({title: track.title||'Untitled', reason: 'Missing audio URL'}); continue; }
@@ -305,7 +326,7 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
         'Upper Vibe Media Song Export',
         `Exported at: ${now}`,
         '',
-        `Total songs found:          ${tracks.length}`,
+        `Total songs selected:       ${totalSongs}`,
         `Songs exported:             ${exported}`,
         `Cover art embedded (MP3):   ${artEmbedded}`,
         `Cover art in /Cover Art:    ${artSeparate}`,
@@ -322,7 +343,7 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
       const zipBlob = await zip.generateAsync({ type:"blob", compression:"DEFLATE", compressionOptions:{level:1} });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(zipBlob);
-      link.download = "Upper-Vibe-Media-All-Songs.zip";
+      link.download = filename;
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
 
@@ -334,6 +355,15 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
 
     setIsExporting(false);
     setExportProgress(null);
+  };
+
+  const exportSelectedSongs = async () => {
+    if (selectedTracks.length === 0) return;
+    if (selectedTracks.length > EXPORT_SELECTION_LIMIT) {
+      toast.error(`Select ${EXPORT_SELECTION_LIMIT} songs or fewer to export.`);
+      return;
+    }
+    await exportAllSongs(selectedTracks, "Upper-Vibe-Media-Selected-Songs.zip");
   };
 
   const exportSongUrlsCsv = () => {
@@ -475,7 +505,7 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
 
         {/* Export All Songs (ZIP) */}
         <button
-          onClick={exportAllSongs}
+          onClick={() => exportAllSongs()}
           disabled={isExporting || tracks.length === 0}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold tracking-wide transition-all disabled:opacity-60"
           style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}
@@ -513,10 +543,10 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <button onClick={toggleAll} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            {selected.size === filtered.length && filtered.length > 0
+            {selected.size === Math.min(filtered.length, EXPORT_SELECTION_LIMIT) && filtered.length > 0
               ? <CheckSquare className="w-4 h-4 text-primary" />
               : <Square className="w-4 h-4" />}
-            {selCount > 0 ? `${selCount} selected` : `Select all (${filtered.length})`}
+            {selCount > 0 ? `${selCount} selected` : `Select up to ${EXPORT_SELECTION_LIMIT} (${filtered.length})`}
           </button>
           {selCount > 0 && (
             <button onClick={() => setSelected(new Set())} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
@@ -556,8 +586,15 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
                 </button>
               ))}
               <button
+                onClick={exportSelectedSongs}
+                disabled={isExporting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-400/10 border border-green-400/30 text-green-400 hover:bg-green-400/20 transition-all ml-auto disabled:opacity-50"
+              >
+                <FileArchive className="w-3.5 h-3.5" /> Export Selected ZIP
+              </button>
+              <button
                 onClick={bulkDelete}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive/20 transition-all ml-auto"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive/20 transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete Selected
               </button>
